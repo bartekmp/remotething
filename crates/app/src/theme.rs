@@ -165,6 +165,24 @@ pub fn floating(theme: &Theme) -> container::Style {
     }
 }
 
+/// A tab in the bar: tinted when it is the one in front, quiet otherwise.
+pub fn tab(is_active: bool) -> impl Fn(&Theme) -> container::Style {
+    move |theme| {
+        let tokens = tokens(theme);
+        let (background, text_color) = if is_active {
+            (tokens.selected, tokens.selected_text)
+        } else {
+            (tokens.surface, tokens.text)
+        };
+        container::Style {
+            text_color: Some(text_color),
+            background: Some(background.into()),
+            border: border::rounded(RADIUS_CONTROL),
+            ..container::Style::default()
+        }
+    }
+}
+
 /// The row a dragged item would be dropped on.
 pub fn drop_target(theme: &Theme) -> container::Style {
     let tokens = tokens(theme);

@@ -50,10 +50,11 @@ pub const CHOICES: [Icon; 22] = [
 pub const CHEVRON_DOWN: Icon = icon("chevron-down", '\u{e071}');
 pub const CHEVRON_RIGHT: Icon = icon("chevron-right", '\u{e073}');
 pub const CLOSE: Icon = icon("x", '\u{e1b1}');
+pub const SETTINGS: Icon = icon("settings", '\u{e157}');
+pub const FILE: Icon = icon("file", '\u{e0c4}');
+pub const PLUS: Icon = icon("plus", '\u{e140}');
 pub const PANEL_LEFT_CLOSE: Icon = icon("panel-left-close", '\u{e21b}');
 pub const PANEL_LEFT_OPEN: Icon = icon("panel-left-open", '\u{e21c}');
-pub const PANEL_RIGHT_CLOSE: Icon = icon("panel-right-close", '\u{e436}');
-pub const PANEL_RIGHT_OPEN: Icon = icon("panel-right-open", '\u{e438}');
 
 /// The choice with this name, if there is one.
 pub fn by_name(name: &str) -> Option<Icon> {

@@ -258,7 +258,7 @@ fn io_error(path: &Path, error: std::io::Error) -> Error {
 }
 
 /// Writes beside the target, flushes to disk, then renames over it.
-fn write_atomically(path: &Path, content: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomically(path: &Path, content: &[u8]) -> std::io::Result<()> {
     let mut temporary = path.as_os_str().to_owned();
     temporary.push(".tmp");
     let temporary = Path::new(&temporary);

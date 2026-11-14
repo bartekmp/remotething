@@ -1,0 +1,67 @@
+# Shortcuts for everyday work. Needs Task: https://taskfile.dev
+# `task` alone lists them. Jenkins runs the same steps through `cargo xtask`.
+version: "3"
+
+tasks:
+  default:
+    desc: List the tasks
+    cmds:
+      - task --list
+    silent: true
+
+  run:
+    desc: Run the app (debug build). Extra arguments go after `--`, e.g. task run -- --config my.toml
+    cmds:
+      - cargo run -p remotething -- {{.CLI_ARGS}}
+
+  build:
+    desc: Build everything (debug)
+    cmds:
+      - cargo build --workspace
+
+  build:release:
+    desc: Build the Linux release binary
+    cmds:
+      - cargo xtask build linux
+
+  build:windows:
+    desc: Cross-build the Windows release binary (needs cargo-xwin)
+    cmds:
+      - cargo xtask build windows
+
+  test:
+    desc: Run all tests. Extra arguments filter, e.g. task test -- session
+    cmds:
+      - cargo nextest run --workspace {{.CLI_ARGS}}
+
+  fmt:
+    desc: Format the code
+    cmds:
+      - cargo fmt --all
+
+  lint:
+    desc: Check formatting, clippy warnings, licences and advisories
+    cmds:
+      - cargo xtask lint
+
+  check:
+    desc: Everything a commit must pass (lint, then tests)
+    cmds:
+      - task: lint
+      - task: test
+
+  docs:
+    desc: Build the user guide and open it in the browser (needs mdbook)
+    cmds:
+      - mdbook serve docs --open
+
+  package:windows:
+    desc: Build the Windows zip into dist/
+    cmds:
+      - cargo xtask package windows
+
+  clean:
+    desc: Remove build output
+    cmds:
+      - cargo clean
+      - rm -rf dist docs/book

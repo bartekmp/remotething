@@ -6,5 +6,7 @@ it is granted except by separate written agreement with the copyright holder.
 
 Third-party components are used under their own licences. The bundled Inter
 typeface is licensed under the SIL Open Font License 1.1; see
-crates/app/assets/fonts/Inter-LICENSE.txt. The bundled Lucide icons are licensed
+crates/app/assets/fonts/Inter-LICENSE.txt. The bundled Noto Sans Mono
+typeface is under the same licence; see
+crates/app/assets/fonts/NotoSansMono-LICENSE.txt. The bundled Lucide icons are licensed
 under the ISC License; see crates/app/assets/fonts/lucide-LICENSE.txt.

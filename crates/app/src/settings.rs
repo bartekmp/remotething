@@ -6,7 +6,7 @@ use iced::widget::{button, column, row, text};
 use iced::{Element, Length};
 
 use crate::i18n::{self, fl};
-use crate::preferences::{Preferences, ThemeChoice};
+use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
 
 const THEMES: [ThemeOption; 3] = [
@@ -15,10 +15,31 @@ const THEMES: [ThemeOption; 3] = [
     ThemeOption(ThemeChoice::Dark),
 ];
 
+const TAB_LAYOUTS: [TabLayoutOption; 2] = [
+    TabLayoutOption(TabLayout::SingleLine),
+    TabLayoutOption(TabLayout::Wrap),
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TabLayoutOption(TabLayout);
+
+impl fmt::Display for TabLayoutOption {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self.0 {
+            TabLayout::SingleLine => fl!("settings-tabs-single-line"),
+            TabLayout::Wrap => fl!("settings-tabs-wrap"),
+        };
+        formatter.write_str(&label)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
+    TabLayoutPicked(TabLayoutOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
+    ExportPressed,
+    ImportPressed,
     ClosePressed,
 }
 
@@ -26,6 +47,10 @@ pub enum Message {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Changed,
+    /// Ask where to save the connections, then write them.
+    Export,
+    /// Ask for an export file, then add what is in it.
+    Import,
     Close,
 }
 
@@ -59,6 +84,10 @@ impl fmt::Display for LanguageOption {
 
 pub fn update(preferences: &mut Preferences, message: Message) -> Event {
     match message {
+        Message::TabLayoutPicked(option) => {
+            preferences.tab_layout = option.0;
+            Event::Changed
+        }
         Message::ThemePicked(option) => {
             preferences.theme = option.0;
             Event::Changed
@@ -67,6 +96,8 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
             preferences.language = option.0;
             Event::Changed
         }
+        Message::ExportPressed => Event::Export,
+        Message::ImportPressed => Event::Import,
         Message::ClosePressed => Event::Close,
     }
 }
@@ -106,7 +137,40 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(2);
 
-    column![header, theme, language].spacing(16).into()
+    let tabs = column![
+        text(fl!("settings-tabs"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        theme::pick(
+            TAB_LAYOUTS,
+            Some(TabLayoutOption(preferences.tab_layout)),
+            Message::TabLayoutPicked
+        ),
+    ]
+    .spacing(2);
+
+    let exchange = column![
+        text(fl!("settings-exchange"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        row![
+            button(text(fl!("settings-export")))
+                .style(theme::pill)
+                .on_press(Message::ExportPressed),
+            button(text(fl!("settings-import")))
+                .style(theme::pill)
+                .on_press(Message::ImportPressed),
+        ]
+        .spacing(8),
+        text(fl!("settings-exchange-note"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+    ]
+    .spacing(4);
+
+    column![header, theme, language, tabs, exchange]
+        .spacing(16)
+        .into()
 }
 
 fn language_options(codes: Vec<String>) -> Vec<LanguageOption> {

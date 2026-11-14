@@ -1,0 +1,21 @@
+[package]
+name = "remotething-files"
+description = "Remote file systems for Remotething: listing folders and moving files."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+remotething-remote = { path = "../remote" }
+# The SFTP protocol, spoken over a channel of an SSH connection.
+russh-sftp = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "io-util"] }
+
+[dev-dependencies]
+remotething-secrets = { path = "../secrets" }
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -3,19 +3,36 @@
 //! Usage: remotething [--config <connections file>] | --version
 
 mod app;
+mod credential_actions;
 mod credentials;
+mod file_dialog;
+mod files_pane;
+mod files_view;
 mod i18n;
 mod icons;
+mod input;
 mod items;
+mod keys;
+mod launcher;
 mod menu;
 mod organise;
+mod paste;
 mod preferences;
 mod properties;
+mod recent;
 mod rows;
+mod session;
+mod session_update;
+mod session_view;
 mod settings;
+mod tab_bar;
 mod tabs;
+mod tabs_view;
+mod terminal;
+mod terminal_view;
 mod theme;
 mod tree;
+mod tree_actions;
 mod vault;
 mod window;
 
@@ -89,6 +106,8 @@ fn main() -> Result<()> {
                 theme::INTER_REGULAR.into(),
                 theme::INTER_BOLD.into(),
                 icons::FONT_BYTES.into(),
+                terminal_view::FONT_REGULAR.into(),
+                terminal_view::FONT_BOLD.into(),
             ],
             ..iced::Settings::default()
         })

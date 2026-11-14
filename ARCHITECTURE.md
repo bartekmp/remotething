@@ -9,10 +9,10 @@ Dependencies point one way, from the app down to `core`.
 | Crate | Holds | Status |
 | --- | --- | --- |
 | `crates/core` | Connection model, folder inheritance, connections file | In place |
-| `crates/secrets` | Secret type, OS keyring store with a timeout wrapper, in-memory store, encrypted-file store. Known hosts are planned | In place |
-| `remote` | RDP, VNC and SSH sessions behind Cargo features | Planned |
-| `files` | SFTP, SCP, FTP, SMB, NFS backends and the transfer queue | Planned |
-| `crates/app` | iced UI: connection tree, tabs, properties editor, credentials and settings screens so far. Binary name `remotething` | In place |
+| `crates/secrets` | Secret type, OS keyring store with a timeout wrapper, in-memory store, encrypted-file store, known SSH host keys | In place |
+| `crates/remote` | Protocol sessions behind Cargo features. SSH shell so far; RDP and VNC are planned | In place |
+| `crates/files` | Remote file systems. SFTP listing, upload and download so far; the other backends and the transfer queue are planned | In place |
+| `crates/app` | iced UI: connection tree, tabs with SSH terminals and a file pane, properties editor, credentials and settings screens so far. Binary name `remotething` | In place |
 | `xtask` | Lint, test and build commands for developers and CI | In place |
 
 A crate is added when it has code to hold, not before.

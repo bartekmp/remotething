@@ -82,6 +82,14 @@ pub enum Error {
         user: String,
     },
 
+    /// The tree could not be turned into an export file.
+    #[error("cannot export the connections: {0}")]
+    Export(String),
+
+    /// The file is not an export this version can read.
+    #[error("cannot import this file: {0}")]
+    Import(String),
+
     /// No connection has this id.
     #[error("no connection with id \"{0}\"")]
     UnknownConnection(String),

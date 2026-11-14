@@ -1,8 +1,8 @@
 //! How the window is drawn: three floating panels, and over them the
 //! context menu and the row being dragged.
 
-use iced::alignment::Vertical;
-use iced::widget::{button, column, container, pin, row, stack, text};
+use iced::alignment::{Horizontal, Vertical};
+use iced::widget::{button, column, container, opaque, pin, row, space, stack, text};
 use iced::{Element, Length, Point};
 
 use crate::app::{Centre, Message, State};
@@ -13,20 +13,30 @@ use crate::menu;
 use crate::organise;
 use crate::properties;
 use crate::settings;
-use crate::tabs;
+use crate::tabs_view;
 use crate::theme as look;
 use crate::tree;
 use crate::vault;
 
 const TREE_WIDTH: f32 = 280.0;
-const PROPERTIES_WIDTH: f32 = 300.0;
+const PROPERTIES_WIDTH: f32 = 320.0;
 const COLLAPSE_ICON_SIZE: f32 = 18.0;
 /// How far the dragged row's label trails the pointer, so it is never under it.
 const CARRIED_OFFSET: f32 = 14.0;
 
 pub fn view(state: &State) -> Element<'_, Message> {
     let tree = if state.preferences.tree_collapsed {
-        rail(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled)
+        // Folded: the button that brings the tree back, and settings at the bottom.
+        let settings = button(icons::view(icons::SETTINGS, COLLAPSE_ICON_SIZE))
+            .padding(8)
+            .style(look::pill)
+            .on_press(Message::SettingsPressed);
+        let expand = icon_button(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled);
+        container(column![expand, space::vertical(), settings].align_x(Horizontal::Center))
+            .height(Length::Fill)
+            .padding(look::GAP)
+            .style(look::panel)
+            .into()
     } else {
         let header = row![
             text(fl!("tree-title"))
@@ -36,12 +46,27 @@ pub fn view(state: &State) -> Element<'_, Message> {
         ]
         .align_y(Vertical::Center);
         let content = tree::view(&state.tree, &state.store).map(Message::Tree);
-        side_panel(column![header, content].spacing(look::GAP), TREE_WIDTH)
+        let settings_label = row![
+            icons::view(icons::SETTINGS, look::TEXT_BODY),
+            text(fl!("tree-settings")).size(look::TEXT_SMALL),
+        ]
+        .spacing(6)
+        .align_y(Vertical::Center);
+        let settings = button(settings_label)
+            .style(look::pill)
+            .on_press(Message::SettingsPressed);
+        side_panel(
+            column![header, content, settings].spacing(look::GAP),
+            TREE_WIDTH,
+        )
     };
     let centre = match (&state.vault, state.centre) {
         // The prompt covers the sessions; credentials and settings stay reachable.
         (Some(prompt), Centre::Sessions) => vault::view(prompt).map(Message::Vault),
-        (_, Centre::Sessions) => tabs::view(&state.tabs).map(Message::Tabs),
+        (_, Centre::Sessions) => {
+            let layout = state.preferences.tab_layout;
+            tabs_view::view(&state.tabs, &state.store, &state.recent, layout).map(Message::Tabs)
+        }
         (_, Centre::Credentials) => {
             credentials::view(&state.credentials, &state.store).map(Message::Credentials)
         }
@@ -52,28 +77,18 @@ pub fn view(state: &State) -> Element<'_, Message> {
         .height(Length::Fill)
         .padding(look::PANEL_PADDING)
         .style(look::panel);
-    let properties = if state.preferences.properties_collapsed {
-        rail(icons::PANEL_RIGHT_OPEN, Message::PropertiesCollapseToggled)
-    } else {
-        let header = row![
-            icon_button(icons::PANEL_RIGHT_CLOSE, Message::PropertiesCollapseToggled),
-            text(fl!("properties-title")).size(look::TEXT_TITLE),
-        ]
-        .spacing(8)
-        .align_y(Vertical::Center);
-        let content = properties::view(state.draft.as_ref(), &state.store, state.tree.selected())
-            .map(Message::Properties);
-        side_panel(
-            column![header, content].spacing(look::GAP),
-            PROPERTIES_WIDTH,
-        )
-    };
-    // Three floating panels with the window background showing between them.
-    let body = row![tree, tabs, properties].spacing(look::GAP);
+    // Two floating panels with the window background showing between them.
+    let body = row![tree, tabs].spacing(look::GAP);
 
-    let content = match &state.error {
-        Some(reason) => {
-            let banner = container(text(reason.as_str()).style(text::danger))
+    // An error wins over good news; both sit above the panels.
+    let message = match (&state.error, &state.notice) {
+        (Some(reason), _) => Some(text(reason.as_str()).style(text::danger)),
+        (None, Some(notice)) => Some(text(notice.as_str())),
+        (None, None) => None,
+    };
+    let content = match message {
+        Some(message) => {
+            let banner = container(message)
                 .width(Length::Fill)
                 .padding(look::GAP)
                 .style(look::panel);
@@ -82,6 +97,9 @@ pub fn view(state: &State) -> Element<'_, Message> {
         None => column![body],
     };
     let mut layers = stack![container(content).padding(look::GAP)];
+    if state.properties_open {
+        layers = layers.push(properties_panel(state));
+    }
     if let Some(label) = carried_label(state) {
         layers = layers.push(label);
     }
@@ -89,6 +107,30 @@ pub fn view(state: &State) -> Element<'_, Message> {
         layers = layers.push(menu::view(menu, &state.store, state.window).map(Message::Menu));
     }
     layers.into()
+}
+
+/// The properties of the selected item, floating over the right of the centre panel.
+fn properties_panel(state: &State) -> Element<'_, Message> {
+    let header = row![
+        text(fl!("properties-title"))
+            .size(look::TEXT_TITLE)
+            .width(Length::Fill),
+        icon_button(icons::CLOSE, Message::PropertiesClosed),
+    ]
+    .align_y(Vertical::Center);
+    let content = properties::view(state.draft.as_ref(), &state.store, state.tree.selected())
+        .map(Message::Properties);
+    let panel = container(column![header, content].spacing(look::GAP))
+        .width(Length::Fixed(PROPERTIES_WIDTH))
+        .height(Length::Fill)
+        .padding(look::PANEL_PADDING)
+        .style(look::floating);
+    // Clicks on the panel must not reach the session underneath.
+    container(opaque(panel))
+        .align_right(Length::Fill)
+        .height(Length::Fill)
+        .padding(look::GAP * 2.0)
+        .into()
 }
 
 /// The name of the row being dragged, following the pointer.
@@ -110,15 +152,6 @@ fn side_panel<'a>(content: impl Into<Element<'a, Message>>, width: f32) -> Eleme
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .padding(look::PANEL_PADDING)
-        .style(look::panel)
-        .into()
-}
-
-/// A collapsed sidebar: a narrow panel with only the button that brings it back.
-fn rail<'a>(expand: Icon, on_press: Message) -> Element<'a, Message> {
-    container(icon_button(expand, on_press))
-        .height(Length::Fill)
-        .padding(look::GAP)
         .style(look::panel)
         .into()
 }

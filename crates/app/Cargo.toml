@@ -49,7 +49,15 @@ workspace = true
 anyhow = "1"
 i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"] }
 i18n-embed-fl = "0.10"
-iced = "0.14"
+# `tokio`: sessions run on a tokio runtime. `canvas`: the terminal is drawn cell by cell.
+iced = { version = "0.14", features = ["tokio", "canvas"] }
+# The terminal's grid and escape-sequence handling.
+alacritty_terminal = "0.26"
+remotething-files = { path = "../files" }
+remotething-remote = { path = "../remote" }
+# System file dialogs, through the desktop portal on Linux.
+rfd = "0.18"
+tokio = { version = "1", features = ["sync"] }
 remotething-core = { path = "../core" }
 remotething-secrets = { path = "../secrets" }
 rust-embed = "8"

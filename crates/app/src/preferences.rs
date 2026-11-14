@@ -14,9 +14,19 @@ pub struct Preferences {
     /// True when the connection tree is folded to a narrow rail.
     #[serde(default, skip_serializing_if = "is_false")]
     pub tree_collapsed: bool,
-    /// True when the properties panel is folded to a narrow rail.
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub properties_collapsed: bool,
+    /// What the tab bar does when the tabs do not fit on one line.
+    #[serde(default)]
+    pub tab_layout: TabLayout,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TabLayout {
+    /// One line, with a button that lists the tabs that do not fit.
+    #[default]
+    SingleLine,
+    /// As many lines as needed, up to three.
+    Wrap,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -75,7 +85,7 @@ mod tests {
             theme: ThemeChoice::Dark,
             language: Some("en".to_string()),
             tree_collapsed: true,
-            properties_collapsed: false,
+            tab_layout: TabLayout::Wrap,
         };
 
         save(&preferences, &path).unwrap();

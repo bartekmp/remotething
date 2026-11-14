@@ -50,6 +50,8 @@ pub enum Message {
     Connect,
     NewFolder,
     NewConnection,
+    /// Open the properties panel.
+    Edit,
     Rename,
     ChangeIcon,
     IconPicked(Option<&'static str>),
@@ -65,12 +67,14 @@ pub fn actions(target: Option<&Selection>) -> &'static [Message] {
         Some(Selection::Folder(_)) => &[
             Message::NewFolder,
             Message::NewConnection,
+            Message::Edit,
             Message::Rename,
             Message::ChangeIcon,
             Message::Remove,
         ],
         Some(Selection::Connection(_)) => &[
             Message::Connect,
+            Message::Edit,
             Message::Rename,
             Message::ChangeIcon,
             Message::Remove,
@@ -83,6 +87,7 @@ fn label(action: Message) -> String {
         Message::Connect => fl!("menu-connect"),
         Message::NewFolder => fl!("tree-new-folder"),
         Message::NewConnection => fl!("tree-new-connection"),
+        Message::Edit => fl!("menu-edit"),
         Message::Rename => fl!("menu-rename"),
         Message::ChangeIcon => fl!("menu-change-icon"),
         Message::Remove => fl!("menu-remove"),

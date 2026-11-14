@@ -22,6 +22,8 @@ The same commands run locally and in Jenkins.
 | `cargo xtask package windows` | Portable zip in `dist/`, from the Windows build |
 | `mdbook build docs` | The user guide |
 
+`Taskfile.yml` wraps these for everyday use: `task run`, `task test`, `task check` (lint, then tests). Run `task` for the list. It needs [Task](https://taskfile.dev).
+
 ## Rules
 
 1. One obvious place for each thing: flat modules, no framework layers.

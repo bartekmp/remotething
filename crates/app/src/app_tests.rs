@@ -1,0 +1,432 @@
+//! Tests of `app.rs`.
+
+use super::*;
+use crate::credential_actions::apply_secret;
+use crate::credentials::SecretAction;
+use remotething_secrets::{MemoryStore, Secret};
+
+const ONE_CONNECTION: &str = r#"
+    [[folder]]
+    id = "prod"
+    name = "Production"
+
+    [[connection]]
+    id = "web-01"
+    name = "web-01"
+    parent = "prod"
+    protocol = "ssh"
+    host = "web-01.example.net"
+"#;
+
+/// A window state backed by a real file in a temporary directory.
+fn state(directory: &tempfile::TempDir, content: &str) -> State {
+    let path = directory.path().join("nested").join("connections.toml");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, content).unwrap();
+    let store = Store::load(&path).unwrap();
+    State::new(path, Ok(store), Arc::new(MemoryStore::new()), None)
+}
+
+// The returned tasks need a running app; these tests check the synchronous part.
+fn tree(state: &mut State, message: tree::Message) {
+    let _ = update(state, Message::Tree(message));
+}
+
+fn properties(state: &mut State, message: properties::Message) {
+    let _ = update(state, Message::Properties(message));
+}
+
+fn credentials(state: &mut State, message: credentials::Message) {
+    let _ = update(state, Message::Credentials(message));
+}
+
+fn on_disk(state: &State) -> Store {
+    Store::load(&state.path).unwrap()
+}
+
+#[test]
+fn opening_a_connection_in_the_tree_opens_a_tab() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(
+        &mut state,
+        tree::Message::ConnectionOpened("web-01".to_string()),
+    );
+
+    assert_eq!(state.tabs.open_ids(), ["web-01"]);
+}
+
+#[test]
+fn selecting_a_connection_loads_its_properties_without_opening_a_tab() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+
+    assert!(state.tabs.open_ids().is_empty());
+    assert_eq!(state.draft.as_ref().unwrap().host, "web-01.example.net");
+}
+
+#[test]
+fn a_new_connection_lands_in_the_selected_folder_and_on_disk() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::FolderSelected("prod".to_string()),
+    );
+
+    tree(&mut state, tree::Message::NewConnectionPressed);
+
+    let saved = on_disk(&state);
+    let added = saved.connections.last().unwrap();
+    assert_eq!(added.id, "new-connection");
+    assert_eq!(added.parent.as_deref(), Some("prod"));
+    // The new item is selected, ready to be renamed.
+    assert_eq!(
+        state.tree.selected(),
+        Some(&Selection::Connection(added.id.clone()))
+    );
+    assert!(state.draft.is_some());
+    assert!(state.properties_open);
+}
+
+#[test]
+fn a_new_folder_with_nothing_selected_goes_to_the_top_level() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+
+    tree(&mut state, tree::Message::NewFolderPressed);
+    tree(
+        &mut state,
+        tree::Message::FolderSelected("new-folder".to_string()),
+    );
+    tree(&mut state, tree::Message::NewFolderPressed);
+
+    let saved = on_disk(&state);
+    assert_eq!(saved.folders[0].parent, None);
+    assert_eq!(saved.folders[1].id, "new-folder-2");
+    assert_eq!(saved.folders[1].parent.as_deref(), Some("new-folder"));
+}
+
+#[test]
+fn saving_an_edit_writes_it_to_disk() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+
+    properties(
+        &mut state,
+        properties::Message::HostChanged("10.0.0.5".to_string()),
+    );
+    properties(&mut state, properties::Message::SavePressed);
+
+    assert_eq!(on_disk(&state).connections[0].host, "10.0.0.5");
+    assert_eq!(state.error, None);
+}
+
+#[test]
+fn a_refused_edit_changes_nothing_and_says_why() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+
+    properties(
+        &mut state,
+        properties::Message::PortChanged("not a port".to_string()),
+    );
+    properties(&mut state, properties::Message::SavePressed);
+
+    assert!(state.error.is_some());
+    assert_eq!(on_disk(&state).connections[0].settings.port, None);
+}
+
+#[test]
+fn deleting_a_connection_removes_it_and_clears_the_panel() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+
+    properties(&mut state, properties::Message::DeletePressed);
+
+    assert!(on_disk(&state).connections.is_empty());
+    assert_eq!(state.tree.selected(), None);
+    assert_eq!(state.draft, None);
+}
+
+#[test]
+fn a_folder_with_content_is_not_deleted() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::FolderSelected("prod".to_string()),
+    );
+
+    properties(&mut state, properties::Message::DeletePressed);
+
+    assert_eq!(on_disk(&state).folders.len(), 1);
+    assert!(state.error.as_deref().unwrap().contains("not empty"));
+}
+
+#[test]
+fn the_first_save_creates_the_directory() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("fresh").join("connections.toml");
+    let secrets = Arc::new(MemoryStore::new());
+    let mut state = State::new(path.clone(), Ok(Store::default()), secrets, None);
+
+    tree(&mut state, tree::Message::NewFolderPressed);
+
+    assert!(path.exists());
+}
+
+#[test]
+fn a_load_failure_starts_with_an_empty_tree_and_shows_the_reason() {
+    let secrets = Arc::new(MemoryStore::new());
+    let broken = Err("file is broken".to_string());
+    let state = State::new(PathBuf::from("unused"), broken, secrets, None);
+
+    assert_eq!(state.store, Store::default());
+    assert!(state.error.as_deref().unwrap().contains("file is broken"));
+}
+
+const WITH_CREDENTIAL: &str = r#"
+    [[credential]]
+    id = "cred-ops"
+    name = "Ops team"
+    kind = "password"
+
+    [[connection]]
+    id = "web-01"
+    name = "web-01"
+    protocol = "ssh"
+    host = "web-01.example.net"
+    credential = "cred-ops"
+"#;
+
+#[test]
+fn the_credentials_button_opens_the_screen_and_close_returns() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(&mut state, tree::Message::CredentialsPressed);
+    assert_eq!(state.centre, Centre::Credentials);
+
+    credentials(&mut state, credentials::Message::ClosePressed);
+    assert_eq!(state.centre, Centre::Sessions);
+}
+
+#[test]
+fn a_new_credential_is_saved_and_selected() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+
+    credentials(&mut state, credentials::Message::NewPressed);
+
+    let saved = on_disk(&state);
+    assert_eq!(saved.credentials[0].id, "new-credential");
+    assert_eq!(state.credentials.selected(), Some("new-credential"));
+}
+
+#[test]
+fn saving_a_credential_writes_the_description_and_keeps_the_secret_out_of_the_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, WITH_CREDENTIAL);
+    credentials(
+        &mut state,
+        credentials::Message::Selected("cred-ops".to_string()),
+    );
+    credentials(
+        &mut state,
+        credentials::Message::UsernameChanged("ops".to_string()),
+    );
+    let typed = credentials::Hidden("hunter2".to_string());
+    credentials(&mut state, credentials::Message::SecretChanged(typed));
+
+    credentials(&mut state, credentials::Message::SavePressed);
+
+    assert_eq!(
+        on_disk(&state).credentials[0].username.as_deref(),
+        Some("ops")
+    );
+    let file_text = std::fs::read_to_string(&state.path).unwrap();
+    assert!(!file_text.contains("hunter2"));
+    // The typed secret has left the form on its way to the store.
+    assert_eq!(state.credentials.draft().unwrap().secret, "");
+}
+
+#[test]
+fn a_credential_in_use_is_not_deleted() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, WITH_CREDENTIAL);
+    credentials(
+        &mut state,
+        credentials::Message::Selected("cred-ops".to_string()),
+    );
+
+    credentials(&mut state, credentials::Message::DeletePressed);
+
+    assert_eq!(on_disk(&state).credentials.len(), 1);
+    assert!(state.error.as_deref().unwrap().contains("web-01"));
+}
+
+#[test]
+fn secret_actions_reach_the_store() {
+    let secrets = MemoryStore::new();
+    let set = SecretAction::Set(Secret::new("hunter2".to_string()));
+
+    apply_secret(&secrets, "cred-ops", set).unwrap();
+    let stored = secrets.get("cred-ops").unwrap().unwrap();
+    assert_eq!(stored.expose(), "hunter2");
+
+    apply_secret(&secrets, "cred-ops", SecretAction::Keep).unwrap();
+    assert!(secrets.get("cred-ops").unwrap().is_some());
+
+    apply_secret(&secrets, "cred-ops", SecretAction::Delete).unwrap();
+    assert!(secrets.get("cred-ops").unwrap().is_none());
+}
+
+#[test]
+fn a_failed_secret_save_is_shown() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    let _ = update(
+        &mut state,
+        Message::SecretStored(Err("keyring locked".to_string())),
+    );
+
+    assert!(state.error.as_deref().unwrap().contains("keyring locked"));
+}
+
+#[test]
+fn a_start_up_notice_is_shown_when_loading_worked() {
+    let secrets = Arc::new(MemoryStore::new());
+    let notice = Some("no keyring".to_string());
+
+    let state = State::new(
+        PathBuf::from("unused"),
+        Ok(Store::default()),
+        secrets,
+        notice,
+    );
+
+    assert_eq!(state.error.as_deref(), Some("no keyring"));
+}
+
+fn settings(state: &mut State, message: settings::Message) {
+    let _ = update(state, Message::Settings(message));
+}
+
+#[test]
+fn the_settings_button_opens_the_screen_and_close_returns() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    let _ = update(&mut state, Message::SettingsPressed);
+    assert_eq!(state.centre, Centre::Settings);
+
+    settings(&mut state, settings::Message::ClosePressed);
+    assert_eq!(state.centre, Centre::Sessions);
+}
+
+#[test]
+fn a_theme_change_applies_at_once_and_is_saved_beside_the_connections_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    assert!(!theme(&state).extended_palette().is_dark);
+
+    let _ = update(&mut state, Message::SystemModeChanged(Mode::Dark));
+    assert!(theme(&state).extended_palette().is_dark);
+    let _ = update(&mut state, Message::SystemModeChanged(Mode::Light));
+
+    let dark = Preferences {
+        theme: ThemeChoice::Dark,
+        ..Preferences::default()
+    };
+    let state_with_dark = State::new(
+        state.path.clone(),
+        Ok(Store::default()),
+        Arc::new(MemoryStore::new()),
+        None,
+    )
+    .with_preferences(dark.clone());
+    assert!(theme(&state_with_dark).extended_palette().is_dark);
+
+    state.preferences = dark.clone();
+    state.save_preferences();
+
+    let saved = preferences::load(&preferences::path_beside(&state.path)).unwrap();
+    assert_eq!(saved, dark);
+}
+
+fn locked_state(directory: &tempfile::TempDir) -> State {
+    let vault_file = directory.path().join("secrets.toml");
+    state(directory, ONE_CONNECTION).with_vault_prompt(vault_file, "no keyring".to_string())
+}
+
+#[test]
+fn skipping_the_master_password_keeps_secrets_in_memory_and_says_so() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = locked_state(&directory);
+
+    let _ = update(&mut state, Message::Vault(vault::Message::SkipPressed));
+
+    assert!(state.vault.is_none());
+    assert_eq!(state.error, Some(fl!("vault-skipped")));
+}
+
+#[test]
+fn an_unlocked_store_replaces_the_temporary_one_and_closes_the_prompt() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = locked_state(&directory);
+    let unlocked = MemoryStore::new();
+    unlocked
+        .set("cred-ops", &Secret::new("hunter2".to_string()))
+        .unwrap();
+
+    let opened = Message::VaultOpened(Ok(Unlocked(Arc::new(unlocked))));
+    let _ = update(&mut state, opened);
+
+    assert!(state.vault.is_none());
+    assert!(state.secrets.get("cred-ops").unwrap().is_some());
+}
+
+#[test]
+fn a_failed_unlock_keeps_the_prompt_open() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = locked_state(&directory);
+
+    let failed = Message::VaultOpened(Err("wrong password".to_string()));
+    let _ = update(&mut state, failed);
+
+    assert!(state.vault.is_some());
+}
+
+#[test]
+fn collapsing_a_sidebar_is_remembered_in_the_settings_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let saved = |state: &State| preferences::load(&preferences::path_beside(&state.path)).unwrap();
+
+    let _ = update(&mut state, Message::TreeCollapseToggled);
+    assert!(state.preferences.tree_collapsed);
+    assert!(saved(&state).tree_collapsed);
+
+    let _ = update(&mut state, Message::TreeCollapseToggled);
+    assert!(!saved(&state).tree_collapsed);
+}
