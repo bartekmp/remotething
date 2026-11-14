@@ -22,7 +22,8 @@ pub fn view(state: &State) -> Element<'_, Message> {
             centred(text(fl!("session-connecting", host = host)).style(theme::secondary_text))
         }
         Stage::Asking(form) => centred(sign_in_form(state, form)),
-        Stage::HostKey { key, changed } => centred(host_key_question(host, key, *changed)),
+        // The key may belong to a jump host on the way, so its own host is shown.
+        Stage::HostKey { key, changed } => centred(host_key_question(key, *changed)),
         Stage::Connected(live) => {
             let terminal = terminal_view::view(&live.screen, &live.cache, Message::Terminal);
             let terminal = match &live.pending_paste {
@@ -141,7 +142,8 @@ fn sign_in_form<'a>(state: &State, form: &'a Form) -> Element<'a, Message> {
         .into()
 }
 
-fn host_key_question<'a>(host: &str, key: &'a HostKey, changed: bool) -> Element<'a, Message> {
+fn host_key_question(key: &HostKey, changed: bool) -> Element<'_, Message> {
+    let host = key.endpoint.host.as_str();
     let (explanation, trust_label) = if changed {
         (
             text(fl!("session-host-key-changed", host = host)).style(text::danger),

@@ -9,7 +9,7 @@ use russh::keys::PrivateKeyWithHashAlg;
 use tokio::net::TcpStream;
 
 use super::host_key::{Handler, Refusal};
-use super::{Auth, Endpoint, Error, Result, Shell, TerminalSize, shell};
+use super::{Auth, Endpoint, Error, Hop, Result, Shell, TerminalSize, shell};
 
 /// For reaching the server, the handshake and the sign-in together.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -17,6 +17,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const KEEPALIVE: Duration = Duration::from_secs(30);
 /// What the remote programs are told the terminal is.
 const TERMINAL_TYPE: &str = "xterm-256color";
+/// What a jump host is told the relayed connection comes from.
+const LOCAL_ORIGIN: &str = "127.0.0.1";
 
 /// Connects to `endpoint`, signs in and starts a shell in a terminal of `size`.
 ///
@@ -28,7 +30,23 @@ pub async fn open_shell(
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
-    let attempt = connect(endpoint, auth, known, size);
+    open_shell_through(&[], endpoint, auth, known, size).await
+}
+
+/// Like [`open_shell`], reaching the target through `jumps` in order: the
+/// first is connected to directly, each next one from the one before it.
+///
+/// Every server on the way has its key checked against `known` and is signed
+/// in to with its own credentials. The connections to the jump hosts stay
+/// open for as long as the shell's connection does.
+pub async fn open_shell_through(
+    jumps: &[Hop],
+    endpoint: &Endpoint,
+    auth: &Auth,
+    known: KnownHosts,
+    size: TerminalSize,
+) -> Result<Shell> {
+    let attempt = connect(jumps, endpoint, auth, known, size);
     match tokio::time::timeout(CONNECT_TIMEOUT, attempt).await {
         Ok(result) => result,
         Err(_) => Err(Error::TimedOut(CONNECT_TIMEOUT.as_secs())),
@@ -36,20 +54,70 @@ pub async fn open_shell(
 }
 
 async fn connect(
+    jumps: &[Hop],
     endpoint: &Endpoint,
     auth: &Auth,
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
-    let address = (endpoint.host.as_str(), endpoint.port);
-    let tcp = TcpStream::connect(address)
+    // The connections to the jump hosts, first one first.
+    let mut tunnel: Vec<client::Handle<Handler>> = Vec::new();
+    for (index, hop) in jumps.iter().enumerate() {
+        let through = tunnel.last();
+        let session = establish(through, &hop.endpoint, &hop.auth, known.clone())
+            .await
+            .map_err(|error| {
+                // A refused relay is the doing of the host before this one.
+                let relay = index.checked_sub(1).map(|before| &jumps[before].endpoint);
+                on_jump(&hop.endpoint, relay, error)
+            })?;
+        debug_assert_eq!(tunnel.len(), index);
+        tunnel.push(session);
+    }
+    let session = establish(tunnel.last(), endpoint, auth, known)
         .await
-        .map_err(|error| Error::Unreachable {
-            host: endpoint.host.clone(),
-            port: endpoint.port,
-            reason: error.to_string(),
+        .map_err(|error| match (jumps.last(), error) {
+            (Some(last), Error::ForwardingRefused { .. }) => Error::ForwardingRefused {
+                host: last.endpoint.host.clone(),
+            },
+            (_, error) => error,
         })?;
 
+    let channel = session.channel_open_session().await?;
+    let (columns, lines) = (u32::from(size.columns), u32::from(size.lines));
+    channel
+        .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
+        .await?;
+    channel.request_shell(false).await?;
+
+    Ok(shell::start(session, tunnel, channel))
+}
+
+/// Says which jump host a failure belongs to. A host-key question already
+/// names its host and must reach the user as it is.
+///
+/// `relay` is the jump host before this one, which carried the connection.
+fn on_jump(endpoint: &Endpoint, relay: Option<&Endpoint>, error: Error) -> Error {
+    match (error, relay) {
+        (error @ (Error::UnknownHostKey(_) | Error::HostKeyChanged(_)), _) => error,
+        (Error::ForwardingRefused { .. }, Some(relay)) => Error::ForwardingRefused {
+            host: relay.host.clone(),
+        },
+        (other, _) => Error::Jump {
+            host: endpoint.host.clone(),
+            reason: Box::new(other),
+        },
+    }
+}
+
+/// Reaches `endpoint` (directly, or from the server `through`), checks its
+/// key and signs in.
+async fn establish(
+    through: Option<&client::Handle<Handler>>,
+    endpoint: &Endpoint,
+    auth: &Auth,
+    known: KnownHosts,
+) -> Result<client::Handle<Handler>> {
     let config = Arc::new(client::Config {
         keepalive_interval: Some(KEEPALIVE),
         ..client::Config::default()
@@ -60,7 +128,38 @@ async fn connect(
         known,
         refusal: Arc::clone(&refusal),
     };
-    let mut session = match client::connect_stream(config, tcp, handler).await {
+
+    let handshake = match through {
+        None => {
+            let address = (endpoint.host.as_str(), endpoint.port);
+            let tcp = TcpStream::connect(address)
+                .await
+                .map_err(|error| unreachable(endpoint, error))?;
+            client::connect_stream(config, tcp, handler).await
+        }
+        Some(jump) => {
+            // The jump host opens the TCP connection for us and relays it.
+            let channel = jump
+                .channel_open_direct_tcpip(
+                    endpoint.host.clone(),
+                    u32::from(endpoint.port),
+                    LOCAL_ORIGIN,
+                    0,
+                )
+                .await
+                .map_err(|error| match error {
+                    // The refusal is the jump host's, not the target's.
+                    russh::Error::ChannelOpenFailure(
+                        russh::ChannelOpenFailure::AdministrativelyProhibited,
+                    ) => Error::ForwardingRefused {
+                        host: String::new(),
+                    },
+                    other => unreachable(endpoint, other),
+                })?;
+            client::connect_stream(config, channel.into_stream(), handler).await
+        }
+    };
+    let mut session = match handshake {
         Ok(session) => session,
         Err(error) => {
             // A refused host key surfaces as a generic error; report the real reason.
@@ -70,15 +169,15 @@ async fn connect(
     };
 
     sign_in(&mut session, auth).await?;
+    Ok(session)
+}
 
-    let channel = session.channel_open_session().await?;
-    let (columns, lines) = (u32::from(size.columns), u32::from(size.lines));
-    channel
-        .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
-        .await?;
-    channel.request_shell(false).await?;
-
-    Ok(shell::start(session, channel))
+fn unreachable(endpoint: &Endpoint, error: impl std::fmt::Display) -> Error {
+    Error::Unreachable {
+        host: endpoint.host.clone(),
+        port: endpoint.port,
+        reason: error.to_string(),
+    }
 }
 
 async fn sign_in(session: &mut client::Handle<Handler>, auth: &Auth) -> Result<()> {

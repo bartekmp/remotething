@@ -12,6 +12,7 @@ mod i18n;
 mod icons;
 mod input;
 mod items;
+mod jump;
 mod keys;
 mod launcher;
 mod menu;

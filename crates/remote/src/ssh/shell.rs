@@ -14,12 +14,18 @@ pub type SftpStream = russh::ChannelStream<Msg>;
 
 /// An open SSH connection. It stays open while a shell or a copy of this handle uses it.
 #[derive(Clone)]
-pub struct Connection(Arc<client::Handle<Handler>>);
+pub struct Connection(Arc<Links>);
+
+/// The connection to the target and, kept open underneath it, those to the jump hosts.
+struct Links {
+    target: client::Handle<Handler>,
+    _tunnel: Vec<client::Handle<Handler>>,
+}
 
 impl Connection {
     /// Opens a channel on this connection and starts the server's SFTP service on it.
     pub async fn open_sftp(&self) -> Result<SftpStream> {
-        let channel = self.0.channel_open_session().await?;
+        let channel = self.0.target.channel_open_session().await?;
         channel.request_subsystem(true, "sftp").await?;
         Ok(channel.into_stream())
     }
@@ -29,10 +35,17 @@ impl Connection {
 const QUEUE: usize = 64;
 
 /// Starts the task and returns its two ends.
-pub(super) fn start(session: client::Handle<Handler>, channel: Channel<Msg>) -> Shell {
+pub(super) fn start(
+    session: client::Handle<Handler>,
+    tunnel: Vec<client::Handle<Handler>>,
+    channel: Channel<Msg>,
+) -> Shell {
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(QUEUE);
-    let connection = Connection(Arc::new(session));
+    let connection = Connection(Arc::new(Links {
+        target: session,
+        _tunnel: tunnel,
+    }));
     tokio::spawn(run(connection.clone(), channel, events_tx, input_rx));
     Shell {
         events,

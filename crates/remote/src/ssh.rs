@@ -1,6 +1,7 @@
 //! SSH: an interactive shell on a remote host.
 //!
-//! [`open_shell`] connects, checks the host key against the accepted ones,
+//! [`open_shell`] connects (through jump hosts with [`open_shell_through`]),
+//! checks every host key against the accepted ones,
 //! signs in and starts a shell. The [`Shell`] it returns is two channels:
 //! events from the remote side, and input to it. Dropping the input end
 //! closes the connection.
@@ -14,7 +15,7 @@ use std::path::PathBuf;
 use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
-pub use connect::open_shell;
+pub use connect::{open_shell, open_shell_through};
 pub use shell::{Connection, SftpStream};
 
 /// Where the SSH server listens.
@@ -46,9 +47,19 @@ pub enum Auth {
     },
 }
 
+/// A server to connect through on the way to the target, and how to sign in to it.
+pub struct Hop {
+    /// Where the jump host listens.
+    pub endpoint: Endpoint,
+    /// How to sign in to it.
+    pub auth: Auth,
+}
+
 /// The public key a server identified itself with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostKey {
+    /// The server the key belongs to: the target, or a jump host on the way.
+    pub endpoint: Endpoint,
     /// The key as one line of text, such as `ssh-ed25519 AAAA...`.
     pub key: String,
     /// The SHA-256 fingerprint to show to the user, such as `SHA256:...`.
@@ -133,6 +144,22 @@ pub enum Error {
         path: PathBuf,
         /// Why it could not be used.
         reason: String,
+    },
+
+    /// The jump host is configured not to relay connections (`AllowTcpForwarding no`).
+    #[error("{host} does not allow forwarding connections, so it cannot be used as a jump host")]
+    ForwardingRefused {
+        /// The jump host that refused.
+        host: String,
+    },
+
+    /// A jump host on the way could not be used.
+    #[error("jump host {host}: {reason}")]
+    Jump {
+        /// The jump host that failed.
+        host: String,
+        /// What went wrong there.
+        reason: Box<Error>,
     },
 
     /// Anything else the SSH layer reported.

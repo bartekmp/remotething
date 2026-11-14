@@ -118,7 +118,6 @@ session-refused = The server refused the sign-in. Check the user name and passwo
 session-key-locked = The key file is encrypted. Enter its passphrase.
 session-secret-failed = The stored password could not be read:
 session-no-key-file = This credential has no private key file. Set one on the Credentials screen.
-session-jump-unsupported = Connecting through a jump host is not available yet.
 session-host-key-new = This is the first connection to { $host }. Check the key fingerprint with the server's administrator before you trust it.
 session-host-key-changed = The key of { $host } has changed since you last trusted it. If nobody reinstalled the server, someone may be intercepting the connection.
 session-fingerprint = Fingerprint
@@ -182,3 +181,6 @@ files-loading = Loading…
 files-working = Transferring…
 files-uploaded = Uploaded { $file } ({ $size }).
 files-downloaded = Downloaded to { $file } ({ $size }).
+
+jump-needs-credential = The jump host { $name } needs a credential with a user name and either a stored password or a key file. A jump host cannot ask while connecting.
+jump-loop = The jump hosts form a loop at { $name }.

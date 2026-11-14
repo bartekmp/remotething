@@ -26,7 +26,7 @@ impl client::Handler for Handler {
         &mut self,
         offered: &PublicKeyOrCertificate,
     ) -> Result<bool, Self::Error> {
-        let verdict = match describe(offered) {
+        let verdict = match describe(offered, &self.endpoint) {
             Ok(host_key) => judge(&self.known, &self.endpoint, host_key),
             Err(error) => Err(error),
         };
@@ -43,7 +43,7 @@ impl client::Handler for Handler {
 }
 
 /// The offered key as text and fingerprint.
-fn describe(offered: &PublicKeyOrCertificate) -> Result<HostKey, Error> {
+fn describe(offered: &PublicKeyOrCertificate, endpoint: &Endpoint) -> Result<HostKey, Error> {
     let PublicKeyOrCertificate::PublicKey { key, .. } = offered else {
         let reason = "the server identified itself with a certificate, which is not supported yet";
         return Err(Error::Protocol(reason.to_string()));
@@ -52,6 +52,7 @@ fn describe(offered: &PublicKeyOrCertificate) -> Result<HostKey, Error> {
         .to_openssh()
         .map_err(|error| Error::Protocol(error.to_string()))?;
     Ok(HostKey {
+        endpoint: endpoint.clone(),
         key: text,
         fingerprint: key.fingerprint(HashAlg::Sha256).to_string(),
     })
@@ -79,6 +80,7 @@ mod tests {
 
     fn host_key(key: &str) -> HostKey {
         HostKey {
+            endpoint: endpoint(),
             key: key.to_string(),
             fingerprint: "SHA256:test".to_string(),
         }

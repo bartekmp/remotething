@@ -65,6 +65,10 @@ impl Fixture {
 
 fn host_key() -> HostKey {
     HostKey {
+        endpoint: remotething_remote::ssh::Endpoint {
+            host: "web-01.example.net".to_string(),
+            port: 22,
+        },
         key: "ssh-ed25519 AAAATEST".to_string(),
         fingerprint: "SHA256:test".to_string(),
     }
@@ -430,21 +434,113 @@ fn the_end_of_the_shell_ends_the_session() {
     assert!(matches!(state.stage, Stage::Ended(_)));
 }
 
-#[test]
-fn a_jump_host_is_reported_as_not_available_yet() {
-    let mut fixture = Fixture::new();
-    let connection = ResolvedConnection {
+fn connection_with_jump(jump: &str) -> ResolvedConnection {
+    ResolvedConnection {
         id: "web-01".to_string(),
         name: "web-01".to_string(),
         protocol: Protocol::Ssh,
-        host: "web-01.example.net".to_string(),
+        host: "web-01.internal".to_string(),
         port: 22,
         credential: None,
-        jump: Some("bastion".to_string()),
+        jump: Some(jump.to_string()),
         rdp_quality: Quality::Balanced,
+    }
+}
+
+#[test]
+fn a_jump_host_without_a_usable_credential_ends_the_session_naming_it() {
+    let mut fixture = Fixture::new();
+    fixture.store = toml::from_str(
+        r#"
+        [[connection]]
+        id = "bastion"
+        name = "bastion"
+        protocol = "ssh"
+        host = "bastion.example.net"
+        "#,
+    )
+    .unwrap();
+
+    let (state, _) = State::start(connection_with_jump("bastion"), &fixture.context());
+
+    match &state.stage {
+        Stage::Ended(reason) => assert!(reason.contains("bastion")),
+        _ => panic!("expected the session to end"),
+    }
+}
+
+#[test]
+fn a_jump_host_with_a_credential_first_loads_its_secrets_then_goes_on_to_the_target() {
+    let mut fixture = Fixture::new();
+    fixture.store = toml::from_str(
+        r#"
+        [[credential]]
+        id = "ops"
+        name = "Ops"
+        username = "ops"
+        kind = "password"
+
+        [[connection]]
+        id = "bastion"
+        name = "bastion"
+        protocol = "ssh"
+        host = "bastion.example.net"
+        credential = "ops"
+        "#,
+    )
+    .unwrap();
+    let (mut state, _) = State::start(connection_with_jump("bastion"), &fixture.context());
+    assert!(matches!(state.stage, Stage::LoadingSecret));
+
+    // The target itself has no credential, so once the jump hosts are ready it asks.
+    fixture.send(
+        &mut state,
+        Message::JumpsLoaded(Ok(SealedJumps(Vec::new()))),
+    );
+
+    assert!(matches!(state.stage, Stage::Asking(_)));
+}
+
+#[test]
+fn a_jump_host_whose_secret_is_missing_ends_the_session_with_the_reason() {
+    let mut fixture = Fixture::new();
+    let (mut state, _) = State::start(connection_with_jump("bastion"), &fixture.context());
+
+    let failed = Message::JumpsLoaded(Err("no password stored".to_string()));
+    fixture.send(&mut state, failed);
+
+    match &state.stage {
+        Stage::Ended(reason) => assert_eq!(reason, "no password stored"),
+        _ => panic!("expected the session to end"),
+    }
+}
+
+#[test]
+fn trusting_a_key_saves_it_for_the_host_it_came_from_not_the_target() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let jump_key = HostKey {
+        endpoint: remotething_remote::ssh::Endpoint {
+            host: "bastion.example.net".to_string(),
+            port: 2222,
+        },
+        key: "ssh-ed25519 AAAAJUMP".to_string(),
+        fingerprint: "SHA256:jump".to_string(),
     };
+    let failure = Failure::HostKey {
+        key: jump_key.clone(),
+        changed: false,
+    };
+    fixture.send(&mut state, Message::Opened(Err(failure)));
 
-    let (state, _) = State::start(connection, &fixture.context());
+    fixture.send(&mut state, Message::TrustPressed);
 
-    assert!(matches!(state.stage, Stage::Ended(_)));
+    let verdict = fixture
+        .known_hosts
+        .check("bastion.example.net", 2222, &jump_key.key);
+    assert_eq!(verdict, remotething_secrets::HostKeyVerdict::Trusted);
+    let target = fixture
+        .known_hosts
+        .check("web-01.example.net", 22, &jump_key.key);
+    assert_eq!(target, remotething_secrets::HostKeyVerdict::Unknown);
 }

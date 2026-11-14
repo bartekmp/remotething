@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-14
+
+- Connect through one or more jump hosts, with each host's key checked and named.
+
 ## 0.2.0 - 2026-11-14
 
 - Version shown in Settings; the version now goes up with every feature and fix.

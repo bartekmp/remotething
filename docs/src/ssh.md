@@ -17,6 +17,15 @@ A password typed into the tab is used for that session only. To store one, use t
 
 If the server refuses a password, the form comes back so you can try again. If it refuses a key, the tab says so; fix the credential and press **Reconnect**.
 
+## Jump hosts
+
+A connection, or a folder above it, can name another connection as its **Jump host** in the properties panel. The app connects to the jump host first and reaches the target through it; jump hosts can be chained, each with its own jump host.
+
+- Every server on the way has its host key checked, and the question names the server it is about. Trust each in turn.
+- A jump host cannot ask for a password while connecting. It needs a credential with a user name and either a stored password, or a private key file (its passphrase, if any, stored too).
+- The jump host's SSH server must allow forwarding (`AllowTcpForwarding yes`, the OpenSSH default). If it does not, the tab says which host refused.
+- The connections to the jump hosts stay open as long as the session does, and close with it.
+
 ## Host keys
 
 The first time you connect to a host, nothing is sent to it yet. The tab shows the fingerprint of the server's key:
@@ -61,7 +70,6 @@ A connected session has a **Browse files** button above the terminal. It opens a
 
 | Feature | State |
 | --- | --- |
-| Jump hosts | A connection with a jump host says so and does not connect |
 | ssh-agent, Pageant, `.ppk` keys, two-factor prompts | Planned |
 | Search, selecting by word or line with a double or triple click | Planned |
 | Port forwards | Planned |

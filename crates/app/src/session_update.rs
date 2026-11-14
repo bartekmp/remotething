@@ -11,7 +11,9 @@ use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::i18n::fl;
 use crate::paste;
-use crate::session::{Context, Failure, INITIAL_SIZE, Message, Method, Sealed, Stage, State};
+use crate::session::{
+    Context, Failure, INITIAL_SIZE, Message, Method, Sealed, SealedJumps, Stage, State,
+};
 use crate::terminal::Screen;
 use crate::terminal_view;
 
@@ -75,6 +77,14 @@ impl Live {
 
 pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) -> Task<Message> {
     match message {
+        Message::JumpsLoaded(Ok(SealedJumps(jumps))) => {
+            state.jumps = jumps;
+            state.begin_target(context)
+        }
+        Message::JumpsLoaded(Err(reason)) => {
+            state.stage = Stage::Ended(reason);
+            Task::none()
+        }
         Message::SecretLoaded(Ok(Sealed(Some(secret)))) => {
             state.set_secret(Some(secret));
             state.connect(context)
@@ -136,7 +146,8 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             let Stage::HostKey { key, .. } = &state.stage else {
                 return Task::none();
             };
-            let (host, port) = (&state.connection.host, state.connection.port);
+            // The key may belong to a jump host rather than to the target.
+            let (host, port) = (&key.endpoint.host, key.endpoint.port);
             match context.known_hosts.trust(host, port, &key.key) {
                 Ok(()) => state.connect(context),
                 Err(error) => {

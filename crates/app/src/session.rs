@@ -10,13 +10,14 @@ use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
 use remotething_core::{CredentialKind, ResolvedConnection, Store};
 use remotething_remote::ssh::{
-    self, Auth, Endpoint, HostKey, Shell, ShellEvent, ShellInput, TerminalSize,
+    self, Auth, Endpoint, Hop, HostKey, Shell, ShellEvent, ShellInput, TerminalSize,
 };
 use remotething_secrets::{KnownHosts, Secret, SecretStore};
 
 use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::i18n::fl;
+use crate::jump;
 use crate::keys;
 pub(crate) use crate::session_update::{Live, update};
 use crate::terminal_view;
@@ -38,6 +39,8 @@ pub struct State {
     pub(crate) connection: ResolvedConnection,
     /// The user typed in a connection string, for a connection without a credential.
     pub(crate) typed_username: Option<String>,
+    /// The jump hosts on the way, in the order they are connected to.
+    pub(crate) jumps: Vec<jump::Ready>,
     pub(crate) username: String,
     pub(crate) method: Method,
     pub(crate) stage: Stage,
@@ -142,8 +145,20 @@ impl From<ssh::Error> for Failure {
     }
 }
 
+/// Jump hosts with their secrets on the way from the worker thread; never printed.
+#[derive(Clone)]
+pub struct SealedJumps(pub(crate) Vec<jump::Ready>);
+
+impl std::fmt::Debug for SealedJumps {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("SealedJumps")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// The stored secrets of the jump hosts were read, or one is missing.
+    JumpsLoaded(Result<SealedJumps, String>),
     SecretLoaded(Result<Sealed, String>),
     UsernameChanged(String),
     SecretChanged(Hidden),
@@ -176,6 +191,7 @@ impl State {
         let mut state = State {
             connection,
             typed_username,
+            jumps: Vec::new(),
             username: String::new(),
             method: Method::Password(None),
             stage: Stage::Connecting,
@@ -184,11 +200,30 @@ impl State {
         (state, task)
     }
 
+    /// Starts over: works out the jump hosts first, then how to sign in to the target.
     pub(crate) fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
-        if self.connection.jump.is_some() {
-            self.stage = Stage::Ended(fl!("session-jump-unsupported"));
-            return Task::none();
-        }
+        self.jumps = Vec::new();
+        let Some(jump) = &self.connection.jump else {
+            return self.begin_target(context);
+        };
+        let planned = match jump::plan(context.store, jump) {
+            Ok(planned) => planned,
+            Err(reason) => {
+                self.stage = Stage::Ended(reason);
+                return Task::none();
+            }
+        };
+        // The stored secrets may sit behind a keyring prompt.
+        self.stage = Stage::LoadingSecret;
+        let secrets = Arc::clone(context.secrets);
+        Task::perform(
+            async move { jump::load(planned, secrets).map(SealedJumps) },
+            Message::JumpsLoaded,
+        )
+    }
+
+    /// Works out how to sign in to the target and starts as far as it can without the user.
+    pub(crate) fn begin_target(&mut self, context: &Context<'_>) -> Task<Message> {
         let credential = self.connection.credential.as_ref().and_then(|id| {
             context
                 .store
@@ -282,11 +317,13 @@ impl State {
             port: self.connection.port,
         };
         let known = context.known_hosts.clone();
+        let hops: Vec<Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
 
         self.stage = Stage::Connecting;
         Task::perform(
             async move {
-                let shell = ssh::open_shell(&endpoint, &auth, known, INITIAL_SIZE).await;
+                let shell =
+                    ssh::open_shell_through(&hops, &endpoint, &auth, known, INITIAL_SIZE).await;
                 match shell {
                     Ok(shell) => Ok(Opened(Arc::new(Mutex::new(Some(shell))))),
                     Err(error) => Err(Failure::from(error)),

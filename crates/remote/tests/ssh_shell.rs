@@ -2,16 +2,18 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use remotething_remote::ssh::{
-    Auth, Endpoint, Error, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
+    Auth, Endpoint, Error, Hop, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
+    open_shell_through,
 };
 use remotething_secrets::{KnownHosts, Secret};
 use russh::keys::PublicKey;
 use russh::server::{self, Msg, Session};
 use russh::{Channel, ChannelId};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 
 const USER: &str = "tester";
 const PASSWORD: &str = "correct horse";
@@ -29,6 +31,12 @@ fn fixture(name: &str) -> PathBuf {
 /// Accepts one user by password or by the client test key, and echoes what it is sent.
 struct TestServer {
     accepted_key: PublicKey,
+    /// How many connections this server relayed as a jump host.
+    relayed: Arc<AtomicUsize>,
+    /// Whether this server refuses to relay connections, like `AllowTcpForwarding no`.
+    refuse_forwarding: bool,
+    /// The channels running a shell. Relayed channels must not be echoed into.
+    shells: Vec<ChannelId>,
 }
 
 impl server::Handler for TestServer {
@@ -66,6 +74,34 @@ impl server::Handler for TestServer {
         Ok(())
     }
 
+    async fn channel_open_direct_tcpip(
+        &mut self,
+        channel: Channel<Msg>,
+        host: &str,
+        port: u32,
+        _originator: &str,
+        _originator_port: u32,
+        reply: server::ChannelOpenHandle,
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        if self.refuse_forwarding {
+            let refusal = russh::ChannelOpenFailure::AdministrativelyProhibited;
+            reply.reject(refusal).await;
+            return Ok(());
+        }
+        let Ok(mut target) = TcpStream::connect((host, port as u16)).await else {
+            reply.reject(russh::ChannelOpenFailure::ConnectFailed).await;
+            return Ok(());
+        };
+        self.relayed.fetch_add(1, Ordering::SeqCst);
+        reply.accept().await;
+        tokio::spawn(async move {
+            let mut stream = channel.into_stream();
+            let _ = tokio::io::copy_bidirectional(&mut stream, &mut target).await;
+        });
+        Ok(())
+    }
+
     async fn pty_request(
         &mut self,
         channel: ChannelId,
@@ -87,6 +123,7 @@ impl server::Handler for TestServer {
         channel: ChannelId,
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        self.shells.push(channel);
         session.channel_success(channel)?;
         Ok(())
     }
@@ -110,6 +147,9 @@ impl server::Handler for TestServer {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        if !self.shells.contains(&channel) {
+            return Ok(());
+        }
         if data == b"exit\n" {
             session.exit_status_request(channel, 7)?;
             session.close(channel)?;
@@ -124,6 +164,16 @@ impl server::Handler for TestServer {
 
 /// Starts the server on a free local port and returns where it listens.
 async fn start_server() -> Endpoint {
+    start_counting_server().await.0
+}
+
+/// Like [`start_server`], also returning how many connections it has relayed.
+async fn start_counting_server() -> (Endpoint, Arc<AtomicUsize>) {
+    start_configured_server(false).await
+}
+
+/// Starts a server; with `refuse_forwarding` it will not relay connections.
+async fn start_configured_server(refuse_forwarding: bool) -> (Endpoint, Arc<AtomicUsize>) {
     let host_key = russh::keys::load_secret_key(fixture("host_key"), None).unwrap();
     let accepted_key = russh::keys::load_public_key(fixture("client_key.pub")).unwrap();
     let config = Arc::new(server::Config {
@@ -133,6 +183,8 @@ async fn start_server() -> Endpoint {
         ..server::Config::default()
     });
 
+    let relayed = Arc::new(AtomicUsize::new(0));
+    let relayed_by_server = Arc::clone(&relayed);
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
@@ -142,6 +194,9 @@ async fn start_server() -> Endpoint {
             };
             let handler = TestServer {
                 accepted_key: accepted_key.clone(),
+                relayed: Arc::clone(&relayed_by_server),
+                refuse_forwarding,
+                shells: Vec::new(),
             };
             let config = Arc::clone(&config);
             tokio::spawn(async move {
@@ -152,10 +207,11 @@ async fn start_server() -> Endpoint {
         }
     });
 
-    Endpoint {
+    let endpoint = Endpoint {
         host: "127.0.0.1".to_string(),
         port,
-    }
+    };
+    (endpoint, relayed)
 }
 
 fn password(text: &str) -> Auth {
@@ -378,4 +434,115 @@ async fn a_closed_port_is_reported_as_unreachable() {
     .await;
 
     assert!(matches!(result, Err(Error::Unreachable { .. })));
+}
+
+fn hop(endpoint: &Endpoint, password_text: &str) -> Hop {
+    Hop {
+        endpoint: endpoint.clone(),
+        auth: password(password_text),
+    }
+}
+
+#[tokio::test]
+async fn a_shell_is_reached_through_a_jump_host() {
+    let (jump, relayed) = start_counting_server().await;
+    let target = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let mut known = trusting(&jump, &directory).await;
+    // The same test key serves both servers, so it is trusted for the second address too.
+    let Err(Error::UnknownHostKey(key)) =
+        open_shell(&target, &password(PASSWORD), known.clone(), SIZE).await
+    else {
+        panic!("the target's key should still be unknown");
+    };
+    known.trust(&target.host, target.port, &key.key).unwrap();
+
+    let jumps = [hop(&jump, PASSWORD)];
+    let mut shell = open_shell_through(&jumps, &target, &password(PASSWORD), known, SIZE)
+        .await
+        .unwrap();
+
+    read_until(&mut shell, "pty xterm-256color 80x24").await;
+    shell
+        .input
+        .send(ShellInput::Data(b"over the jump\n".to_vec()))
+        .await
+        .unwrap();
+    read_until(&mut shell, "echo over the jump").await;
+    assert_eq!(relayed.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn an_unknown_jump_host_key_stops_there_and_names_the_jump_host() {
+    let jump = start_server().await;
+    let target = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+
+    let jumps = [hop(&jump, PASSWORD)];
+    let result = open_shell_through(
+        &jumps,
+        &target,
+        &password(PASSWORD),
+        empty_known_hosts(&directory),
+        SIZE,
+    )
+    .await;
+
+    match result {
+        Err(Error::UnknownHostKey(key)) => assert_eq!(key.endpoint, jump),
+        _ => panic!("expected the jump host's key to be asked about"),
+    }
+}
+
+#[tokio::test]
+async fn a_refused_sign_in_on_the_jump_host_says_which_host() {
+    let jump = start_server().await;
+    let target = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&jump, &directory).await;
+
+    let jumps = [hop(&jump, "wrong")];
+    let result = open_shell_through(&jumps, &target, &password(PASSWORD), known, SIZE).await;
+
+    match result {
+        Err(Error::Jump { host, reason }) => {
+            assert_eq!(host, jump.host);
+            assert!(matches!(*reason, Error::AuthRefused));
+        }
+        _ => panic!("expected the jump host to be named"),
+    }
+}
+
+#[tokio::test]
+async fn a_target_the_jump_host_cannot_reach_is_unreachable() {
+    let jump = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&jump, &directory).await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let closed = Endpoint {
+        host: "127.0.0.1".to_string(),
+        port: listener.local_addr().unwrap().port(),
+    };
+    drop(listener);
+
+    let jumps = [hop(&jump, PASSWORD)];
+    let result = open_shell_through(&jumps, &closed, &password(PASSWORD), known, SIZE).await;
+
+    assert!(matches!(result, Err(Error::Unreachable { .. })));
+}
+
+#[tokio::test]
+async fn a_jump_host_that_forbids_forwarding_is_named_as_the_one_that_refused() {
+    let (jump, _) = start_configured_server(true).await;
+    let target = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&jump, &directory).await;
+
+    let jumps = [hop(&jump, PASSWORD)];
+    let result = open_shell_through(&jumps, &target, &password(PASSWORD), known, SIZE).await;
+
+    match result {
+        Err(Error::ForwardingRefused { host }) => assert_eq!(host, jump.host),
+        _ => panic!("expected the jump host to be named as refusing"),
+    }
 }
