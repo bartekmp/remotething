@@ -1,0 +1,8 @@
+# Throwaway M0 spikes. Nothing here is carried into the real workspace.
+[workspace]
+resolver = "3"
+members = ["rdp-frame", "term-ssh", "wayland-probe", "xtask"]
+
+[workspace.package]
+edition = "2024"
+publish = false
