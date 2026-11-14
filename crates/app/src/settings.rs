@@ -40,6 +40,7 @@ pub enum Message {
     LanguagePicked(LanguageOption),
     ExportPressed,
     ImportPressed,
+    ImportPuttyPressed,
     ClosePressed,
 }
 
@@ -51,6 +52,8 @@ pub enum Event {
     Export,
     /// Ask for an export file, then add what is in it.
     Import,
+    /// Open the screen that previews importing PuTTY sessions.
+    ImportPutty,
     Close,
 }
 
@@ -98,6 +101,7 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::ExportPressed => Event::Export,
         Message::ImportPressed => Event::Import,
+        Message::ImportPuttyPressed => Event::ImportPutty,
         Message::ClosePressed => Event::Close,
     }
 }
@@ -160,8 +164,12 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
             button(text(fl!("settings-import")))
                 .style(theme::pill)
                 .on_press(Message::ImportPressed),
+            button(text(fl!("settings-import-putty")))
+                .style(theme::pill)
+                .on_press(Message::ImportPuttyPressed),
         ]
-        .spacing(8),
+        .spacing(8)
+        .wrap(),
         text(fl!("settings-exchange-note"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),

@@ -117,6 +117,22 @@ A theme change applies at once. A language change applies the next time you star
 
 Settings are kept in `settings.toml`, in the same directory as the connections file.
 
+### Importing PuTTY sessions
+
+In **Settings**, press **Import from PuTTY**. The screen lists the sessions it found and what each would become; tick the ones you want and press **Import**.
+
+| Where it looks | |
+| --- | --- |
+| Linux | `~/.putty/sessions`, one file per session |
+| Windows | The registry key `HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions`, read with `reg export` |
+| Any system | **Choose a .reg file** reads a registry export, so Windows sessions can be imported on Linux |
+
+- Sessions go into a new folder called **PuTTY**. "Default Settings" becomes that folder's default port and user name.
+- Host, port and user name are carried over. Sessions with the same user and key share one credential.
+- Not imported, and said so on the screen: sessions that are not SSH (telnet, serial, raw, rlogin), proxy settings, port forwards, and colours. A `.ppk` key file is kept as the credential's key file, but this app cannot use `.ppk` files yet; convert it with PuTTYgen to an OpenSSH key.
+- Passwords are never imported; PuTTY does not store them.
+- PuTTY's data is only read, never changed.
+
 ### Moving connections to another copy of the app
 
 1. In **Settings**, press **Export connections** and choose where to save the file.

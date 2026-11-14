@@ -189,6 +189,20 @@ impl State {
         }
     }
 
+    /// Adds the chosen PuTTY sessions to the tree and goes back to the sessions.
+    pub(crate) fn apply_putty(&mut self, plan: &remotething_core::ImportPlan, names: &[String]) {
+        let mut updated = self.store.clone();
+        match updated.import_putty(plan, names) {
+            Ok(added) => {
+                if self.commit(updated) {
+                    self.notice = Some(fl!("putty-done", count = added));
+                    self.centre = crate::app::Centre::Sessions;
+                }
+            }
+            Err(error) => self.error = Some(format!("{} {error}", fl!("import-failed"))),
+        }
+    }
+
     /// Writes the whole tree to an export file. Secrets are not part of it.
     pub(crate) fn export_to(&mut self, file: &std::path::Path) {
         let written = self

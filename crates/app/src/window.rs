@@ -12,6 +12,7 @@ use crate::icons::{self, Icon};
 use crate::menu;
 use crate::organise;
 use crate::properties;
+use crate::putty_import;
 use crate::settings;
 use crate::tabs_view;
 use crate::theme as look;
@@ -71,6 +72,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
             credentials::view(&state.credentials, &state.store).map(Message::Credentials)
         }
         (_, Centre::Settings) => settings::view(&state.preferences).map(Message::Settings),
+        (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
     };
     let tabs = container(centre)
         .width(Length::Fill)

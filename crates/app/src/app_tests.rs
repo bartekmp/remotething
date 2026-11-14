@@ -430,3 +430,49 @@ fn collapsing_a_sidebar_is_remembered_in_the_settings_file() {
     let _ = update(&mut state, Message::TreeCollapseToggled);
     assert!(!saved(&state).tree_collapsed);
 }
+
+#[test]
+fn applying_a_putty_import_adds_a_folder_and_returns_to_the_sessions() {
+    use remotething_core::{PuttySession, plan_putty_import};
+
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.centre = Centre::Putty;
+    let session = PuttySession {
+        name: "Build".to_string(),
+        host: Some("build.example.net".to_string()),
+        username: Some("ci".to_string()),
+        ..PuttySession::default()
+    };
+    let plan = plan_putty_import(&[session]);
+
+    state.apply_putty(&plan, &["Build".to_string()]);
+
+    let saved = on_disk(&state);
+    assert_eq!(saved.folders.last().unwrap().name, "PuTTY");
+    assert_eq!(saved.connections.last().unwrap().host, "build.example.net");
+    assert_eq!(
+        saved.credentials.last().unwrap().username.as_deref(),
+        Some("ci")
+    );
+    assert_eq!(state.centre, Centre::Sessions);
+    assert!(state.notice.is_some());
+}
+
+#[test]
+fn the_putty_screen_is_reached_from_settings_and_goes_back_to_it() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    let _ = update(
+        &mut state,
+        Message::Settings(settings::Message::ImportPuttyPressed),
+    );
+    assert_eq!(state.centre, Centre::Putty);
+
+    let _ = update(
+        &mut state,
+        Message::Putty(putty_import::Message::BackPressed),
+    );
+    assert_eq!(state.centre, Centre::Settings);
+}

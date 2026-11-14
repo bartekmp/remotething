@@ -188,3 +188,13 @@ jump-loop = The jump hosts form a loop at { $name }.
 files-replace-question = { $file } already exists on the server. Replace it?
 files-replace-yes = Replace
 files-replace-no = Cancel
+
+settings-import-putty = Import from PuTTY
+putty-title = Import from PuTTY
+putty-back = Back to settings
+putty-explain = Sessions found in PuTTY. Tick the ones to import; they are added in a new folder called PuTTY. Passwords are not imported, because PuTTY does not store them.
+putty-choose-file = Choose a .reg file
+putty-import = Import { $count } sessions
+putty-none = No PuTTY sessions were found.
+putty-skipped = Not imported:
+putty-done = Imported { $count } PuTTY sessions into the PuTTY folder.

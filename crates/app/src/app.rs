@@ -16,6 +16,7 @@ use crate::input;
 use crate::menu;
 use crate::preferences::{self, Preferences, ThemeChoice};
 use crate::properties::{self, Draft};
+use crate::putty_import;
 use crate::recent::{self, Recent};
 use crate::session;
 use crate::settings;
@@ -46,6 +47,7 @@ pub struct State {
     /// new item or on "Edit", and closes on save.
     pub(crate) properties_open: bool,
     pub(crate) credentials: credentials::State,
+    pub(crate) putty: putty_import::State,
     pub(crate) centre: Centre,
     pub(crate) secrets: Arc<dyn SecretStore>,
     /// The connections opened most recently, for the page of a new tab.
@@ -80,6 +82,8 @@ pub(crate) enum Centre {
     Sessions,
     Credentials,
     Settings,
+    /// The preview of a PuTTY import.
+    Putty,
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +94,7 @@ pub enum Message {
     Credentials(credentials::Message),
     /// The secret store finished a save or delete.
     SecretStored(Result<(), String>),
+    Putty(putty_import::Message),
     Settings(settings::Message),
     Vault(vault::Message),
     /// Creating or unlocking the passwords file finished.
@@ -154,6 +159,7 @@ impl State {
             draft: None,
             properties_open: false,
             credentials: credentials::State::default(),
+            putty: putty_import::State::default(),
             centre: Centre::Sessions,
             secrets,
             known_hosts,
@@ -352,6 +358,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                     file_dialog::save(fl!("settings-export"), EXPORT_FILE_NAME.to_string());
                 return Task::perform(dialog, Message::ExportFilePicked);
             }
+            settings::Event::ImportPutty => {
+                let (screen, task) = putty_import::State::open();
+                state.putty = screen;
+                state.centre = Centre::Putty;
+                return task.map(Message::Putty);
+            }
             settings::Event::Import => {
                 let dialog = file_dialog::open(fl!("settings-import"));
                 return Task::perform(dialog, Message::ImportFilePicked);
@@ -361,6 +373,15 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::ExportFilePicked(None) | Message::ImportFilePicked(None) => {}
         Message::ExportFilePicked(Some(file)) => state.export_to(&file),
         Message::ImportFilePicked(Some(file)) => state.import_from(&file),
+        Message::Putty(message) => {
+            let (task, event) = putty_import::update(&mut state.putty, message);
+            match event {
+                Some(putty_import::Event::Close) => state.centre = Centre::Settings,
+                Some(putty_import::Event::Apply(plan, names)) => state.apply_putty(&plan, &names),
+                None => {}
+            }
+            return task.map(Message::Putty);
+        }
         Message::SecretStored(Ok(())) => {}
         Message::SecretStored(Err(reason)) => {
             state.error = Some(format!("{} {reason}", fl!("error-secret")));

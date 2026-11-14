@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-14
+
+- Import PuTTY sessions from Settings, with a preview: from `~/.putty/sessions` on Linux, the registry on Windows, or a `.reg` file.
+
 ## 0.3.1 - 2026-11-14
 
 - Uploading to a file pane folder now asks before replacing a file of the same name.

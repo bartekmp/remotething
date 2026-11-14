@@ -20,6 +20,8 @@ mod organise;
 mod paste;
 mod preferences;
 mod properties;
+mod putty_import;
+mod putty_source;
 mod recent;
 mod rows;
 mod session;

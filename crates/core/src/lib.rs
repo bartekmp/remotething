@@ -9,6 +9,7 @@ mod error;
 mod exchange;
 mod inherit;
 mod model;
+mod putty;
 mod quick;
 mod validate;
 
@@ -17,6 +18,10 @@ pub use exchange::ImportSummary;
 pub use inherit::ResolvedConnection;
 pub use model::{
     Connection, Credential, CredentialKind, Folder, Protocol, Quality, RdpSettings, Settings, Store,
+};
+pub use putty::{
+    ImportPlan, PlannedConnection, PuttySession, Skipped, decode_name, decode_reg_bytes, parse_reg,
+    parse_session_file, plan as plan_putty_import, unreadable,
 };
 pub use quick::{QuickTarget, parse_quick};
 
