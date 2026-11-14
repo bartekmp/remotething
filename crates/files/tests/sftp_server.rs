@@ -53,7 +53,9 @@ async fn a_file_goes_up_is_listed_and_comes_back_the_same() {
     std::fs::write(&local, &content).unwrap();
     let remote = join(&home, "remotething-test-upload.txt");
 
+    assert!(!files.exists(&remote).await.unwrap());
     let sent = files.upload(&local, &remote).await.unwrap();
+    assert!(files.exists(&remote).await.unwrap());
     assert_eq!(sent, content.len() as u64);
 
     let listing = files.list(&home).await.unwrap();

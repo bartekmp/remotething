@@ -163,3 +163,85 @@ fn sizes_are_shown_in_decimal_units() {
     assert_eq!(format_size(20_000_000), "20.0 MB");
     assert_eq!(format_size(3_200_000_000), "3.2 GB");
 }
+
+#[test]
+fn an_upload_to_a_name_that_is_free_starts_at_once() {
+    let mut state = loaded();
+    let local = PathBuf::from("/tmp/new.txt");
+
+    let _ = update(&mut state, Message::UploadChecked(local, Ok(false)));
+
+    // No files service in a test, so nothing starts, but nothing is asked either.
+    assert_eq!(state.pending_replace, None);
+}
+
+#[test]
+fn an_upload_over_an_existing_file_waits_for_a_yes_and_names_the_remote_path() {
+    let mut state = loaded();
+    let local = PathBuf::from("/tmp/notes.txt");
+
+    let _ = update(&mut state, Message::UploadChecked(local.clone(), Ok(true)));
+
+    assert_eq!(
+        state.pending_replace,
+        Some((local, "/home/ops/notes.txt".to_string()))
+    );
+}
+
+#[test]
+fn cancelling_the_question_keeps_the_remote_file_and_clears_the_question() {
+    let mut state = loaded();
+    let local = PathBuf::from("/tmp/notes.txt");
+    let _ = update(&mut state, Message::UploadChecked(local, Ok(true)));
+
+    let _ = update(&mut state, Message::ReplaceCancelled);
+
+    assert_eq!(state.pending_replace, None);
+    assert!(!state.busy);
+}
+
+#[test]
+fn confirming_the_question_clears_it_and_goes_on_with_the_upload() {
+    let mut state = loaded();
+    let local = PathBuf::from("/tmp/notes.txt");
+    let _ = update(&mut state, Message::UploadChecked(local, Ok(true)));
+
+    let _ = update(&mut state, Message::ReplaceConfirmed);
+
+    assert_eq!(state.pending_replace, None);
+}
+
+#[test]
+fn the_target_of_an_upload_follows_the_selection() {
+    let mut state = loaded();
+    let local = PathBuf::from("/home/me/report.pdf");
+    assert_eq!(
+        state.upload_target(&local).as_deref(),
+        Some("/home/ops/report.pdf")
+    );
+
+    let _ = update(
+        &mut state,
+        Message::FolderToggled("/home/ops/logs".to_string()),
+    );
+
+    assert_eq!(
+        state.upload_target(&local).as_deref(),
+        Some("/home/ops/logs/report.pdf")
+    );
+}
+
+#[test]
+fn a_failed_check_is_shown_and_nothing_is_uploaded() {
+    let mut state = loaded();
+    let local = PathBuf::from("/tmp/notes.txt");
+
+    let failed = Message::UploadChecked(local, Err("permission denied".to_string()));
+    let _ = update(&mut state, failed);
+
+    assert_eq!(
+        state.status,
+        Some(Status::Failed("permission denied".to_string()))
+    );
+    assert_eq!(state.pending_replace, None);
+}

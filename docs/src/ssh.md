@@ -63,7 +63,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | Close the pane | The **x** at its top |
 
 - The pane starts in your home folder. Folders come first, then files, by name.
-- An upload or download replaces a file of the same name without asking.
+- An upload that would replace a file of the same name asks first: **Replace** or **Cancel**. A download's file dialog asks the same itself.
 - One transfer runs at a time, and there is no progress bar yet; the result or the reason for a failure is shown at the bottom of the pane.
 
 ## Not available yet

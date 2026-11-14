@@ -42,6 +42,8 @@ pub struct State {
     pub(crate) selected: Option<(String, EntryKind)>,
     /// A transfer is running.
     pub(crate) busy: bool,
+    /// An upload waiting for a yes, because its remote file exists: local file and remote path.
+    pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
     pub(crate) status: Option<Status>,
 }
@@ -76,6 +78,12 @@ pub enum Message {
     UploadPressed,
     /// The local file to upload, or `None` when the dialog was cancelled.
     UploadPicked(Option<PathBuf>),
+    /// Whether the remote file an upload would write already exists.
+    UploadChecked(PathBuf, Result<bool, String>),
+    /// "Replace" in the question about overwriting.
+    ReplaceConfirmed,
+    /// "Cancel" in the question about overwriting.
+    ReplaceCancelled,
     DownloadPressed,
     /// Where to save the download, or `None` when the dialog was cancelled.
     DownloadPicked(Option<PathBuf>),
@@ -118,6 +126,7 @@ impl State {
             expanded: HashSet::new(),
             selected: None,
             busy: false,
+            pending_replace: None,
             status: None,
         }
     }
@@ -176,6 +185,12 @@ impl State {
             Some((path, _)) => remotething_files::parent(path).unwrap_or_else(|| self.root.clone()),
             None => self.root.clone(),
         }
+    }
+
+    /// The remote path an upload of `local` would write to.
+    pub(crate) fn upload_target(&self, local: &std::path::Path) -> Option<String> {
+        let name = local.file_name()?.to_string_lossy();
+        Some(remotething_files::join(&self.upload_folder(), &name))
     }
 
     /// The selected path, when it is something that can be downloaded.
@@ -242,7 +257,26 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             file_dialog::open_any(fl!("files-upload")),
             Message::UploadPicked,
         ),
-        Message::UploadPicked(Some(local)) => start_upload(state, local),
+        Message::UploadPicked(Some(local)) => check_upload(state, local),
+        Message::UploadChecked(local, Ok(false)) => start_upload(state, local),
+        Message::UploadChecked(local, Ok(true)) => {
+            if let Some(remote) = state.upload_target(&local) {
+                state.pending_replace = Some((local, remote));
+            }
+            Task::none()
+        }
+        Message::UploadChecked(_, Err(reason)) => {
+            state.status = Some(Status::Failed(reason));
+            Task::none()
+        }
+        Message::ReplaceConfirmed => match state.pending_replace.take() {
+            Some((local, _)) => start_upload(state, local),
+            None => Task::none(),
+        },
+        Message::ReplaceCancelled => {
+            state.pending_replace = None;
+            Task::none()
+        }
         Message::DownloadPressed => match state.selected_file() {
             Some(path) => {
                 let name = path.rsplit('/').next().unwrap_or(path).to_string();
@@ -273,6 +307,22 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
         Message::ClosePressed => return (Task::none(), Some(Event::Close)),
     };
     (task, None)
+}
+
+/// Asks the server whether the upload would replace a file, before sending anything.
+fn check_upload(state: &mut State, local: PathBuf) -> Task<Message> {
+    let (Some(files), Some(remote)) = (&state.files, state.upload_target(&local)) else {
+        return Task::none();
+    };
+    let files = Arc::clone(files);
+    state.status = None;
+    Task::perform(
+        async move {
+            let exists = files.exists(&remote).await;
+            (local, exists.map_err(|error| error.to_string()))
+        },
+        |(local, exists)| Message::UploadChecked(local, exists),
+    )
 }
 
 fn start_upload(state: &mut State, local: PathBuf) -> Task<Message> {

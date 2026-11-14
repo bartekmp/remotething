@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.3.1 - 2026-11-14
+
+- Uploading to a file pane folder now asks before replacing a file of the same name.
+
 ## 0.3.0 - 2026-11-14
 
 - Connect through one or more jump hosts, with each host's key checked and named.

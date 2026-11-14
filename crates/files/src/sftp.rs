@@ -69,6 +69,14 @@ impl SftpFs {
         Ok(entries)
     }
 
+    /// Whether something exists at a remote path.
+    pub async fn exists(&self, path: &str) -> Result<bool> {
+        self.session
+            .try_exists(path)
+            .await
+            .map_err(|error| remote("cannot look at", path, error))
+    }
+
     /// Copies a remote file to a local one, replacing it. Returns the bytes copied.
     pub async fn download(&self, remote_file: &str, local_file: &Path) -> Result<u64> {
         let mut source = self

@@ -184,3 +184,7 @@ files-downloaded = Downloaded to { $file } ({ $size }).
 
 jump-needs-credential = The jump host { $name } needs a credential with a user name and either a stored password or a key file. A jump host cannot ask while connecting.
 jump-loop = The jump hosts form a loop at { $name }.
+
+files-replace-question = { $file } already exists on the server. Replace it?
+files-replace-yes = Replace
+files-replace-no = Cancel

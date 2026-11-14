@@ -66,17 +66,9 @@ pub fn view(state: &State) -> Element<'_, Message> {
             .into(),
     };
 
-    let status: Element<'_, Message> = match (&state.status, state.busy) {
-        (_, true) => text(fl!("files-working"))
-            .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text)
-            .into(),
-        (Some(Status::Failed(reason)), _) => text(reason.as_str())
-            .size(theme::TEXT_SMALL)
-            .style(text::danger)
-            .into(),
-        (Some(Status::Done(done)), _) => text(done.as_str()).size(theme::TEXT_SMALL).into(),
-        (None, false) => space().into(),
+    let status: Element<'_, Message> = match &state.pending_replace {
+        Some((_, remote)) => replace_question(remote),
+        None => view_status(&state.status, state.busy),
     };
 
     column![
@@ -145,4 +137,39 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
         .clip(true)
         .style(theme::list_row(is_selected));
     mouse_area(line).on_press(on_press).into()
+}
+
+/// The last result of a transfer, or that one is running.
+fn view_status(status: &Option<Status>, busy: bool) -> Element<'_, Message> {
+    match (status, busy) {
+        (_, true) => text(fl!("files-working"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text)
+            .into(),
+        (Some(Status::Failed(reason)), _) => text(reason.as_str())
+            .size(theme::TEXT_SMALL)
+            .style(text::danger)
+            .into(),
+        (Some(Status::Done(done)), _) => text(done.as_str()).size(theme::TEXT_SMALL).into(),
+        (None, false) => space().into(),
+    }
+}
+
+/// Asks before an upload replaces a file that is already there.
+fn replace_question(remote: &str) -> Element<'_, Message> {
+    let buttons = row![
+        button(text(fl!("files-replace-yes")).size(theme::TEXT_SMALL))
+            .style(theme::danger)
+            .on_press(Message::ReplaceConfirmed),
+        button(text(fl!("files-replace-no")).size(theme::TEXT_SMALL))
+            .style(theme::pill)
+            .on_press(Message::ReplaceCancelled),
+    ]
+    .spacing(6);
+    column![
+        text(fl!("files-replace-question", file = remote)).size(theme::TEXT_SMALL),
+        buttons
+    ]
+    .spacing(6)
+    .into()
 }
