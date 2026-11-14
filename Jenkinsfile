@@ -14,6 +14,23 @@ pipeline {
         XWIN_CACHE_DIR = '/cache/xwin'
     }
     stages {
+        stage('Version') {
+            // A pull request that changes the crates must raise the version.
+            when { changeRequest() }
+            steps {
+                // The workspace belongs to the Jenkins user; git inside the container runs as root.
+                sh 'git config --global --add safe.directory "*"'
+                // The repository is private; the token goes in a header so it never appears in a URL or the log.
+                withCredentials([usernamePassword(credentialsId: 'github-credentials-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh '''
+                        set +x
+                        AUTH=$(printf '%s:%s' "$GIT_USER" "$GIT_TOKEN" | base64 -w0)
+                        git -c "http.extraHeader=Authorization: Basic $AUTH" fetch --no-tags origin "+refs/heads/${CHANGE_TARGET}:refs/remotes/origin/${CHANGE_TARGET}"
+                    '''
+                }
+                sh 'cargo xtask version-check "origin/${CHANGE_TARGET}"'
+            }
+        }
         stage('Lint') {
             steps { sh 'cargo xtask lint' }
         }

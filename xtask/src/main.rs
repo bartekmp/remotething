@@ -1,9 +1,11 @@
 //! Build helper: the same commands locally and in Jenkins.
 
+mod version;
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows>";
+const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows | bump major|minor|patch | version-check <git ref>>";
 
 const LINUX_TARGET: &str = "x86_64-unknown-linux-gnu";
 const WINDOWS_TARGET: &str = "x86_64-pc-windows-msvc";
@@ -26,6 +28,8 @@ fn main() -> ExitCode {
         ["build", "windows"] => build_windows(),
         ["package", "linux"] => package_linux(),
         ["package", "windows"] => package_windows(),
+        ["bump", part] => bump(part),
+        ["version-check", base] => version_check(base),
         _ => {
             eprintln!("{USAGE}");
             false
@@ -111,6 +115,98 @@ fn package_windows() -> bool {
     // -j: store the files without their directories.
     zip.arg("-j").arg(&archive).args(&files);
     run(zip, "zip")
+}
+
+/// Raises the version in the manifest and the lockfile, and moves the
+/// changelog's unreleased notes under the new version.
+fn bump(part: &str) -> bool {
+    let Some(part) = version::Part::named(part) else {
+        eprintln!("{USAGE}");
+        return false;
+    };
+    let root = workspace_root();
+    let manifest_file = root.join("Cargo.toml");
+    let changelog_file = root.join("CHANGELOG.md");
+
+    let updated = std::fs::read_to_string(&manifest_file)
+        .ok()
+        .and_then(|manifest| {
+            let next = version::in_manifest(&manifest)?.raised(part);
+            Some((version::with_version(&manifest, next)?, next))
+        });
+    let Some((manifest, next)) = updated else {
+        eprintln!(
+            "no version under [workspace.package] in {}",
+            manifest_file.display()
+        );
+        return false;
+    };
+    let changelog = std::fs::read_to_string(&changelog_file)
+        .ok()
+        .and_then(|changelog| version::with_release(&changelog, next, &version::today()));
+    let Some(changelog) = changelog else {
+        eprintln!(
+            "no \"## Unreleased\" heading in {}",
+            changelog_file.display()
+        );
+        return false;
+    };
+
+    if let Err(error) = std::fs::write(&manifest_file, manifest)
+        .and_then(|()| std::fs::write(&changelog_file, changelog))
+    {
+        eprintln!("cannot write the new version: {error}");
+        return false;
+    }
+    println!("version {next}");
+    // The lockfile repeats the version of every crate in the workspace.
+    cargo(&["update", "--workspace", "--quiet"])
+}
+
+/// Fails when the crates differ from `base` but the version is not above the one there.
+fn version_check(base: &str) -> bool {
+    let root = workspace_root();
+    let ours = std::fs::read_to_string(root.join("Cargo.toml"))
+        .ok()
+        .and_then(|manifest| version::in_manifest(&manifest));
+    let theirs = git_output(&["show", &format!("{base}:Cargo.toml")])
+        .and_then(|manifest| version::in_manifest(&manifest));
+    let changed = git_output(&[
+        "diff",
+        "--name-only",
+        &format!("{base}...HEAD"),
+        "--",
+        "crates",
+    ]);
+    let (Some(ours), Some(theirs), Some(changed)) = (ours, theirs, changed) else {
+        eprintln!("cannot compare the version with {base}; is that ref fetched?");
+        return false;
+    };
+
+    match version::check(ours, theirs, !changed.trim().is_empty()) {
+        Ok(()) => {
+            println!("version {ours} (target branch: {theirs})");
+            true
+        }
+        Err(reason) => {
+            eprintln!("{reason}");
+            false
+        }
+    }
+}
+
+/// What a git command prints, or `None` when it fails.
+fn git_output(arguments: &[&str]) -> Option<String> {
+    let output = Command::new("git")
+        .current_dir(workspace_root())
+        .args(arguments)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        return None;
+    }
+    String::from_utf8(output.stdout).ok()
 }
 
 fn workspace_root() -> PathBuf {

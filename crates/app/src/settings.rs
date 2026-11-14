@@ -168,7 +168,12 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(4);
 
-    column![header, theme, language, tabs, exchange]
+    // Stays unformatted and untranslated, like `--version`: bug reports quote it.
+    let version = text(concat!("Remotething ", env!("CARGO_PKG_VERSION")))
+        .size(theme::TEXT_SMALL)
+        .style(theme::secondary_text);
+
+    column![header, theme, language, tabs, exchange, version]
         .spacing(16)
         .into()
 }

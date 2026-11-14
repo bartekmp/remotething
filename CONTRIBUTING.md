@@ -20,9 +20,28 @@ The same commands run locally and in Jenkins.
 | `cargo xtask build windows` | Cross-build for Windows; needs `cargo-xwin` and `XWIN_ACCEPT_LICENSE=1` |
 | `cargo xtask package linux` | `.deb` and `.rpm` in `dist/`, from the Linux build |
 | `cargo xtask package windows` | Portable zip in `dist/`, from the Windows build |
+| `cargo xtask bump minor` or `patch` | Raises the version; see below |
 | `mdbook build docs` | The user guide |
 
 `Taskfile.yml` wraps these for everyday use: `task run`, `task test`, `task check` (lint, then tests). Run `task` for the list. It needs [Task](https://taskfile.dev).
+
+## Versions
+
+The version is `major.minor.patch` ([Semantic Versioning](https://semver.org)) and lives in one place: `[workspace.package]` in `Cargo.toml`. Every crate and the app's `--version` take it from there.
+
+Every pull request that changes anything under `crates/` raises it once:
+
+| The pull request is | Run | Example |
+| --- | --- | --- |
+| A new feature | `cargo xtask bump minor` | 0.2.3 becomes 0.3.0 |
+| A fix | `cargo xtask bump patch` | 0.2.3 becomes 0.2.4 |
+| A change that breaks users' files or habits | `cargo xtask bump major` | 0.2.3 becomes 1.0.0 |
+
+1. Describe the change in one line under "Unreleased" in `CHANGELOG.md`, in words a user would understand.
+2. Run the bump as the last commit of the pull request. It updates `Cargo.toml`, `Cargo.lock` and moves the changelog lines under the new version.
+3. Jenkins fails a pull request whose crates changed but whose version did not.
+
+Changes to docs, CI or the build helper alone need no bump. If `main` moved on and took your number, merge `main` and bump again.
 
 ## Rules
 

@@ -60,6 +60,21 @@ tasks:
     cmds:
       - cargo xtask package windows
 
+  bump:feature:
+    desc: Raise the version for a new feature (0.2.0 becomes 0.3.0)
+    cmds:
+      - cargo xtask bump minor
+
+  bump:fix:
+    desc: Raise the version for a fix (0.2.0 becomes 0.2.1)
+    cmds:
+      - cargo xtask bump patch
+
+  bump:breaking:
+    desc: Raise the version for a change that breaks users' files or habits (0.2.0 becomes 1.0.0)
+    cmds:
+      - cargo xtask bump major
+
   clean:
     desc: Remove build output
     cmds:
