@@ -1,0 +1,5 @@
+# English is the source catalogue; other languages are sibling folders of `locales/en`.
+fallback_language = "en"
+
+[fluent]
+assets_dir = "locales"

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Placeholder icon: a screen with a connection line. -->
+  <rect x="6" y="10" width="52" height="34" rx="5" fill="#1f3a5f"/>
+  <rect x="11" y="15" width="42" height="24" rx="2" fill="#e8f1fb"/>
+  <path d="M17 31 l8 -6 l-8 -6" fill="none" stroke="#1f3a5f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="29" y1="32" x2="41" y2="32" stroke="#1f3a5f" stroke-width="3" stroke-linecap="round"/>
+  <rect x="26" y="44" width="12" height="6" fill="#1f3a5f"/>
+  <rect x="18" y="50" width="28" height="4" rx="2" fill="#1f3a5f"/>
+</svg>

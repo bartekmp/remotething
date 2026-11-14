@@ -71,7 +71,7 @@ Not covered, still open: input, dynamic resize, clipboard, audio, gateway, drive
 - `cargo xtask <lint | test | build linux | build windows>` runs the same steps locally and in `Jenkinsfile`, inside `ci/Dockerfile`.
 - Verified: lint, tests and the Linux release build, on the host and inside the CI image.
 - Verified: the Windows cross-build inside the CI image (`cargo-xwin`, `x86_64-pc-windows-msvc`). The `.exe` files have not been launched on Windows yet.
-- Not verified: the Jenkins job itself on `forge`.
+- Verified: the multibranch Jenkins job `remotething` on `forge`. Build 1 of `wp-m0-spikes` passed every stage in about 25 minutes with cold caches.
 - russh defaults to `aws-lc-rs`, which needs cmake. The spikes select `ring`; it still compiles C and assembly, so the Windows cross-build needs clang in the image.
 
 ## Running the spikes

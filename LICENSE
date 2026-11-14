@@ -1,0 +1,10 @@
+Remotething
+Copyright (c) 2026 Bartosz Pollok. All rights reserved.
+
+This software is proprietary. No licence to use, copy, modify or distribute
+it is granted except by separate written agreement with the copyright holder.
+
+Third-party components are used under their own licences. The bundled Inter
+typeface is licensed under the SIL Open Font License 1.1; see
+crates/app/assets/fonts/Inter-LICENSE.txt. The bundled Lucide icons are licensed
+under the ISC License; see crates/app/assets/fonts/lucide-LICENSE.txt.

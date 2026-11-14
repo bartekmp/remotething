@@ -1,0 +1,60 @@
+[package]
+name = "remotething"
+description = "The Remotething desktop app."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+authors = ["Bartosz Pollok"]
+license-file = "../../LICENSE"
+
+[package.metadata.deb]
+maintainer = "Bartosz Pollok"
+copyright = "2026, Bartosz Pollok. All rights reserved."
+section = "net"
+priority = "optional"
+# `$auto` only sees linked libraries. The window toolkit loads these at run time.
+depends = "$auto, libx11-6, libx11-xcb1, libxcursor1, libxi6, libxrandr2, libxkbcommon0, libxkbcommon-x11-0, libwayland-client0"
+# Without a GPU driver the app falls back to software rendering.
+recommends = "libvulkan1 | libegl1"
+extended-description = "Remote desktops (RDP, VNC), SSH terminals and file transfers, organised in one connection tree."
+assets = [
+    ["target/release/remotething", "usr/bin/", "755"],
+    ["packaging/remotething.desktop", "usr/share/applications/", "644"],
+    ["packaging/remotething.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+]
+
+[package.metadata.generate-rpm]
+license = "Proprietary"
+assets = [
+    { source = "target/release/remotething", dest = "/usr/bin/remotething", mode = "755" },
+    { source = "packaging/remotething.desktop", dest = "/usr/share/applications/remotething.desktop", mode = "644" },
+    { source = "packaging/remotething.svg", dest = "/usr/share/icons/hicolor/scalable/apps/remotething.svg", mode = "644" },
+]
+
+# Loaded at run time by the window toolkit, so not found automatically.
+[package.metadata.generate-rpm.requires]
+libX11 = "*"
+libX11-xcb = "*"
+libXcursor = "*"
+libXi = "*"
+libXrandr = "*"
+libxkbcommon = "*"
+libxkbcommon-x11 = "*"
+libwayland-client = "*"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "1"
+i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.10"
+iced = "0.14"
+remotething-core = { path = "../core" }
+remotething-secrets = { path = "../secrets" }
+rust-embed = "8"
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+
+[dev-dependencies]
+tempfile = "3"

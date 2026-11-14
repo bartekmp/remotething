@@ -1,4 +1,4 @@
-// M0 spike pipeline: every stage is one `cargo xtask` call inside ci/Dockerfile.
+// Every stage is one `cargo xtask` call inside ci/Dockerfile.
 pipeline {
     agent {
         dockerfile {
@@ -15,16 +15,24 @@ pipeline {
     }
     stages {
         stage('Lint') {
-            steps { dir('spikes') { sh 'cargo xtask lint' } }
+            steps { sh 'cargo xtask lint' }
         }
         stage('Unit tests') {
-            steps { dir('spikes') { sh 'cargo xtask test' } }
+            steps { sh 'cargo xtask test' }
         }
         stage('Build Linux') {
-            steps { dir('spikes') { sh 'cargo xtask build linux' } }
+            steps { sh 'cargo xtask build linux' }
         }
         stage('Build Windows') {
-            steps { dir('spikes') { sh 'cargo xtask build windows' } }
+            steps { sh 'cargo xtask build windows' }
+        }
+        stage('Package') {
+            steps {
+                // The Linux .deb and .rpm are deferred until release time:
+                // `cargo xtask package linux` still builds them on demand.
+                sh 'cargo xtask package windows'
+                archiveArtifacts artifacts: 'dist/*', fingerprint: true
+            }
         }
     }
 }

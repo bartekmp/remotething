@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Remotething
+Comment=Remote desktops, terminals and file transfers in one tree
+Exec=remotething
+Icon=remotething
+Terminal=false
+Categories=Network;RemoteAccess;

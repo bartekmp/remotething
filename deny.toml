@@ -1,0 +1,42 @@
+# Dependency policy: permissive licences only, so the source never has to be opened.
+
+[advisories]
+# None of these are vulnerabilities; they are "unmaintained" notices on crates
+# we do not choose ourselves. Remove each line when its parent moves on.
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser; pulled by iced's text stack (cosmic-text)" },
+    { id = "RUSTSEC-2024-0436", reason = "paste; pulled by iced's renderer" },
+    { id = "RUSTSEC-2026-0374", reason = "basic-toml; build-time only, pulled by i18n-embed-fl" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant merged into zbus 6; pulled by the keyring store" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names merged into zbus 6; pulled by the keyring store" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive merged into zbus 6; pulled by the keyring store" },
+]
+
+[licenses]
+# The list is the policy, not a mirror of what is in use today.
+unused-allowed-license = "allow"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    # Boost: permissive. Windows clipboard crates under iced.
+    "BSL-1.0",
+    # Public-domain dedication. A float parser under iced's renderer.
+    "CC0-1.0",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unlicense",
+]
+
+[licenses.private]
+# Our own crates are proprietary and never published.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
