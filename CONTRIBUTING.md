@@ -10,7 +10,7 @@ cargo install --locked cargo-nextest cargo-deny cargo-deb cargo-generate-rpm
 
 ## Commands
 
-The same commands run locally and in Jenkins.
+The same commands run locally and in Jenkins. Pull requests run lint, tests and the Linux build; the slower Windows build and package run on `main` and tags. Run `cargo xtask build windows` yourself when a change touches Windows-only code.
 
 | Command | Does |
 | --- | --- |

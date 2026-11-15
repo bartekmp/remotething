@@ -41,9 +41,12 @@ pipeline {
             steps { sh 'cargo xtask build linux' }
         }
         stage('Build Windows') {
+            // The slowest stage. Pull requests skip it; main and tags build it.
+            when { not { changeRequest() } }
             steps { sh 'cargo xtask build windows' }
         }
         stage('Package') {
+            when { not { changeRequest() } }
             steps {
                 // The Linux .deb and .rpm are deferred until release time:
                 // `cargo xtask package linux` still builds them on demand.
