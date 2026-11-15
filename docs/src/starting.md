@@ -19,8 +19,8 @@ The window has two parts: the connection tree on the left and open tabs in the c
 | Right-click on | Offers |
 | --- | --- |
 | Empty space | New folder, New connection (both at the top level) |
-| A folder | New folder and New connection inside it, Edit, Rename, Change icon, Remove |
-| A connection | Connect, Edit, Rename, Change icon, Remove |
+| A folder | New folder and New connection inside it, Edit, Rename, Change icon, Move up, Move down, Remove |
+| A connection | Connect, Edit, Rename, Change icon, Move up, Move down, Remove |
 
 - **Edit** opens the properties panel.
 - **Rename** turns the name into a text field. Enter keeps the new name, Escape keeps the old one.

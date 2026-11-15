@@ -1,7 +1,8 @@
 //! What the window does to folders and connections: add, save, remove, rename, move.
 
 use remotething_core::{
-    Connection, Credential, CredentialKind, Folder, Protocol, QuickTarget, Settings, Store,
+    Connection, Credential, CredentialKind, Direction, Folder, Protocol, QuickTarget, Settings,
+    Store,
 };
 
 use iced::Task;
@@ -85,6 +86,21 @@ impl State {
                 }
             }
             Err(reason) => self.error = Some(reason),
+        }
+    }
+
+    /// Moves an item one place up or down among those in its folder.
+    pub(crate) fn shift(&mut self, item: &Selection, direction: Direction) {
+        let mut updated = self.store.clone();
+        let result = match item {
+            Selection::Folder(id) => updated.shift_folder(id, direction),
+            Selection::Connection(id) => updated.shift_connection(id, direction),
+        };
+        match result {
+            Ok(()) => {
+                self.commit(updated);
+            }
+            Err(error) => self.error = Some(error.to_string()),
         }
     }
 

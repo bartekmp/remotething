@@ -106,6 +106,8 @@ properties-title = Properties
 menu-connect = Connect
 menu-rename = Rename
 menu-change-icon = Change icon
+menu-move-up = Move up
+menu-move-down = Move down
 menu-remove = Remove
 
 session-connecting = Connecting to { $host }…

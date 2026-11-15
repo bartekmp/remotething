@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-15
+
+- Folders and connections can be reordered with **Move up** and **Move down** in the tree's context menu.
+
 ## 0.10.1 - 2026-11-15
 
 - Tab titles too long for the tab are cut with an ellipsis; the full title shows when you hover over the tab.

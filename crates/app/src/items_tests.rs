@@ -361,3 +361,27 @@ fn a_plain_click_release_moves_nothing() {
 
     assert_eq!(on_disk(&state), before);
 }
+
+#[test]
+fn move_down_in_the_menu_reorders_folders_on_disk() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory);
+
+    right_click(&mut state, Some(folder("prod")));
+    send(&mut state, Message::Menu(menu::Message::MoveDown));
+
+    let ids: Vec<String> = on_disk(&state).folders.into_iter().map(|f| f.id).collect();
+    assert_eq!(ids, ["lab", "prod"]);
+}
+
+#[test]
+fn move_up_on_the_first_folder_changes_nothing() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory);
+
+    right_click(&mut state, Some(folder("prod")));
+    send(&mut state, Message::Menu(menu::Message::MoveUp));
+
+    let ids: Vec<String> = on_disk(&state).folders.into_iter().map(|f| f.id).collect();
+    assert_eq!(ids, ["prod", "lab"]);
+}

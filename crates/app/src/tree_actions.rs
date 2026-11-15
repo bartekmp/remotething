@@ -2,6 +2,7 @@
 
 use iced::Task;
 use iced::widget::operation;
+use remotething_core::Direction;
 
 use crate::app::{Centre, Message, State};
 use crate::menu;
@@ -61,6 +62,8 @@ pub(crate) fn on_menu(state: &mut State, message: menu::Message) -> Task<Message
             }
         }
         (menu::Message::IconPicked(icon), Some(item)) => state.set_icon(item, icon),
+        (menu::Message::MoveUp, Some(item)) => state.shift(item, Direction::Up),
+        (menu::Message::MoveDown, Some(item)) => state.shift(item, Direction::Down),
         (menu::Message::Remove, Some(item)) => state.delete(item),
         _ => {}
     }

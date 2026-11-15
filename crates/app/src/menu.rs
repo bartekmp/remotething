@@ -55,6 +55,8 @@ pub enum Message {
     Rename,
     ChangeIcon,
     IconPicked(Option<&'static str>),
+    MoveUp,
+    MoveDown,
     Remove,
     /// A click outside the menu.
     Dismissed,
@@ -70,6 +72,8 @@ pub fn actions(target: Option<&Selection>) -> &'static [Message] {
             Message::Edit,
             Message::Rename,
             Message::ChangeIcon,
+            Message::MoveUp,
+            Message::MoveDown,
             Message::Remove,
         ],
         Some(Selection::Connection(_)) => &[
@@ -77,6 +81,8 @@ pub fn actions(target: Option<&Selection>) -> &'static [Message] {
             Message::Edit,
             Message::Rename,
             Message::ChangeIcon,
+            Message::MoveUp,
+            Message::MoveDown,
             Message::Remove,
         ],
     }
@@ -90,6 +96,8 @@ fn label(action: Message) -> String {
         Message::Edit => fl!("menu-edit"),
         Message::Rename => fl!("menu-rename"),
         Message::ChangeIcon => fl!("menu-change-icon"),
+        Message::MoveUp => fl!("menu-move-up"),
+        Message::MoveDown => fl!("menu-move-down"),
         Message::Remove => fl!("menu-remove"),
         Message::IconPicked(_) | Message::Dismissed => String::new(),
     }

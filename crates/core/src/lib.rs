@@ -10,6 +10,7 @@ mod exchange;
 mod forward;
 mod inherit;
 mod model;
+mod order;
 mod putty;
 mod quick;
 mod remove;
@@ -22,6 +23,7 @@ pub use inherit::ResolvedConnection;
 pub use model::{
     Connection, Credential, CredentialKind, Folder, Protocol, Quality, RdpSettings, Settings, Store,
 };
+pub use order::Direction;
 pub use putty::{
     ImportPlan, PlannedConnection, PuttySession, Skipped, decode_name, decode_reg_bytes, parse_reg,
     parse_session_file, plan as plan_putty_import, unreadable,
