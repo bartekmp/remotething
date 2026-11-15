@@ -54,7 +54,7 @@ impl Fixture {
             credential: credential.map(str::to_string),
             jump: None,
             forwards: Vec::new(),
-            rdp_quality: Quality::Balanced,
+            desktop_quality: Quality::Balanced,
         };
         State::start(connection, None, &self.context()).0
     }

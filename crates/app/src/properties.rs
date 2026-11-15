@@ -36,7 +36,7 @@ pub struct Draft {
     /// Local port forwards as typed, `local:host:port` separated by commas. Empty means "inherit".
     pub forwards: String,
     /// RDP only. `None` means "inherit".
-    pub rdp_quality: Option<Quality>,
+    pub desktop_quality: Option<Quality>,
     /// `None` means the default icon for the kind of item.
     pub icon: Option<String>,
 }
@@ -136,7 +136,7 @@ impl Draft {
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
             forwards: format_forwards(&settings.forwards),
-            rdp_quality: settings.rdp.quality,
+            desktop_quality: settings.desktop.quality,
             icon: icon.clone(),
         }
     }
@@ -190,7 +190,7 @@ impl Draft {
         settings.forwards = forwards.to_vec();
         settings.credential = self.credential.clone();
         settings.jump = self.jump.clone();
-        settings.rdp.quality = self.rdp_quality;
+        settings.desktop.quality = self.desktop_quality;
     }
 }
 
@@ -217,7 +217,7 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
-        Message::QualityPicked(choice) => draft.rdp_quality = choice.0,
+        Message::QualityPicked(choice) => draft.desktop_quality = choice.0,
         Message::SavePressed => return Some(Event::Save),
         Message::DeletePressed => return Some(Event::Delete),
     }
@@ -299,13 +299,13 @@ pub fn view<'a>(
         theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
             .on_input(Message::ForwardsChanged),
     ));
-    // Folders can set it for the connections inside; a connection only if it uses RDP.
-    if !is_connection || draft.protocol == Protocol::Rdp {
+    // Folders can set it for the connections inside; a connection only if it is a remote desktop.
+    if !is_connection || draft.protocol != Protocol::Ssh {
         fields = fields.push(labelled(
             fl!("properties-quality"),
             theme::pick(
                 quality_choice::CHOICES,
-                Some(QualityChoice(draft.rdp_quality)),
+                Some(QualityChoice(draft.desktop_quality)),
                 Message::QualityPicked,
             )
             .width(Length::Fill),

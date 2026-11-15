@@ -94,7 +94,7 @@ jump = "bastion"               # another connection's id
         let web = store.resolve("web-01").unwrap();
 
         assert_eq!(
-            store.folders[0].settings.rdp.quality,
+            store.folders[0].settings.desktop.quality,
             Some(Quality::Balanced)
         );
         assert_eq!(web.protocol, Protocol::Ssh);
@@ -103,6 +103,28 @@ jump = "bastion"               # another connection's id
         assert_eq!(store.credentials[0].kind, CredentialKind::PrivateKey);
         assert_eq!(store.folders[0].icon.as_deref(), Some("building"));
         assert_eq!(store.connections[0].icon, None);
+    }
+
+    #[test]
+    fn the_quality_loads_under_its_new_name_and_is_saved_under_it() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("connections.toml");
+        fs::write(
+            &path,
+            "[[folder]]\nid = \"f\"\nname = \"F\"\ndesktop.quality = \"lan\"\n",
+        )
+        .unwrap();
+
+        let store = Store::load(&path).unwrap();
+        store.save(&path).unwrap();
+
+        assert_eq!(
+            store.folders[0].settings.desktop.quality,
+            Some(Quality::Lan)
+        );
+        let saved = fs::read_to_string(&path).unwrap();
+        assert!(saved.contains("quality"), "{saved}");
+        assert!(!saved.contains("rdp"), "{saved}");
     }
 
     #[test]

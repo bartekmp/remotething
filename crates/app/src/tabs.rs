@@ -365,7 +365,7 @@ fn start_quick(
         credential: None,
         jump: None,
         forwards: Vec::new(),
-        rdp_quality: Quality::default(),
+        desktop_quality: Quality::default(),
     };
     start_connection(id, connection, target.username.clone(), context)
 }

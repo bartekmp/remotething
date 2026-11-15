@@ -8,13 +8,14 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use vnc::{
-    ClientKeyEvent, ClientMouseEvent, PixelFormat, VncClient, VncConnector, VncEncoding, VncError,
-    VncEvent, X11Event,
+    ClientKeyEvent, ClientMouseEvent, VncClient, VncConnector, VncEncoding, VncError, VncEvent,
+    X11Event,
 };
 
 use crate::error::{Error, Result};
 use crate::framebuffer::{Area, Framebuffer};
 use crate::input::{Input, Pointer, latin1};
+use crate::quality::{Depth, Quality};
 use crate::traffic::{Counted, Counters};
 
 /// The most pictures sent to the window per second.
@@ -37,6 +38,8 @@ pub struct Target {
     pub port: u16,
     /// The password, if the server wants one.
     pub password: Option<Secret>,
+    /// How to trade picture quality for bandwidth.
+    pub quality: Quality,
 }
 
 /// Facts about a connection that do not change while it lasts.
@@ -48,6 +51,8 @@ pub struct Info {
     pub security: &'static str,
     /// The picture encodings offered, best first.
     pub encodings: &'static str,
+    /// How many bits a pixel takes on the wire.
+    pub colours: &'static str,
 }
 
 /// A full copy of the remote desktop, 4 bytes per pixel, opaque.
@@ -120,13 +125,14 @@ pub async fn connect(target: Target) -> Result<Session> {
             reason: error.to_string(),
         })?;
     let peer = stream.peer_addr().ok();
-    connect_over(stream, target.password, peer).await
+    connect_over(stream, target.password, target.quality, peer).await
 }
 
 /// Signs in over `stream`, which can be any connection to a VNC server, and starts the session.
 pub async fn connect_over<S>(
     stream: S,
     password: Option<Secret>,
+    quality: Quality,
     peer: Option<SocketAddr>,
 ) -> Result<Session>
 where
@@ -134,15 +140,19 @@ where
 {
     let counters = Counters::default();
     let password = password.map(|secret| secret.expose().to_string());
-    let client = VncConnector::new(Counted::new(stream, counters.clone()))
+    let depth = quality.depth();
+    let mut connector = VncConnector::new(Counted::new(stream, counters.clone()))
         .set_auth_method(async move { password.ok_or(VncError::NoPassword) })
         .add_encoding(VncEncoding::Zrle)
         .add_encoding(VncEncoding::CopyRect)
-        .add_encoding(VncEncoding::Raw)
-        .add_encoding(VncEncoding::CursorPseudo)
+        .add_encoding(VncEncoding::Raw);
+    if quality.shows_pointer() {
+        connector = connector.add_encoding(VncEncoding::CursorPseudo);
+    }
+    let client = connector
         .add_encoding(VncEncoding::DesktopSizePseudo)
         .allow_shared(true)
-        .set_pixel_format(PixelFormat::rgba())
+        .set_pixel_format(depth.pixel_format())
         .build()?
         .try_start()
         .await?
@@ -151,7 +161,7 @@ where
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(INPUT_QUEUE);
     tokio::spawn(async move {
-        let reason = Worker::new(client, counters)
+        let reason = Worker::new(client, counters, depth)
             .run(&events_tx, input_rx)
             .await;
         let _ = events_tx.send(Event::Closed(reason)).await;
@@ -161,6 +171,7 @@ where
             peer,
             security: "VNC password, not encrypted",
             encodings: "ZRLE, CopyRect, Raw",
+            colours: depth.label(),
         },
         events,
         input,
@@ -171,6 +182,8 @@ struct Worker {
     client: VncClient,
     counters: Counters,
     picture: Framebuffer,
+    /// How pixels arrive from the server.
+    depth: Depth,
     pointer: Pointer,
     /// The picture changed and has not been sent to the window.
     dirty: bool,
@@ -181,11 +194,12 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(client: VncClient, counters: Counters) -> Self {
+    fn new(client: VncClient, counters: Counters, depth: Depth) -> Self {
         Self {
             client,
             counters,
             picture: Framebuffer::new(1, 1),
+            depth,
             pointer: Pointer::default(),
             dirty: false,
             frames: 0,
@@ -262,7 +276,7 @@ impl Worker {
                 self.dirty = true;
             }
             VncEvent::RawImage(rect, data) => {
-                self.picture.paint(area(rect), &data);
+                self.picture.paint_depth(area(rect), &data, self.depth);
                 self.dirty = true;
             }
             VncEvent::Copy(target, source) => {

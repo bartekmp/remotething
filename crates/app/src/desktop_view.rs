@@ -34,9 +34,11 @@ pub fn view(state: &State) -> Element<'_, Message> {
             &certificate.fingerprint,
             *changed,
         )),
-        Stage::Connected(live) => {
-            with_status_bar(live, &state.connection.host, state.connection.rdp_quality)
-        }
+        Stage::Connected(live) => with_status_bar(
+            live,
+            &state.connection.host,
+            state.connection.desktop_quality,
+        ),
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)

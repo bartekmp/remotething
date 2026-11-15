@@ -24,7 +24,7 @@ pub struct ResolvedConnection {
     /// Local port forwards to open with an SSH session.
     pub forwards: Vec<Forward>,
     /// RDP quality preset; `Balanced` when no level sets one.
-    pub rdp_quality: Quality,
+    pub desktop_quality: Quality,
 }
 
 impl Settings {
@@ -42,8 +42,8 @@ impl Settings {
         if self.forwards.is_empty() {
             self.forwards = fallback.forwards.clone();
         }
-        if self.rdp.quality.is_none() {
-            self.rdp.quality = fallback.rdp.quality;
+        if self.desktop.quality.is_none() {
+            self.desktop.quality = fallback.desktop.quality;
         }
     }
 }
@@ -74,7 +74,7 @@ impl Store {
             credential: settings.credential,
             jump: settings.jump,
             forwards: settings.forwards,
-            rdp_quality: settings.rdp.quality.unwrap_or_default(),
+            desktop_quality: settings.desktop.quality.unwrap_or_default(),
         })
     }
 
@@ -109,7 +109,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Connection, RdpSettings};
+    use crate::model::{Connection, DesktopSettings};
 
     fn folder(id: &str, parent: Option<&str>, settings: Settings) -> Folder {
         Folder {
@@ -152,7 +152,7 @@ mod tests {
 
         assert_eq!(resolved.port, 22);
         assert_eq!(resolved.credential, None);
-        assert_eq!(resolved.rdp_quality, Quality::Balanced);
+        assert_eq!(resolved.desktop_quality, Quality::Balanced);
     }
 
     #[test]
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn nested_rdp_settings_are_inherited_too() {
         let low = Settings {
-            rdp: RdpSettings {
+            desktop: DesktopSettings {
                 quality: Some(Quality::LowBandwidth),
             },
             ..Settings::default()
@@ -219,7 +219,7 @@ mod tests {
 
         let resolved = store.resolve("pc").unwrap();
 
-        assert_eq!(resolved.rdp_quality, Quality::LowBandwidth);
+        assert_eq!(resolved.desktop_quality, Quality::LowBandwidth);
     }
 
     #[test]

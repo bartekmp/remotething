@@ -1,5 +1,25 @@
 //! The desktop picture, kept up to date from the server's rectangles.
 
+use crate::quality::Depth;
+
+/// 16-bit pixels, two bytes each with the low byte first, as RGBA.
+pub(crate) fn rgb565_to_rgba(data: &[u8]) -> Vec<u8> {
+    // A channel's top bits are repeated into its low bits, so full intensity stays full.
+    let widen5 = |value: u16| ((value << 3) | (value >> 2)) as u8;
+    let widen6 = |value: u16| ((value << 2) | (value >> 4)) as u8;
+    data.chunks_exact(2)
+        .flat_map(|pair| {
+            let pixel = u16::from_le_bytes([pair[0], pair[1]]);
+            [
+                widen5(pixel >> 11 & 0x1f),
+                widen6(pixel >> 5 & 0x3f),
+                widen5(pixel & 0x1f),
+                255,
+            ]
+        })
+        .collect()
+}
+
 /// A rectangle of the desktop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Area {
@@ -66,6 +86,14 @@ impl Framebuffer {
         }
     }
 
+    /// Paints pixels as they came from the server in `depth` into `area`.
+    pub(crate) fn paint_depth(&mut self, area: Area, data: &[u8], depth: Depth) {
+        match depth {
+            Depth::Bits32 => self.paint(area, data),
+            Depth::Bits16 => self.paint(area, &rgb565_to_rgba(data)),
+        }
+    }
+
     /// Copies the pixels of `source` to the place of `target`, which has the same size.
     pub(crate) fn copy(&mut self, target: Area, source: Area) {
         if target.width != source.width
@@ -109,6 +137,31 @@ mod tests {
     fn pixel(buffer: &Framebuffer, x: u16, y: u16) -> [u8; 4] {
         let at = buffer.offset(x, y);
         buffer.rgba[at..at + 4].try_into().unwrap()
+    }
+
+    #[test]
+    fn sixteen_bit_pixels_are_widened_to_full_range() {
+        // White, pure red, pure green, pure blue, black.
+        let data = [0xff, 0xff, 0x00, 0xf8, 0xe0, 0x07, 0x1f, 0x00, 0x00, 0x00];
+
+        let rgba = rgb565_to_rgba(&data);
+
+        assert_eq!(
+            rgba,
+            [
+                255, 255, 255, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 0, 0, 255
+            ]
+        );
+    }
+
+    #[test]
+    fn painting_in_16_bits_takes_two_bytes_per_pixel() {
+        let mut buffer = Framebuffer::new(2, 1);
+
+        buffer.paint_depth(area(0, 0, 2, 1), &[0x00, 0xf8, 0x1f, 0x00], Depth::Bits16);
+
+        assert_eq!(pixel(&buffer, 0, 0), [255, 0, 0, 255]);
+        assert_eq!(pixel(&buffer, 1, 0), [0, 0, 255, 255]);
     }
 
     #[test]

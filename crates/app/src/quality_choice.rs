@@ -44,6 +44,15 @@ pub(crate) fn for_session(quality: Quality) -> remotething_rdp::Quality {
     }
 }
 
+/// The preset in the form the VNC crate takes.
+pub(crate) fn for_vnc(quality: Quality) -> remotething_vnc::Quality {
+    match quality {
+        Quality::Lan => remotething_vnc::Quality::Lan,
+        Quality::Balanced => remotething_vnc::Quality::Balanced,
+        Quality::LowBandwidth => remotething_vnc::Quality::LowBandwidth,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,6 +67,19 @@ mod tests {
         assert_eq!(
             for_session(Quality::LowBandwidth),
             remotething_rdp::Quality::LowBandwidth
+        );
+    }
+
+    #[test]
+    fn every_preset_maps_to_its_own_for_vnc() {
+        assert_eq!(for_vnc(Quality::Lan), remotething_vnc::Quality::Lan);
+        assert_eq!(
+            for_vnc(Quality::Balanced),
+            remotething_vnc::Quality::Balanced
+        );
+        assert_eq!(
+            for_vnc(Quality::LowBandwidth),
+            remotething_vnc::Quality::LowBandwidth
         );
     }
 

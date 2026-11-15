@@ -11,6 +11,7 @@ use crate::host_key_view;
 use crate::i18n::fl;
 use crate::meter;
 use crate::picture;
+use crate::quality_choice;
 use crate::status_bar::{self, Bar};
 use crate::theme;
 use crate::vnc_tab::{Form, Live, Message, Stage, State};
@@ -32,7 +33,12 @@ pub fn view(state: &State) -> Element<'_, Message> {
             *changed,
             Message::TrustPressed,
         )),
-        Stage::Connected(live) => with_status_bar(live, &state.connection.host, route(state)),
+        Stage::Connected(live) => with_status_bar(
+            live,
+            &state.connection.host,
+            route(state),
+            state.connection.desktop_quality,
+        ),
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)
@@ -82,11 +88,16 @@ fn route(state: &State) -> Option<String> {
     (!hops.is_empty()).then(|| fl!("details-via", hosts = hops.join(" → ")))
 }
 
-fn with_status_bar<'a>(live: &'a Live, host: &str, via: Option<String>) -> Element<'a, Message> {
+fn with_status_bar<'a>(
+    live: &'a Live,
+    host: &str,
+    via: Option<String>,
+    quality: remotething_core::Quality,
+) -> Element<'a, Message> {
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
-        details: details(live, host, via),
+        details: details(live, host, via, quality),
         details_open: live.details_open,
         actions: Vec::new(),
     };
@@ -105,7 +116,12 @@ fn live_rate(live: &Live) -> String {
     }
 }
 
-fn details(live: &Live, host: &str, via: Option<String>) -> Vec<(String, String)> {
+fn details(
+    live: &Live,
+    host: &str,
+    via: Option<String>,
+    quality: remotething_core::Quality,
+) -> Vec<(String, String)> {
     let security = match via {
         Some(_) => fl!("details-security-tunnel"),
         None => live.info.security.to_string(),
@@ -118,7 +134,9 @@ fn details(live: &Live, host: &str, via: Option<String>) -> Vec<(String, String)
         (fl!("details-host"), host.to_string()),
         (fl!("details-address"), address),
         (fl!("details-security"), security),
+        (fl!("details-quality"), quality_choice::label(quality)),
         (fl!("details-encodings"), live.info.encodings.to_string()),
+        (fl!("details-colours"), live.info.colours.to_string()),
         (
             fl!("details-size"),
             format!("{} × {}", live.size.0, live.size.1),

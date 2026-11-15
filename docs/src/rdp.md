@@ -33,7 +33,7 @@ If the certificate later changes, the tab warns before sending anything. Trust t
 
 ## Quality
 
-Choose **Remote desktop quality** in the properties panel of a connection, or of a folder for everything inside it. Without a choice the connection uses **Balanced**.
+Choose **Remote desktop quality** in the properties panel of a connection, or of a folder for everything inside it. The same setting applies to [VNC](vnc.md#quality). Without a choice the connection uses **Balanced**.
 
 | Preset | Colours | What the server skips | Data in the first 8 seconds of an idle Windows 11 desktop |
 | --- | --- | --- | --- |

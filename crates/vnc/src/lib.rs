@@ -8,9 +8,11 @@
 mod error;
 mod framebuffer;
 mod input;
+mod quality;
 mod session;
 mod traffic;
 
 pub use error::{Error, Result};
 pub use input::{Button, Input};
+pub use quality::Quality;
 pub use session::{Cursor, Event, Frame, Info, Session, Stats, Target, connect, connect_over};

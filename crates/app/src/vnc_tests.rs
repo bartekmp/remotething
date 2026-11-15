@@ -56,7 +56,7 @@ impl Fixture {
             credential: credential.map(str::to_string),
             jump: None,
             forwards: Vec::new(),
-            rdp_quality: Quality::Balanced,
+            desktop_quality: Quality::Balanced,
         };
         State::start(connection, &self.context()).0
     }
@@ -71,6 +71,7 @@ fn info() -> Info {
         peer: None,
         security: "test",
         encodings: "test",
+        colours: "test",
     }
 }
 
@@ -348,7 +349,7 @@ fn tunnelled(fixture: &mut Fixture) -> ResolvedConnection {
         credential: None,
         jump: Some("bastion".to_string()),
         forwards: Vec::new(),
-        rdp_quality: Quality::Balanced,
+        desktop_quality: Quality::Balanced,
     }
 }
 

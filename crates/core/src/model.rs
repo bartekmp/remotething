@@ -119,20 +119,24 @@ pub struct Settings {
     /// Local port forwards opened with an SSH session. Empty means "inherit".
     #[serde(default, rename = "forward", skip_serializing_if = "Vec::is_empty")]
     pub forwards: Vec<Forward>,
-    /// Settings that only apply to RDP.
-    #[serde(default, skip_serializing_if = "RdpSettings::is_empty")]
-    pub rdp: RdpSettings,
+    /// Settings for remote desktops (RDP and VNC). Files from before VNC called this `rdp`.
+    #[serde(
+        default,
+        skip_serializing_if = "DesktopSettings::is_empty",
+        alias = "rdp"
+    )]
+    pub desktop: DesktopSettings,
 }
 
-/// RDP-only settings.
+/// Settings for remote desktops.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RdpSettings {
+pub struct DesktopSettings {
     /// Bandwidth and quality preset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub quality: Option<Quality>,
 }
 
-impl RdpSettings {
+impl DesktopSettings {
     /// True when nothing is set, so the table can be left out of the file.
     pub fn is_empty(&self) -> bool {
         self.quality.is_none()

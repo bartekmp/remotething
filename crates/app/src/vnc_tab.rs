@@ -21,6 +21,7 @@ use crate::jump;
 use crate::keysym;
 use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
+use crate::quality_choice;
 use crate::session::{Context, Sealed, SealedJumps};
 
 pub struct State {
@@ -245,6 +246,7 @@ impl State {
             host: self.connection.host.clone(),
             port: self.connection.port,
             password: self.password.clone(),
+            quality: quality_choice::for_vnc(self.connection.desktop_quality),
         };
         let hops: Vec<ssh::Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
         let known = context.known_hosts.clone();
@@ -261,7 +263,8 @@ impl State {
                     let tunnel = ssh::open_tunnel(&hops, &endpoint, known)
                         .await
                         .map_err(Failure::from)?;
-                    remotething_vnc::connect_over(tunnel, target.password, None).await
+                    remotething_vnc::connect_over(tunnel, target.password, target.quality, None)
+                        .await
                 };
                 opened
                     .map(|session| Opened(Arc::new(Mutex::new(Some(session)))))

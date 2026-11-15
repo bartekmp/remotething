@@ -236,7 +236,7 @@ impl State {
             domain: self.domain.clone(),
             width: WIDTH,
             height: HEIGHT,
-            quality: quality_choice::for_session(self.connection.rdp_quality),
+            quality: quality_choice::for_session(self.connection.desktop_quality),
             scale: display::scale_percent(),
         };
         let known = context.known_hosts.clone();

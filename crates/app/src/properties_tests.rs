@@ -201,7 +201,7 @@ fn a_broken_port_forward_names_the_text_and_changes_nothing() {
 #[test]
 fn a_picked_quality_is_stored_on_the_item() {
     let mut draft = Draft::load(&store(), &web()).unwrap();
-    assert_eq!(draft.rdp_quality, None);
+    assert_eq!(draft.desktop_quality, None);
 
     update(
         &mut draft,
@@ -210,7 +210,7 @@ fn a_picked_quality_is_stored_on_the_item() {
     let updated = draft.apply(&store(), &web()).unwrap();
 
     assert_eq!(
-        updated.connections[1].settings.rdp.quality,
+        updated.connections[1].settings.desktop.quality,
         Some(Quality::LowBandwidth)
     );
 }
@@ -218,10 +218,10 @@ fn a_picked_quality_is_stored_on_the_item() {
 #[test]
 fn choosing_inherit_clears_the_quality() {
     let mut draft = Draft::load(&store(), &web()).unwrap();
-    draft.rdp_quality = Some(Quality::Lan);
+    draft.desktop_quality = Some(Quality::Lan);
 
     update(&mut draft, Message::QualityPicked(QualityChoice(None)));
     let updated = draft.apply(&store(), &web()).unwrap();
 
-    assert_eq!(updated.connections[1].settings.rdp.quality, None);
+    assert_eq!(updated.connections[1].settings.desktop.quality, None);
 }

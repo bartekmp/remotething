@@ -22,7 +22,8 @@ pub use exchange::ImportSummary;
 pub use forward::{BadForward, Forward, format_forwards, parse_forwards};
 pub use inherit::ResolvedConnection;
 pub use model::{
-    Connection, Credential, CredentialKind, Folder, Protocol, Quality, RdpSettings, Settings, Store,
+    Connection, Credential, CredentialKind, DesktopSettings, Folder, Protocol, Quality, Settings,
+    Store,
 };
 pub use order::Direction;
 pub use putty::{

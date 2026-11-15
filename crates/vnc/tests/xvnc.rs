@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::{Duration, Instant};
 
 use remotething_secrets::Secret;
-use remotething_vnc::{Button, Error, Event, Input, Target, connect};
+use remotething_vnc::{Button, Error, Event, Input, Quality, Target, connect};
 
 const PASSWORD: &str = "open sesame";
 
@@ -98,6 +98,7 @@ fn target(server: &Server, password: Option<&str>) -> Target {
         host: "127.0.0.1".to_string(),
         port: server.port,
         password: password.map(|text| Secret::new(text.to_string())),
+        quality: Quality::default(),
     }
 }
 
@@ -175,8 +176,33 @@ async fn a_server_that_is_not_there_is_reported() {
         host: "127.0.0.1".to_string(),
         port: 1,
         password: None,
+        quality: Quality::default(),
     })
     .await;
 
     assert!(matches!(result, Err(Error::Unreachable { .. })));
+}
+
+#[tokio::test]
+async fn the_low_bandwidth_preset_still_gives_the_right_picture() {
+    let Some(server) = start("VncAuth") else {
+        return;
+    };
+    let mut wanted = target(&server, Some(PASSWORD));
+    wanted.quality = Quality::LowBandwidth;
+    let mut session = connect(wanted).await.unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut size = None;
+    while Instant::now() < deadline && size.is_none() {
+        if let Ok(Some(Event::Frame(frame))) =
+            tokio::time::timeout(Duration::from_secs(1), session.events.recv()).await
+            && frame.width > 1
+        {
+            size = Some((frame.width, frame.height));
+        }
+    }
+
+    assert_eq!(session.info.colours, "16 bit");
+    assert_eq!(size, Some((640, 480)));
 }

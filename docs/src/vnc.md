@@ -27,6 +27,17 @@ To tunnel, choose an SSH connection as the **Jump host** in the properties panel
 - Closing the tab ends the session and asks first.
 - A closed or lost session shows why, with a **Reconnect** button.
 
+## Quality
+
+Choose **Remote desktop quality** in the properties panel of a connection, or of a folder for everything inside it. It is the same setting as for [Remote Desktop](rdp.md#quality). Without a choice a connection uses **Balanced**.
+
+| Preset | Colours | Pointer |
+| --- | --- | --- |
+| Best picture, Balanced | 32 bit | The server's pointer picture is drawn |
+| Low bandwidth | 16 bit, about half the data for pictures that do not compress | Your own pointer shows, because servers send pointer pictures in 32 bit only |
+
+A change applies the next time you connect.
+
 ## Connection details
 
 A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, CopyRect, Raw), the traffic totals and the time connected.
@@ -35,6 +46,6 @@ A strip under the desktop shows the host, the desktop size, the download and upl
 
 | Feature | State |
 | --- | --- |
-| Quality presets, the Tight encoding | Planned |
+| The Tight encoding (it needs a JPEG decoder) | Planned |
 | Resizing the desktop with the tab | Planned (servers that allow it) |
 | View-only mode, Apple Remote Desktop sign-in | Not planned for now |
