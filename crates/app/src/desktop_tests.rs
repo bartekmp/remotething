@@ -323,3 +323,25 @@ fn an_area_that_changed_again_is_not_asked_for() {
 
     assert!(input.try_recv().is_err());
 }
+
+#[test]
+fn the_button_holds_ctrl_alt_delete_and_the_release_lets_go() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+    let drain = |input: &mut mpsc::Receiver<Input>| {
+        let mut sent = Vec::new();
+        while let Ok(one) = input.try_recv() {
+            sent.push(one);
+        }
+        sent
+    };
+
+    fixture.send(&mut state, Message::CtrlAltDelPressed);
+    let down = drain(&mut input);
+    fixture.send(&mut state, Message::CtrlAltDelReleased);
+    let up = drain(&mut input);
+
+    assert_eq!(down, remotething_rdp::ctrl_alt_delete(true));
+    assert_eq!(up, remotething_rdp::ctrl_alt_delete(false));
+}

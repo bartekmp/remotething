@@ -63,6 +63,26 @@ pub enum Input {
     },
 }
 
+/// The keys of Ctrl+Alt+Delete going down, or coming up again in reverse order.
+///
+/// Windows only opens its security screen when the keys are held for a
+/// moment, so the caller sends the two halves a few hundred milliseconds apart.
+pub fn ctrl_alt_delete(pressed: bool) -> Vec<Input> {
+    const CTRL: u8 = 0x1D;
+    const ALT: u8 = 0x38;
+    const DELETE: u8 = 0x53;
+    let key = |code, extended| Input::Key {
+        code,
+        extended,
+        pressed,
+    };
+    let mut keys = vec![key(CTRL, false), key(ALT, false), key(DELETE, true)];
+    if !pressed {
+        keys.reverse();
+    }
+    keys
+}
+
 /// The RDP events for one input.
 pub(crate) fn to_events(input: Input) -> Vec<FastPathInputEvent> {
     match input {
@@ -134,6 +154,39 @@ mod tests {
             FastPathInputEvent::MouseEvent(pdu) => pdu,
             other => panic!("expected a mouse event, got {other:?}"),
         }
+    }
+
+    fn codes(keys: Vec<Input>) -> Vec<(u8, bool, bool)> {
+        keys.into_iter()
+            .map(|input| match input {
+                Input::Key {
+                    code,
+                    extended,
+                    pressed,
+                } => (code, extended, pressed),
+                other => panic!("not a key: {other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn ctrl_alt_delete_goes_down_in_order() {
+        assert_eq!(
+            codes(ctrl_alt_delete(true)),
+            [(0x1D, false, true), (0x38, false, true), (0x53, true, true)]
+        );
+    }
+
+    #[test]
+    fn ctrl_alt_delete_comes_up_in_reverse() {
+        assert_eq!(
+            codes(ctrl_alt_delete(false)),
+            [
+                (0x53, true, false),
+                (0x38, false, false),
+                (0x1D, false, false)
+            ]
+        );
     }
 
     #[test]

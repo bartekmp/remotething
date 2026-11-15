@@ -11,7 +11,7 @@ const HEIGHT: f32 = 30.0;
 const PANEL_WIDTH: f32 = 320.0;
 
 /// What the bar shows.
-pub(crate) struct Bar {
+pub(crate) struct Bar<Message> {
     /// Left side, for example the host and the desktop size.
     pub(crate) summary: String,
     /// Right side, for example the current bandwidth.
@@ -19,18 +19,27 @@ pub(crate) struct Bar {
     /// Label and value of every line in the details panel.
     pub(crate) details: Vec<(String, String)>,
     pub(crate) details_open: bool,
+    /// Buttons left of the (i): their label and what pressing them does.
+    pub(crate) actions: Vec<(String, Message)>,
 }
 
 /// `body` with the bar under it. The details float over the body's corner.
 pub(crate) fn view<'a, Message: Clone + 'a>(
     body: Element<'a, Message>,
-    bar: Bar,
+    bar: Bar<Message>,
     on_toggle: Message,
 ) -> Element<'a, Message> {
     let info = button(icons::view(icons::INFO, theme::TEXT_SMALL))
         .padding([2, 8])
         .style(theme::entry(bar.details_open))
         .on_press(on_toggle);
+    let actions = bar.actions.into_iter().map(|(label, message)| {
+        button(text(label).size(theme::TEXT_SMALL))
+            .padding([2, 8])
+            .style(theme::pill)
+            .on_press(message)
+            .into()
+    });
     let strip = row![
         text(bar.summary)
             .size(theme::TEXT_SMALL)
@@ -39,8 +48,9 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
         text(bar.live)
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
-        info,
     ]
+    .extend(actions)
+    .push(info)
     .spacing(8)
     .align_y(iced::Alignment::Center)
     .height(Length::Fixed(HEIGHT));

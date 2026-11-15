@@ -126,6 +126,7 @@ fn with_status_bar<'a>(live: &'a Live, host: &str) -> Element<'a, Message> {
         live: live_rate(live),
         details: details(live, host),
         details_open: live.details_open,
+        actions: vec![(fl!("desktop-ctrl-alt-del"), Message::CtrlAltDelPressed)],
     };
     // The desktop follows the room it gets: its size is reported as the tab changes.
     let room = sensor(desktop(live))

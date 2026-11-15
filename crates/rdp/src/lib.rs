@@ -14,6 +14,6 @@ mod tls;
 mod worker;
 
 pub use error::{Certificate, Error, Result};
-pub use input::{Button, Input};
+pub use input::{Button, Input, ctrl_alt_delete};
 pub use session::{Event, Frame, Info, Session, Target, connect};
 pub use stats::Stats;

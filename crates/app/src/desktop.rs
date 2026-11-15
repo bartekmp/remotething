@@ -22,6 +22,8 @@ use crate::session::{Context, Sealed};
 /// The size of the remote desktop until resizing is supported.
 const WIDTH: u16 = 1280;
 const HEIGHT: u16 = 800;
+/// How long Ctrl+Alt+Del is held; Windows ignores a shorter press.
+const CTRL_ALT_DEL_HOLD: std::time::Duration = std::time::Duration::from_millis(300);
 /// How long the room for the picture must stay the same before the server is asked to match it.
 const RESIZE_SETTLE: std::time::Duration = std::time::Duration::from_millis(400);
 
@@ -86,6 +88,10 @@ pub enum Message {
     Stats(Stats),
     /// The (i) button was pressed.
     DetailsToggled,
+    /// The Ctrl+Alt+Del button was pressed.
+    CtrlAltDelPressed,
+    /// The keys of Ctrl+Alt+Del were held long enough.
+    CtrlAltDelReleased,
     /// The room for the picture changed.
     AreaChanged(Size),
     /// The room stayed the same for a moment, so it is worth asking the server.
@@ -358,6 +364,21 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.details_open = !live.details_open;
+            }
+            Task::none()
+        }
+        Message::CtrlAltDelPressed => {
+            for key in remotething_rdp::ctrl_alt_delete(true) {
+                state.send(key);
+            }
+            Task::perform(
+                async { tokio::time::sleep(CTRL_ALT_DEL_HOLD).await },
+                |()| Message::CtrlAltDelReleased,
+            )
+        }
+        Message::CtrlAltDelReleased => {
+            for key in remotething_rdp::ctrl_alt_delete(false) {
+                state.send(key);
             }
             Task::none()
         }

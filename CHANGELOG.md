@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.18.0 - 2026-11-15
+
+- Remote Desktop: a Ctrl+Alt+Del button in the status strip.
+
 ## 0.17.0 - 2026-11-15
 
 - Remote Desktop: the desktop resizes with the tab.

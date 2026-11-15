@@ -246,3 +246,5 @@ details-rate = Receiving
 details-total = Received in total
 details-frames = Frames per second
 details-uptime = Connected for
+
+desktop-ctrl-alt-del = Ctrl+Alt+Del
