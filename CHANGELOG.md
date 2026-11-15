@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.14.0 - 2026-11-15
+
+- Groundwork for RDP: a new crate that connects to Windows hosts with NLA, pins the server certificate and passes frames and input. Not usable from the app yet.
+
 ## 0.13.0 - 2026-11-15
 
 - Terminal search: **Ctrl+Shift+F** finds text on the screen and in the scrollback.

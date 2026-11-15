@@ -9,6 +9,8 @@ ignore = [
     { id = "RUSTSEC-2026-0374", reason = "basic-toml; build-time only, pulled by i18n-embed-fl" },
     { id = "RUSTSEC-2026-0370", reason = "zvariant merged into zbus 6; pulled by the keyring store" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names merged into zbus 6; pulled by the keyring store" },
+    { id = "RUSTSEC-2023-0089", reason = "atomic-polyfill; pulled by IronRDP's sspi, unmaintained notice only" },
+    { id = "RUSTSEC-2026-0441", reason = "pin-utils; pulled by IronRDP's sspi, unmaintained notice only" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive merged into zbus 6; pulled by the keyring store" },
     # Timing side channel in RSA (Marvin). russh 0.65 pins rsa 0.10.0-rc.18; the advisory wants 0.10.0 final.
     # An SSH client only signs with RSA, it never decrypts. Remove when russh moves to rsa 0.10.
