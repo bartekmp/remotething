@@ -48,7 +48,7 @@ pub(crate) struct Worker {
     dirty: bool,
     last_sent: Instant,
     /// A size the window wants, kept until the server can be asked.
-    resize: Option<(u16, u16)>,
+    resize: Option<(u16, u16, u32)>,
     started: Instant,
     /// The text on the local clipboard, for when the server pastes.
     local_text: Option<String>,
@@ -166,7 +166,11 @@ impl Worker {
         let mut events = Vec::new();
         loop {
             match input.try_recv() {
-                Ok(Input::Resize { width, height }) => self.resize = Some((width, height)),
+                Ok(Input::Resize {
+                    width,
+                    height,
+                    scale,
+                }) => self.resize = Some((width, height, scale)),
                 Ok(Input::Clipboard(text)) => {
                     self.local_text = Some(text);
                     self.announce = true;
@@ -187,7 +191,7 @@ impl Worker {
 
     /// Asks the server for the wanted size once the channel for it is ready.
     fn ask_for_resize(&mut self) -> Result<(), BoxedError> {
-        let Some((width, height)) = self.resize else {
+        let Some((width, height, scale)) = self.resize else {
             return Ok(());
         };
         if !resize_allowed(self.started.elapsed()) {
@@ -196,7 +200,7 @@ impl Worker {
         let (width, height) =
             MonitorLayoutEntry::adjust_display_size(u32::from(width), u32::from(height));
         // None: not ready yet, or the server has no such channel. Try again next round.
-        if let Some(request) = self.stage.encode_resize(width, height, None, None) {
+        if let Some(request) = self.stage.encode_resize(width, height, Some(scale), None) {
             self.framed.write_all(&request?)?;
             self.resize = None;
         }

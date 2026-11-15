@@ -11,6 +11,7 @@ mod desktop;
 mod desktop_open;
 mod desktop_size;
 mod desktop_view;
+mod display;
 mod file_dialog;
 mod files_pane;
 mod files_view;
@@ -127,7 +128,11 @@ fn main() -> Result<()> {
         let state = state.with_preferences(preferences.clone());
         // Ask the desktop once whether it is light or dark; changes arrive by subscription.
         let ask_mode = iced::system::theme().map(app::Message::SystemModeChanged);
-        (state, ask_mode)
+        // The scale factor of the screen the window opens on.
+        let ask_scale = iced::window::oldest()
+            .and_then(iced::window::scale_factor)
+            .map(app::Message::ScaleChanged);
+        (state, iced::Task::batch([ask_mode, ask_scale]))
     };
     iced::application(boot, app::update, window::view)
         .title(app::title)

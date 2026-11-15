@@ -61,7 +61,7 @@ pub(crate) fn connector_config(target: &Target) -> connector::Config {
         pointer_software_rendering: true,
         multitransport_flags: None,
         performance_flags: profile.performance,
-        desktop_scale_factor: 0,
+        desktop_scale_factor: target.scale,
         hardware_id: None,
         license_cache: None,
         timezone_info: TimezoneInfo::default(),

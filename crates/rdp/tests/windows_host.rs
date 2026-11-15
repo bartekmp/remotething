@@ -21,6 +21,7 @@ fn target(password: &str) -> Target {
         width: 1280,
         height: 800,
         quality: Quality::default(),
+        scale: 100,
     }
 }
 
@@ -93,6 +94,7 @@ fn the_desktop_follows_a_resize() {
         .blocking_send(Input::Resize {
             width: 1024,
             height: 768,
+            scale: 100,
         })
         .unwrap();
 

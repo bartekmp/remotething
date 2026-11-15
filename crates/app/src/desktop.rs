@@ -13,6 +13,7 @@ use tokio::sync::mpsc;
 use crate::credentials::Hidden;
 use crate::desktop_open::{Failure, Opened};
 use crate::desktop_size;
+use crate::display;
 use crate::i18n::fl;
 use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
@@ -226,6 +227,7 @@ impl State {
             width: WIDTH,
             height: HEIGHT,
             quality: quality_choice::for_session(self.connection.rdp_quality),
+            scale: display::scale_percent(),
         };
         let known = context.known_hosts.clone();
         self.stage = Stage::Connecting;
@@ -281,6 +283,21 @@ impl State {
             Some((message, events))
         });
         Task::run(messages, |message| message)
+    }
+
+    /// The screen scaling changed: ask for a desktop of the new real size.
+    pub(crate) fn rescaled(&mut self) {
+        let Stage::Connected(live) = &self.stage else {
+            return;
+        };
+        if let Some((width, height)) = desktop_size::wanted(live.area, display::scale(), live.size)
+        {
+            self.send(Input::Resize {
+                width,
+                height,
+                scale: display::scale_percent(),
+            });
+        }
     }
 
     /// The local clipboard holds `text`. A new text is offered to the server.
@@ -432,9 +449,14 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::AreaSettled(area) => {
             if let Stage::Connected(live) = &state.stage
                 && live.area == area
-                && let Some((width, height)) = desktop_size::wanted(area, live.size)
+                && let Some((width, height)) =
+                    desktop_size::wanted(area, display::scale(), live.size)
             {
-                state.send(Input::Resize { width, height });
+                state.send(Input::Resize {
+                    width,
+                    height,
+                    scale: display::scale_percent(),
+                });
             }
             Task::none()
         }

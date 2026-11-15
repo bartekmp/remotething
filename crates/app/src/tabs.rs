@@ -164,6 +164,15 @@ impl State {
         }
     }
 
+    /// The screen scaling changed; remote desktops follow.
+    pub fn rescale_desktops(&mut self) {
+        for tab in &mut self.tabs {
+            if let Content::Desktop(desktop) = &mut tab.content {
+                desktop.rescaled();
+            }
+        }
+    }
+
     /// Offers the local clipboard text to the remote desktop in front, if there is one.
     pub fn desktop_clipboard(&mut self, text: String) {
         if let Some(Tab {

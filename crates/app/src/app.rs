@@ -10,6 +10,7 @@ use remotething_core::Store;
 use remotething_secrets::{KnownHosts, SecretStore};
 
 use crate::credentials::{self};
+use crate::display;
 use crate::file_dialog;
 use crate::folder_removal;
 use crate::i18n::fl;
@@ -138,6 +139,8 @@ pub enum Message {
     /// The local clipboard text, if it holds any.
     ClipboardRead(Option<String>),
     WindowResized(Size),
+    /// The window's scale factor, when it opens or moves to another screen.
+    ScaleChanged(f32),
     /// The file chosen for an export, or `None` when the dialog was cancelled.
     ExportFilePicked(Option<PathBuf>),
     /// The file chosen for an import, or `None` when the dialog was cancelled.
@@ -292,6 +295,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::WindowResized(size) => state.window = size,
+        Message::ScaleChanged(scale) => {
+            display::set_scale(scale);
+            state.tabs.rescale_desktops();
+        }
         Message::KeyReleased { physical } => {
             if state.desktop_has_keys() {
                 state.tabs.desktop_key(physical, false);

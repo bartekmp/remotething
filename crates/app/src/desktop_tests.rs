@@ -306,7 +306,8 @@ fn a_settled_area_asks_the_server_for_that_size() {
         input.try_recv().unwrap(),
         Input::Resize {
             width: 1500,
-            height: 900
+            height: 900,
+            scale: 100,
         }
     );
 }

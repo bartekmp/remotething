@@ -51,6 +51,8 @@ pub enum Input {
         width: u16,
         /// The wanted height in pixels.
         height: u16,
+        /// The display scaling in percent, 100 to 500.
+        scale: u32,
     },
     /// The text on the local clipboard changed; the server may paste it.
     Clipboard(String),

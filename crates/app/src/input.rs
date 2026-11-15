@@ -92,6 +92,7 @@ pub(crate) fn window_event(
                 physical: physical_key,
             })
         }
+        Event::Window(window::Event::Rescaled(scale)) => Some(Message::ScaleChanged(scale)),
         Event::Window(window::Event::Opened { size, .. })
         | Event::Window(window::Event::Resized(size)) => Some(Message::WindowResized(size)),
         _ => None,

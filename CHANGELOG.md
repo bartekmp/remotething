@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.23.0 - 2026-11-15
+
+- Remote Desktop: sharp picture and right-sized interface on screens with display scaling.
+
 ## 0.22.0 - 2026-11-15
 
 - Remote Desktop: quality presets (best, balanced, low bandwidth) in the properties panel, and the RemoteFX codec, which cuts the picture data a lot.

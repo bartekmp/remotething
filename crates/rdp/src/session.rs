@@ -44,6 +44,8 @@ pub struct Target {
     pub height: u16,
     /// How to trade picture quality for bandwidth.
     pub quality: Quality,
+    /// The display scaling in percent, 100 to 500; Windows scales its interface by it.
+    pub scale: u32,
 }
 
 /// A full copy of the remote desktop, 4 bytes per pixel, opaque.
