@@ -7,6 +7,10 @@ use ironrdp_pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 
 use crate::session::Target;
 
+/// No bitmap codec is offered, so servers send classic bitmap updates.
+pub(crate) const CODEC: &str = "Bitmap (RLE)";
+pub(crate) const SECURITY: &str = "TLS with NLA (CredSSP)";
+
 /// Connector settings for `target`. The connection always uses NLA (CredSSP).
 pub(crate) fn connector_config(target: &Target) -> connector::Config {
     connector::Config {

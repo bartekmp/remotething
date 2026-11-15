@@ -1,16 +1,18 @@
 //! A Windows Remote Desktop tab: signing in, the certificate question and the
 //! live picture with the user's mouse and keyboard going back.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use iced::Task;
 use iced::futures::stream;
 use remotething_core::{CredentialKind, ResolvedConnection};
-use remotething_rdp::{Button, Certificate, Error, Event, Input, Session, Target};
+use remotething_rdp::{Button, Certificate, Event, Info, Input, Session, Stats, Target};
 use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
+use crate::desktop_meter::Meter;
+use crate::desktop_open::{Failure, Opened};
 use crate::i18n::fl;
 use crate::picture::Picture;
 use crate::scancodes::Scancode;
@@ -59,46 +61,11 @@ pub(crate) struct Live {
     /// The size of the remote desktop in pixels.
     pub(crate) size: (u32, u32),
     input: mpsc::Sender<Input>,
+    pub(crate) info: Info,
+    pub(crate) meter: Meter,
+    pub(crate) details_open: bool,
     /// Where the pointer is on the remote desktop, for button presses.
     pointer: (u16, u16),
-}
-
-/// A freshly opened session on its way to the window. It is taken out once.
-#[derive(Clone)]
-pub struct Opened(Arc<Mutex<Option<Session>>>);
-
-impl std::fmt::Debug for Opened {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("Opened")
-    }
-}
-
-/// Why opening the session did not work, in the shape the window acts on.
-#[derive(Debug, Clone)]
-pub enum Failure {
-    Certificate {
-        certificate: Certificate,
-        changed: bool,
-    },
-    Refused,
-    Other(String),
-}
-
-impl From<Error> for Failure {
-    fn from(error: Error) -> Self {
-        match error {
-            Error::UnknownCertificate(certificate) => Failure::Certificate {
-                certificate,
-                changed: false,
-            },
-            Error::CertificateChanged(certificate) => Failure::Certificate {
-                certificate,
-                changed: true,
-            },
-            Error::AuthRefused => Failure::Refused,
-            other => Failure::Other(other.to_string()),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +77,10 @@ pub enum Message {
     Opened(Result<Opened, Failure>),
     /// The desktop changed: a new picture and its size.
     Frame(Picture),
+    /// Running totals of the traffic.
+    Stats(Stats),
+    /// The (i) button was pressed.
+    DetailsToggled,
     /// The session ended, with the reason when it was not the user's doing.
     Closed(Option<String>),
     TrustPressed,
@@ -149,6 +120,13 @@ impl State {
             picture: Picture::black(),
             size: (1280, 800),
             input,
+            info: Info {
+                peer: "127.0.0.1:3389".parse().expect("a valid address"),
+                codec: "test",
+                security: "test",
+            },
+            meter: Meter::new(),
+            details_open: false,
             pointer: (0, 0),
         }));
         typed
@@ -235,7 +213,7 @@ impl State {
                     tokio::task::spawn_blocking(move || remotething_rdp::connect(target, &known))
                         .await;
                 match opened {
-                    Ok(Ok(session)) => Ok(Opened(Arc::new(Mutex::new(Some(session))))),
+                    Ok(Ok(session)) => Ok(Opened::new(session)),
                     Ok(Err(error)) => Err(Failure::from(error)),
                     Err(error) => Err(Failure::Other(error.to_string())),
                 }
@@ -249,12 +227,19 @@ impl State {
         let Some(session) = session else {
             return Task::none();
         };
-        let Session { events, input } = session;
+        let Session {
+            info,
+            events,
+            input,
+        } = session;
         self.stage = Stage::Connected(Box::new(Live {
             // Black until the first picture arrives.
             picture: Picture::black(),
             size: (u32::from(WIDTH), u32::from(HEIGHT)),
             input,
+            info,
+            meter: Meter::new(),
+            details_open: false,
             pointer: (0, 0),
         }));
 
@@ -264,6 +249,7 @@ impl State {
                 Event::Frame(frame) => {
                     Message::Frame(Picture::new(frame.width, frame.height, frame.rgba))
                 }
+                Event::Stats(stats) => Message::Stats(stats),
                 Event::Closed(reason) => Message::Closed(reason),
             };
             Some((message, events))
@@ -349,6 +335,18 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             if let Stage::Connected(live) = &mut state.stage {
                 live.size = (picture.width, picture.height);
                 live.picture = picture;
+            }
+            Task::none()
+        }
+        Message::Stats(stats) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.meter.sample(stats);
+            }
+            Task::none()
+        }
+        Message::DetailsToggled => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.details_open = !live.details_open;
             }
             Task::none()
         }

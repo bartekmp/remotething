@@ -8,8 +8,10 @@ mod error;
 mod input;
 mod session;
 mod settings;
+mod stats;
 mod tls;
 
 pub use error::{Certificate, Error, Result};
 pub use input::{Button, Input};
-pub use session::{Event, Frame, Session, Target, connect};
+pub use session::{Event, Frame, Info, Session, Target, connect};
+pub use stats::Stats;

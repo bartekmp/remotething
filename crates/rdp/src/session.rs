@@ -1,7 +1,7 @@
 //! Opening a session and running it on its own thread.
 
 use std::io::ErrorKind;
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
 use ironrdp_connector::sspi::generator::NetworkRequest;
@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 
 use crate::error::{Error, Result};
 use crate::input::{self, Input};
+use crate::stats::{Counter, Stats};
 use crate::{settings, tls};
 
 /// The most frames sent to the window per second.
@@ -54,8 +55,21 @@ pub struct Frame {
     pub rgba: Vec<u8>,
 }
 
+/// Facts about a connection that do not change while it lasts.
+#[derive(Debug, Clone)]
+pub struct Info {
+    /// The server's address and port as connected to.
+    pub peer: SocketAddr,
+    /// How the picture is sent, as far as this client asked for it.
+    pub codec: &'static str,
+    /// How the connection is secured.
+    pub security: &'static str,
+}
+
 /// What a session tells the window.
 pub enum Event {
+    /// Running totals, about once per second.
+    Stats(Stats),
     /// The screen changed. Only the newest frame matters.
     Frame(Frame),
     /// The session ended, with the reason when it was not the user's doing.
@@ -64,6 +78,8 @@ pub enum Event {
 
 /// A running session. It ends when this is dropped.
 pub struct Session {
+    /// What is known about the connection.
+    pub info: Info,
     /// Frames and the end of the session, in order.
     pub events: mpsc::Receiver<Event>,
     /// Where the user's input goes.
@@ -76,7 +92,12 @@ pub struct Session {
 /// The server's certificate must already be pinned in `known`; otherwise the
 /// attempt stops before any credential is sent and the error carries it.
 pub fn connect(target: Target, known: &KnownHosts) -> Result<Session> {
-    let (connection, framed) = open(&target, known)?;
+    let (connection, framed, peer) = open(&target, known)?;
+    let info = Info {
+        peer,
+        codec: settings::CODEC,
+        security: settings::SECURITY,
+    };
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(INPUT_QUEUE);
     std::thread::spawn(move || {
@@ -86,7 +107,11 @@ pub fn connect(target: Target, known: &KnownHosts) -> Result<Session> {
         };
         let _ = events_tx.blocking_send(Event::Closed(reason));
     });
-    Ok(Session { events, input })
+    Ok(Session {
+        info,
+        events,
+        input,
+    })
 }
 
 type TlsFramed = ironrdp_blocking::Framed<tls::Stream>;
@@ -95,7 +120,7 @@ fn protocol(error: impl std::fmt::Display) -> Error {
     Error::Protocol(error.to_string())
 }
 
-fn open(target: &Target, known: &KnownHosts) -> Result<(ConnectionResult, TlsFramed)> {
+fn open(target: &Target, known: &KnownHosts) -> Result<(ConnectionResult, TlsFramed, SocketAddr)> {
     let address = (target.host.as_str(), target.port);
     let tcp = TcpStream::connect(address).map_err(|error| Error::Unreachable {
         host: target.host.clone(),
@@ -107,6 +132,7 @@ fn open(target: &Target, known: &KnownHosts) -> Result<(ConnectionResult, TlsFra
     // A second handle to the same socket, to shorten the timeout once connected.
     let socket = tcp.try_clone().map_err(protocol)?;
     let client_addr = tcp.local_addr().map_err(protocol)?;
+    let peer = tcp.peer_addr().map_err(protocol)?;
 
     let mut framed = ironrdp_blocking::Framed::new(tcp);
     let mut connector = ClientConnector::new(settings::connector_config(target), client_addr);
@@ -137,7 +163,7 @@ fn open(target: &Target, known: &KnownHosts) -> Result<(ConnectionResult, TlsFra
     socket
         .set_read_timeout(Some(IDLE_READ_TIMEOUT))
         .map_err(protocol)?;
-    Ok((connection, framed))
+    Ok((connection, framed, peer))
 }
 
 /// A refusal of the credentials is told apart from other failures.
@@ -186,9 +212,11 @@ fn run(
 
     let mut dirty = false;
     let mut last_sent = Instant::now();
+    let mut counter = Counter::new();
     loop {
         match framed.read_pdu() {
             Ok((action, payload)) => {
+                counter.received(payload.len());
                 let received_at = framed.last_read_at();
                 let outputs = stage.process(&mut image, action, &payload, received_at)?;
                 if handle(outputs, &mut framed, &mut dirty)? {
@@ -210,10 +238,15 @@ fn run(
                 Ok(()) => {
                     dirty = false;
                     last_sent = Instant::now();
+                    counter.frame_sent();
                 }
                 Err(mpsc::error::TrySendError::Full(_)) => {}
                 Err(mpsc::error::TrySendError::Closed(_)) => return Ok(()),
             }
+        }
+        if let Some(totals) = counter.due() {
+            // A full queue only delays the numbers.
+            let _ = events.try_send(Event::Stats(totals));
         }
     }
 }

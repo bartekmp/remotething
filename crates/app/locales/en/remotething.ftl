@@ -235,3 +235,14 @@ search-none = No matches
 desktop-credential-kind = This connection uses a credential that is for SSH. For Remote Desktop use a password credential, or ask every time.
 desktop-certificate-new = The certificate of { $host } is not known yet. Check that this is the machine you mean to reach, then trust it.
 desktop-certificate-changed = The certificate of { $host } has changed. The machine may have been reinstalled, or someone may be between you and it. Trust the new one only if you expected the change.
+
+details-protocol = Protocol
+details-host = Host
+details-address = Address
+details-security = Security
+details-codec = Picture codec
+details-size = Desktop size
+details-rate = Receiving
+details-total = Received in total
+details-frames = Frames per second
+details-uptime = Connected for

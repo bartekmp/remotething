@@ -6,8 +6,10 @@ use remotething_rdp::Button;
 
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
+use crate::desktop_meter;
 use crate::i18n::fl;
 use crate::picture;
+use crate::status_bar::{self, Bar};
 use crate::theme;
 
 const FORM_WIDTH: f32 = 320.0;
@@ -30,7 +32,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
             &certificate.fingerprint,
             *changed,
         )),
-        Stage::Connected(live) => desktop(live),
+        Stage::Connected(live) => with_status_bar(live, &state.connection.host),
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)
@@ -116,6 +118,51 @@ fn certificate_question<'a>(
         .spacing(theme::GAP)
         .max_width(FORM_WIDTH + 120.0)
         .into()
+}
+
+fn with_status_bar<'a>(live: &'a Live, host: &str) -> Element<'a, Message> {
+    let bar = Bar {
+        summary: format!("{host} · {} × {}", live.size.0, live.size.1),
+        live: live_rate(live),
+        details: details(live, host),
+        details_open: live.details_open,
+    };
+    status_bar::view(desktop(live), bar, Message::DetailsToggled)
+}
+
+fn live_rate(live: &Live) -> String {
+    match &live.meter.reading {
+        Some(reading) => format!(
+            "↓ {}/s · {} fps",
+            desktop_meter::bytes(reading.bytes_per_second),
+            reading.frames_per_second
+        ),
+        None => String::new(),
+    }
+}
+
+fn details(live: &Live, host: &str) -> Vec<(String, String)> {
+    let mut lines = vec![
+        (fl!("details-protocol"), "RDP".to_string()),
+        (fl!("details-host"), host.to_string()),
+        (fl!("details-address"), live.info.peer.to_string()),
+        (fl!("details-security"), live.info.security.to_string()),
+        (fl!("details-codec"), live.info.codec.to_string()),
+        (
+            fl!("details-size"),
+            format!("{} × {}", live.size.0, live.size.1),
+        ),
+    ];
+    if let Some(reading) = &live.meter.reading {
+        lines.push((
+            fl!("details-rate"),
+            format!("{}/s", desktop_meter::bytes(reading.bytes_per_second)),
+        ));
+        lines.push((fl!("details-total"), desktop_meter::bytes(reading.total)));
+        lines.push((fl!("details-frames"), reading.frames_per_second.to_string()));
+        lines.push((fl!("details-uptime"), desktop_meter::clock(reading.uptime)));
+    }
+    lines
 }
 
 /// The picture, scaled to fit. Pointer positions are mapped back to the remote desktop.

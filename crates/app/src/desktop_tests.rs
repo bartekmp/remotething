@@ -257,3 +257,37 @@ fn keys_are_sent_as_scancodes_and_only_while_connected() {
         Input::Key { pressed: false, .. }
     ));
 }
+
+#[test]
+fn totals_from_the_session_become_a_reading() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+
+    fixture.send(
+        &mut state,
+        Message::Stats(Stats {
+            received: 5000,
+            frames: 20,
+        }),
+    );
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    assert_eq!(live.meter.reading.unwrap().total, 5000);
+}
+
+#[test]
+fn the_info_button_opens_and_closes_the_details() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+    let open = |state: &State| matches!(&state.stage, Stage::Connected(live) if live.details_open);
+
+    assert!(!open(&state));
+    fixture.send(&mut state, Message::DetailsToggled);
+    assert!(open(&state));
+    fixture.send(&mut state, Message::DetailsToggled);
+    assert!(!open(&state));
+}

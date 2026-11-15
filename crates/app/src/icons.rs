@@ -52,6 +52,7 @@ pub const CHEVRON_RIGHT: Icon = icon("chevron-right", '\u{e073}');
 pub const CLOSE: Icon = icon("x", '\u{e1b1}');
 pub const SETTINGS: Icon = icon("settings", '\u{e157}');
 pub const FILE: Icon = icon("file", '\u{e0c4}');
+pub const INFO: Icon = icon("info", '\u{e0fe}');
 pub const PLUS: Icon = icon("plus", '\u{e140}');
 pub const PANEL_LEFT_CLOSE: Icon = icon("panel-left-close", '\u{e21b}');
 pub const PANEL_LEFT_OPEN: Icon = icon("panel-left-open", '\u{e21c}');

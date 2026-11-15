@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.16.0 - 2026-11-15
+
+- Remote Desktop: a status strip under the desktop with an (i) button that shows address, security, codec, bandwidth, frame rate and uptime.
+
 ## 0.15.2 - 2026-11-15
 
 - Remote Desktop: on machines without a usable GPU the desktop is drawn as a plain image instead of staying blank.
