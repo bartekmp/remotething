@@ -12,6 +12,7 @@ Dependencies point one way, from the app down to `core`.
 | `crates/secrets` | Secret type, OS keyring store with a timeout wrapper, in-memory store, encrypted-file store, known SSH host keys | In place |
 | `crates/remote` | Protocol sessions behind Cargo features. SSH shell so far; VNC is planned | In place |
 | `crates/rdp` | RDP sessions over IronRDP: NLA sign-in, certificate pinning, frames out, input in. Used by the RDP tab | In place |
+| `crates/vnc` | VNC sessions over vnc-rs: password sign-in over TCP or any byte stream, frames and pointer out, input in. Not used by the app yet | In place |
 | `crates/files` | Remote file systems. SFTP listing, upload and download so far; the other backends and the transfer queue are planned | In place |
 | `crates/app` | iced UI: connection tree, tabs with SSH terminals and a file pane, properties editor, credentials and settings screens so far. Binary name `remotething` | In place |
 | `xtask` | Lint, test and build commands for developers and CI | In place |

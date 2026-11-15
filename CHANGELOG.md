@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.25.0 - 2026-11-15
+
+- Groundwork for VNC: a new crate that connects to VNC servers with a password, and passes pictures, the pointer and input. Not usable from the app yet.
+
 ## 0.24.0 - 2026-11-15
 
 - Remote Desktop: the pointer takes the shapes the remote machine asks for (text cursor, resize arrows, busy ring).
