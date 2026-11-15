@@ -176,14 +176,15 @@ fn change_icon_keeps_the_menu_open_until_an_icon_is_picked() {
 }
 
 #[test]
-fn remove_in_the_menu_deletes_the_item_and_refuses_a_full_folder() {
+fn remove_in_the_menu_deletes_the_item_and_asks_about_a_full_folder() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory);
 
     right_click(&mut state, Some(folder("prod")));
     send(&mut state, Message::Menu(menu::Message::Remove));
-    assert!(state.error.is_some());
+    assert!(state.removal.is_some());
     assert_eq!(on_disk(&state).folders.len(), 2);
+    state.removal = None;
 
     right_click(&mut state, Some(folder("lab")));
     send(&mut state, Message::Menu(menu::Message::Remove));

@@ -11,6 +11,7 @@ use remotething_secrets::{KnownHosts, SecretStore};
 
 use crate::credentials::{self};
 use crate::file_dialog;
+use crate::folder_removal;
 use crate::i18n::fl;
 use crate::input;
 use crate::menu;
@@ -61,6 +62,8 @@ pub struct State {
     pub(crate) system_mode: Mode,
     /// The context menu of the tree, while it is open.
     pub(crate) menu: Option<menu::State>,
+    /// A folder with content that waits for the user to confirm its removal.
+    pub(crate) removal: Option<folder_removal::Question>,
     /// Where the pointer is, in window coordinates.
     pub(crate) pointer: Point,
     pub(crate) window: Size,
@@ -108,6 +111,7 @@ pub enum Message {
     /// The close button of the properties panel.
     PropertiesClosed,
     Menu(menu::Message),
+    Removal(folder_removal::Message),
     PointerMoved(Point),
     /// The left mouse button went up, anywhere in the window.
     PointerReleased,
@@ -168,6 +172,7 @@ impl State {
             vault: None,
             system_mode: Mode::None,
             menu: None,
+            removal: None,
             pointer: Point::ORIGIN,
             window: INITIAL_WINDOW,
         }
@@ -249,6 +254,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::Menu(message) => return tree_actions::on_menu(state, message),
+        Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::WindowResized(size) => state.window = size,
         Message::KeyPressed {
@@ -264,6 +270,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             if is_escape && (state.menu.is_some() || state.tree.is_busy()) {
                 state.menu = None;
                 state.tree.cancel();
+                return Task::none();
+            }
+            if is_escape && state.removal.is_some() {
+                state.removal = None;
                 return Task::none();
             }
             if is_escape && state.properties_open {

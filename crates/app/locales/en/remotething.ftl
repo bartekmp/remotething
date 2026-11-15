@@ -213,3 +213,8 @@ kind-interactive = Keyboard-interactive
 credentials-interactive-note = For servers that ask for a password and a one-time code. The questions are shown on every connect. Nothing is stored here except the user name.
 session-interactive-refused = The server did not accept the answers.
 session-cancel = Cancel
+
+removal-question = Remove the folder "{ $name }"?
+removal-contents = It holds { $folders } folders and { $connections } connections. They are removed with it, and this cannot be undone.
+removal-yes = Remove all
+removal-no = Keep

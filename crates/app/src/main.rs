@@ -9,6 +9,7 @@ mod credentials;
 mod file_dialog;
 mod files_pane;
 mod files_view;
+mod folder_removal;
 mod forwards;
 mod i18n;
 mod icons;

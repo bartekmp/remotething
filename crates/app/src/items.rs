@@ -7,6 +7,7 @@ use remotething_core::{
 use iced::Task;
 
 use crate::app::{Message, State};
+use crate::folder_removal;
 use crate::i18n::fl;
 use crate::organise;
 use crate::session;
@@ -88,11 +89,36 @@ impl State {
     }
 
     pub(crate) fn delete(&mut self, item: &Selection) {
+        if let Selection::Folder(id) = item {
+            let inside = self.store.count_inside(id);
+            if inside != (0, 0) {
+                // Content goes with the folder, so the user decides first.
+                let name = organise::name_of(&self.store, item).unwrap_or_default();
+                self.removal = Some(folder_removal::Question::new(id.clone(), name, inside));
+                return;
+            }
+        }
         let mut updated = self.store.clone();
         let removed = match item {
             Selection::Folder(id) => updated.remove_folder(id),
             Selection::Connection(id) => updated.remove_connection(id),
         };
+        self.finish_removal(updated, removed);
+    }
+
+    /// The answer to the question about removing a folder with content.
+    pub(crate) fn answer_removal(&mut self, answer: folder_removal::Message) {
+        let Some(question) = self.removal.take() else {
+            return;
+        };
+        if answer == folder_removal::Message::Confirmed {
+            let mut updated = self.store.clone();
+            let removed = updated.remove_folder_tree(&question.folder_id);
+            self.finish_removal(updated, removed);
+        }
+    }
+
+    fn finish_removal(&mut self, updated: Store, removed: remotething_core::Result<()>) {
         match removed {
             Ok(()) => {
                 if self.commit(updated) {

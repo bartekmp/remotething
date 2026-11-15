@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-15
+
+- Removing a folder with content now asks first and removes everything inside it.
+- The properties panel no longer covers the message bar.
+
 ## 0.8.1 - 2026-11-15
 
 - PuTTY import now brings over local port forwards.

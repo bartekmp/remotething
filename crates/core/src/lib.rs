@@ -12,6 +12,7 @@ mod inherit;
 mod model;
 mod putty;
 mod quick;
+mod remove;
 mod validate;
 
 pub use error::Error;

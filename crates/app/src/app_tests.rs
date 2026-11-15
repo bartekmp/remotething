@@ -168,7 +168,7 @@ fn deleting_a_connection_removes_it_and_clears_the_panel() {
 }
 
 #[test]
-fn a_folder_with_content_is_not_deleted() {
+fn removing_a_folder_with_content_asks_first() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
     tree(
@@ -178,8 +178,47 @@ fn a_folder_with_content_is_not_deleted() {
 
     properties(&mut state, properties::Message::DeletePressed);
 
+    assert!(state.removal.is_some());
     assert_eq!(on_disk(&state).folders.len(), 1);
-    assert!(state.error.as_deref().unwrap().contains("not empty"));
+}
+
+#[test]
+fn confirming_removes_the_folder_and_what_is_inside() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::FolderSelected("prod".to_string()),
+    );
+    properties(&mut state, properties::Message::DeletePressed);
+
+    let _ = update(
+        &mut state,
+        Message::Removal(folder_removal::Message::Confirmed),
+    );
+
+    assert!(on_disk(&state).folders.is_empty());
+    assert!(on_disk(&state).connections.is_empty());
+    assert!(state.removal.is_none());
+}
+
+#[test]
+fn declining_keeps_the_folder() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::FolderSelected("prod".to_string()),
+    );
+    properties(&mut state, properties::Message::DeletePressed);
+
+    let _ = update(
+        &mut state,
+        Message::Removal(folder_removal::Message::Cancelled),
+    );
+
+    assert_eq!(on_disk(&state).folders.len(), 1);
+    assert!(state.removal.is_none());
 }
 
 #[test]

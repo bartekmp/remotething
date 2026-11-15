@@ -7,6 +7,7 @@ use iced::{Element, Length, Point};
 
 use crate::app::{Centre, Message, State};
 use crate::credentials;
+use crate::folder_removal;
 use crate::i18n::fl;
 use crate::icons::{self, Icon};
 use crate::menu;
@@ -19,6 +20,8 @@ use crate::theme as look;
 use crate::tree;
 use crate::vault;
 
+/// The room the message bar takes above the panels: one line of text and its padding.
+const BANNER_HEIGHT: f32 = 44.0;
 const TREE_WIDTH: f32 = 280.0;
 const PROPERTIES_WIDTH: f32 = 320.0;
 const COLLAPSE_ICON_SIZE: f32 = 18.0;
@@ -88,6 +91,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
         (None, Some(notice)) => Some(text(notice.as_str())),
         (None, None) => None,
     };
+    let has_message = message.is_some();
     let content = match message {
         Some(message) => {
             let banner = container(message)
@@ -100,7 +104,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
     };
     let mut layers = stack![container(content).padding(look::GAP)];
     if state.properties_open {
-        layers = layers.push(properties_panel(state));
+        layers = layers.push(properties_panel(state, has_message));
     }
     if let Some(label) = carried_label(state) {
         layers = layers.push(label);
@@ -108,11 +112,14 @@ pub fn view(state: &State) -> Element<'_, Message> {
     if let Some(menu) = &state.menu {
         layers = layers.push(menu::view(menu, &state.store, state.window).map(Message::Menu));
     }
+    if let Some(question) = &state.removal {
+        layers = layers.push(folder_removal::view(question).map(Message::Removal));
+    }
     layers.into()
 }
 
 /// The properties of the selected item, floating over the right of the centre panel.
-fn properties_panel(state: &State) -> Element<'_, Message> {
+fn properties_panel(state: &State, below_banner: bool) -> Element<'_, Message> {
     let header = row![
         text(fl!("properties-title"))
             .size(look::TEXT_TITLE)
@@ -128,10 +135,19 @@ fn properties_panel(state: &State) -> Element<'_, Message> {
         .padding(look::PANEL_PADDING)
         .style(look::floating);
     // Clicks on the panel must not reach the session underneath.
+    // The message bar sits at the top; the panel starts below it.
+    let top = if below_banner {
+        look::GAP * 2.0 + BANNER_HEIGHT
+    } else {
+        look::GAP * 2.0
+    };
     container(opaque(panel))
         .align_right(Length::Fill)
         .height(Length::Fill)
-        .padding(look::GAP * 2.0)
+        .padding(iced::Padding {
+            top,
+            ..iced::Padding::new(look::GAP * 2.0)
+        })
         .into()
 }
 
