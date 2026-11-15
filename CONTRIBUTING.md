@@ -56,6 +56,26 @@ cp assets/logo/remotething.svg docs/theme/favicon.svg
 cp assets/logo/remotething.svg docs/src/logo.svg
 ```
 
+## Against a real Windows host
+
+Some RDP tests need a Windows machine with Remote Desktop switched on. They are ignored unless the host is given, and the password stays in the environment, never in a file:
+
+```sh
+RT_RDP_HOST=192.168.0.35 RT_RDP_USER=test RT_RDP_PASSWORD=... \
+  cargo test -p remotething-rdp --test windows_host -- --ignored
+```
+
+Run them one at a time (`--test-threads=1`, or name one test): a second connection of the same user takes the session over from the first.
+
+Before a release, run the soak test for an hour. It moves the pointer every 5 seconds, resizes the desktop every minute and fails if the session drops or memory grows by more than 150 MB:
+
+```sh
+RT_RDP_SOAK_MINUTES=60 RT_RDP_HOST=... RT_RDP_USER=... RT_RDP_PASSWORD=... \
+  cargo test --release -p remotething-rdp --test windows_host -- --ignored --nocapture a_long_session
+```
+
+A nightly run on Jenkins needs the three variables as credentials bound to the job.
+
 ## Rules
 
 1. One obvious place for each thing: flat modules, no framework layers.

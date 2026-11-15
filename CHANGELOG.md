@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.29.1 - 2026-11-15
+
+- Remote Desktop: a connection that the server drops half way through, as happens right after closing the previous session, is retried once.
+
 ## 0.29.0 - 2026-11-15
 
 - Remote Desktop: pictures are shared between your clipboard and the remote one, as text already was.

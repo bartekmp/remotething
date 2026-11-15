@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::desktop_cursor::Look;
-use crate::desktop_open::{Failure, Opened};
+use crate::desktop_open::{self, Failure, Opened};
 use crate::desktop_size;
 use crate::display;
 use crate::i18n::fl;
@@ -249,20 +249,7 @@ impl State {
         };
         let known = context.known_hosts.clone();
         self.stage = Stage::Connecting;
-        Task::perform(
-            async move {
-                // Connecting blocks until the desktop is up.
-                let opened =
-                    tokio::task::spawn_blocking(move || remotething_rdp::connect(target, &known))
-                        .await;
-                match opened {
-                    Ok(Ok(session)) => Ok(Opened::new(session)),
-                    Ok(Err(error)) => Err(Failure::from(error)),
-                    Err(error) => Err(Failure::Other(error.to_string())),
-                }
-            },
-            Message::Opened,
-        )
+        Task::perform(desktop_open::open(target, known), Message::Opened)
     }
 
     fn go_live(&mut self, opened: Opened) -> Task<Message> {

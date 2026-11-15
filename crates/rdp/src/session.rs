@@ -27,6 +27,7 @@ const QUEUE: usize = 4;
 const INPUT_QUEUE: usize = 256;
 
 /// Where to connect and who to sign in as.
+#[derive(Clone)]
 pub struct Target {
     /// The host name or address.
     pub host: String,
