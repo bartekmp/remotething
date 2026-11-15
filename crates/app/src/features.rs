@@ -14,6 +14,7 @@ use crate::preferences::{self, Features, Preferences};
 struct Switches {
     features: Features,
     recordings: PathBuf,
+    screenshots: PathBuf,
 }
 
 thread_local! {
@@ -26,8 +27,19 @@ pub(crate) fn apply(preferences: &Preferences, connections_file: &Path) {
         *switches.borrow_mut() = Switches {
             features: preferences.features,
             recordings: preferences::recordings_beside(connections_file),
+            screenshots: preferences::screenshots_beside(connections_file),
         };
     });
+}
+
+/// Whether screenshots can be taken.
+pub(crate) fn screenshots() -> bool {
+    SWITCHES.with(|switches| switches.borrow().features.screenshots)
+}
+
+/// The folder screenshots are written to.
+pub(crate) fn screenshots_folder() -> PathBuf {
+    SWITCHES.with(|switches| switches.borrow().screenshots.clone())
 }
 
 /// Whether SSH terminals can be recorded.

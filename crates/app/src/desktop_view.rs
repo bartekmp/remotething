@@ -7,8 +7,10 @@ use remotething_rdp::Button;
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
 use crate::desktop_cursor;
+use crate::features;
 use crate::i18n::fl;
 use crate::meter;
+use crate::note::Note;
 use crate::picture;
 use crate::quality_choice;
 use crate::status_bar::{self, Bar};
@@ -131,13 +133,17 @@ fn with_status_bar<'a>(
     host: &str,
     quality: remotething_core::Quality,
 ) -> Element<'a, Message> {
+    let mut actions = vec![(fl!("desktop-ctrl-alt-del"), Message::CtrlAltDelPressed)];
+    if features::screenshots() {
+        actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
+    }
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
         recording: None,
         details: details(live, host, quality),
         details_open: live.details_open,
-        actions: vec![(fl!("desktop-ctrl-alt-del"), Message::CtrlAltDelPressed)],
+        actions,
     };
     // The desktop follows the room it gets: its size is reported as the tab changes.
     let room = sensor(desktop(live))
@@ -147,6 +153,9 @@ fn with_status_bar<'a>(
 }
 
 fn live_rate(live: &Live) -> String {
+    if let Some(note) = live.note.as_ref().and_then(Note::current) {
+        return note.to_string();
+    }
     match &live.meter.reading {
         Some(reading) => format!(
             "↓ {}/s · {} fps",

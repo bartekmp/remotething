@@ -16,12 +16,15 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::desktop_cursor::Look;
+use crate::features;
 use crate::i18n::fl;
 use crate::jump;
 use crate::keysym;
 use crate::meter::{Meter, Totals};
+use crate::note::Note;
 use crate::picture::Picture;
 use crate::quality_choice;
+use crate::screenshot;
 use crate::session::{Context, Sealed, SealedJumps};
 
 pub struct State {
@@ -69,6 +72,8 @@ pub(crate) struct Live {
     pub(crate) pointer: (u16, u16),
     pub(crate) cursor: Look,
     pub(crate) over: bool,
+    /// How the last screenshot went, for a few seconds.
+    pub(crate) note: Option<Note>,
     /// The keysym each held key sent, so its release lets go of the same one.
     held: HashMap<Physical, u32>,
 }
@@ -138,6 +143,8 @@ pub enum Message {
     /// The pointer came over the picture or left it.
     PointerOver(bool),
     DetailsToggled,
+    ScreenshotPressed,
+    ScreenshotSaved(Result<String, String>),
 }
 
 impl State {
@@ -357,6 +364,7 @@ impl Live {
             pointer: (0, 0),
             cursor: Look::default(),
             over: false,
+            note: None,
             held: HashMap::new(),
         }
     }
@@ -493,6 +501,27 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::PointerOver(over) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.over = over;
+            }
+            Task::none()
+        }
+        Message::ScreenshotPressed => {
+            let Stage::Connected(live) = &state.stage else {
+                return Task::none();
+            };
+            Task::perform(
+                screenshot::save_picture(
+                    features::screenshots_folder(),
+                    state.connection.name.clone(),
+                    live.picture.width,
+                    live.picture.height,
+                    live.picture.pixels(),
+                ),
+                Message::ScreenshotSaved,
+            )
+        }
+        Message::ScreenshotSaved(result) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.note = Some(screenshot::note_for(result));
             }
             Task::none()
         }

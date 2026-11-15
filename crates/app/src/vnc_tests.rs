@@ -421,3 +421,21 @@ fn an_unknown_key_on_the_way_is_asked_about_and_saved_for_that_server() {
         .check("bastion.example.net", 22, "ssh-ed25519 AAAATEST");
     assert_eq!(verdict, remotething_secrets::HostKeyVerdict::Trusted);
 }
+
+#[test]
+fn a_failed_screenshot_says_why() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test(info());
+
+    fixture.send(
+        &mut state,
+        Message::ScreenshotSaved(Err("disk full".to_string())),
+    );
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    let note = live.note.as_ref().and_then(Note::current).unwrap();
+    assert!(note.contains("disk full"), "{note}");
+}

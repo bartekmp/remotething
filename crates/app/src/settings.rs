@@ -39,6 +39,7 @@ pub enum Message {
     TabLayoutPicked(TabLayoutOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
+    ScreenshotsToggled(bool),
     ConsoleRecordingToggled(bool),
     KeystrokesToggled(bool),
     EveryRecordingToggled(bool),
@@ -101,6 +102,10 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::LanguagePicked(option) => {
             preferences.language = option.0;
+            Event::Changed
+        }
+        Message::ScreenshotsToggled(on) => {
+            preferences.features.screenshots = on;
             Event::Changed
         }
         Message::ConsoleRecordingToggled(on) => {
@@ -212,6 +217,9 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
         text(fl!("settings-features"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
+        checkbox(features.screenshots)
+            .label(fl!("settings-feature-screenshots"))
+            .on_toggle(Message::ScreenshotsToggled),
         checkbox(features.console_recording)
             .label(fl!("settings-feature-console"))
             .on_toggle(Message::ConsoleRecordingToggled),

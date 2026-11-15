@@ -284,3 +284,8 @@ settings-feature-console = Record SSH terminals
 settings-feature-keystrokes = Also record what I type (passwords are typed too)
 settings-feature-every = Record every SSH session from its start
 settings-features-note = Recordings are asciicast files in the recordings folder beside the connections file, and play with asciinema. A recording is always shown in the status strip while it runs.
+
+screenshot-button = Screenshot
+screenshot-saved = Saved { $name }
+screenshot-failed = Screenshot failed:
+settings-feature-screenshots = Take screenshots (a picture of a remote desktop, the text of a terminal)

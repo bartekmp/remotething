@@ -17,7 +17,9 @@ use crate::files_pane;
 use crate::forwards;
 use crate::i18n::fl;
 use crate::meter::{Meter, Totals};
+use crate::note::Note;
 use crate::paste;
+use crate::screenshot;
 use crate::search;
 use crate::session::{
     Context, Failure, INITIAL_SIZE, Message, Method, Sealed, SealedJumps, Stage, State,
@@ -47,7 +49,9 @@ pub(crate) struct Live {
     pub(crate) recording: Option<Recording>,
     /// Why recording stopped by itself, or could not start.
     pub(crate) recording_problem: Option<String>,
-    /// The name recordings of this terminal are given.
+    /// How the last screenshot went, for a few seconds.
+    pub(crate) note: Option<Note>,
+    /// The name recordings and screenshots of this terminal are given.
     name: String,
     /// Bytes of shell output received; input sent is counted in [`Live::send`].
     received: u64,
@@ -79,6 +83,7 @@ impl Live {
             meter: Meter::new(),
             recording: None,
             recording_problem: None,
+            note: None,
             name: name.to_string(),
             received: 0,
             sent: Cell::new(0),
@@ -289,6 +294,25 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             };
             live.sample();
             next_tick()
+        }
+        Message::ScreenshotPressed => {
+            let Stage::Connected(live) = &state.stage else {
+                return Task::none();
+            };
+            Task::perform(
+                screenshot::save_text(
+                    features::screenshots_folder(),
+                    live.name.clone(),
+                    live.screen.text(),
+                ),
+                Message::ScreenshotSaved,
+            )
+        }
+        Message::ScreenshotSaved(result) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.note = Some(screenshot::note_for(result));
+            }
+            Task::none()
         }
         Message::RecordPressed => {
             if let Stage::Connected(live) = &mut state.stage {

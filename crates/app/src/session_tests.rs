@@ -849,3 +849,24 @@ fn recording_follows_the_feature_switches_and_keeps_typing_only_when_asked() {
 
     crate::features::apply(&Preferences::default(), &connections);
 }
+
+#[test]
+fn a_saved_screenshot_is_announced_in_a_note() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+
+    fixture.send(
+        &mut state,
+        Message::ScreenshotSaved(Ok("web-20260101-000000.txt".to_string())),
+    );
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    let note = live
+        .note
+        .as_ref()
+        .and_then(crate::note::Note::current)
+        .unwrap();
+    assert!(note.contains("web-20260101-000000.txt"), "{note}");
+}

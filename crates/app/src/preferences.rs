@@ -25,6 +25,9 @@ pub struct Preferences {
 /// The optional features of the app. Each one that is off leaves no trace in the window.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Features {
+    /// Saving pictures of remote desktops and the screen of SSH terminals.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub screenshots: bool,
     /// Recording of SSH terminals, in the asciicast format.
     #[serde(default, skip_serializing_if = "is_false")]
     pub console_recording: bool,
@@ -74,6 +77,11 @@ pub fn path_beside(connections_file: &Path) -> PathBuf {
 /// Where recordings go: a folder beside the connections file.
 pub fn recordings_beside(connections_file: &Path) -> PathBuf {
     connections_file.with_file_name("recordings")
+}
+
+/// Where screenshots go: a folder beside the connections file.
+pub fn screenshots_beside(connections_file: &Path) -> PathBuf {
+    connections_file.with_file_name("screenshots")
 }
 
 /// A missing file means defaults. A broken one is an error, so it is not silently overwritten.
@@ -144,6 +152,7 @@ mod tests {
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
             features: Features {
+                screenshots: true,
                 console_recording: true,
                 record_keystrokes: false,
                 record_every_session: true,

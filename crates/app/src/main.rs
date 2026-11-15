@@ -4,6 +4,7 @@
 
 mod app;
 mod branding;
+mod capture_files;
 mod challenge;
 mod console_recording;
 mod credential_actions;
@@ -33,6 +34,7 @@ mod keysym;
 mod launcher;
 mod menu;
 mod meter;
+mod note;
 mod organise;
 mod paste;
 mod picture;
@@ -44,6 +46,7 @@ mod quality_choice;
 mod recent;
 mod rows;
 mod scancodes;
+mod screenshot;
 mod search;
 mod session;
 mod session_strip;

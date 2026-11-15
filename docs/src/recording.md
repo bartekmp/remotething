@@ -2,6 +2,18 @@
 
 Optional features that save what happens in a session. Each is off until you switch it on in **Settings**, under **Optional features**. A feature that is off adds no button, runs no code and writes no file.
 
+## Screenshots
+
+1. In **Settings**, tick **Take screenshots**.
+2. In an RDP or VNC tab press **Screenshot** in the strip under the desktop; in an SSH tab, the same button.
+
+| Tab | What is saved |
+| --- | --- |
+| RDP, VNC | A PNG of the whole remote desktop, at its real size |
+| SSH | A text file with the lines on the terminal's screen. Scrolled-back history is not included |
+
+Files go to the `screenshots` folder beside the connections file, named after the connection and the time in UTC, for example `win11-20261115-231500.png`. The strip shows the file name for a few seconds. As with recordings, the folder and files are readable by you alone on Linux. The app cannot tell where a password field is, so a screenshot shows whatever was on screen.
+
 ## Recording an SSH terminal
 
 1. In **Settings**, tick **Record SSH terminals**.
@@ -33,4 +45,4 @@ If writing fails, for example because the disk is full, the recording stops and 
 
 ## Coming next
 
-Screenshots of remote desktops and recording of remote desktops are planned as further features in the same place.
+Recording of remote desktops is planned as a further feature in the same place.

@@ -492,3 +492,21 @@ fn text_in_between_lets_the_same_picture_be_copied_again() {
     }
     assert_eq!(sent.len(), 3);
 }
+
+#[test]
+fn a_saved_screenshot_is_announced_in_a_note() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+
+    fixture.send(
+        &mut state,
+        Message::ScreenshotSaved(Ok("win-20260101-000000.png".to_string())),
+    );
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    let note = live.note.as_ref().and_then(Note::current).unwrap();
+    assert!(note.contains("win-20260101-000000.png"), "{note}");
+}

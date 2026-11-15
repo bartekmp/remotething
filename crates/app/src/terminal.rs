@@ -298,7 +298,6 @@ impl Screen {
     }
 
     /// The visible screen as plain text, one line per row.
-    #[cfg(test)]
     pub fn text(&self) -> String {
         let last_line = self.term.screen_lines() as i32 - 1;
         let last_column = self.term.columns() - 1;

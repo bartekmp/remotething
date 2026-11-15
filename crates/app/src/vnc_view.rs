@@ -7,9 +7,11 @@ use remotething_vnc::Button;
 use crate::credentials::Hidden;
 use crate::desktop_cursor;
 use crate::desktop_view::{remote_position, wheel_units};
+use crate::features;
 use crate::host_key_view;
 use crate::i18n::fl;
 use crate::meter;
+use crate::note::Note;
 use crate::picture;
 use crate::quality_choice;
 use crate::status_bar::{self, Bar};
@@ -94,18 +96,25 @@ fn with_status_bar<'a>(
     via: Option<String>,
     quality: remotething_core::Quality,
 ) -> Element<'a, Message> {
+    let mut actions = Vec::new();
+    if features::screenshots() {
+        actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
+    }
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
         recording: None,
         details: details(live, host, via, quality),
         details_open: live.details_open,
-        actions: Vec::new(),
+        actions,
     };
     status_bar::view(desktop(live), bar, Message::DetailsToggled)
 }
 
 fn live_rate(live: &Live) -> String {
+    if let Some(note) = live.note.as_ref().and_then(Note::current) {
+        return note.to_string();
+    }
     match &live.meter.reading {
         Some(reading) => format!(
             "↓ {}/s  ↑ {}/s · {} fps",

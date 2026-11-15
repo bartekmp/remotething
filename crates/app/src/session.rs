@@ -177,6 +177,10 @@ pub enum Message {
     DetailsToggled,
     /// The Record button was pressed.
     RecordPressed,
+    /// The Screenshot button was pressed.
+    ScreenshotPressed,
+    /// A screenshot was saved, or could not be.
+    ScreenshotSaved(Result<String, String>),
     UsernameChanged(String),
     SecretChanged(Hidden),
     Submitted,

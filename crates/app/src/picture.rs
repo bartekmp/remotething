@@ -40,6 +40,11 @@ impl Picture {
         }
     }
 
+    /// The pixels, shared: cloning the handle is cheap.
+    pub(crate) fn pixels(&self) -> Arc<Vec<u8>> {
+        Arc::clone(&self.rgba)
+    }
+
     /// One black pixel, shown until the first real picture arrives.
     pub(crate) fn black() -> Self {
         Self::new(1, 1, vec![0, 0, 0, 255])

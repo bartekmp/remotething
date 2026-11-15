@@ -4,6 +4,7 @@ use crate::features;
 use crate::i18n::fl;
 use crate::jump;
 use crate::meter;
+use crate::note::Note;
 use crate::session::{Message, Method, State};
 use crate::session_update::Live;
 use crate::status_bar::Bar;
@@ -28,7 +29,13 @@ pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
         .recording
         .as_ref()
         .map(|recording| meter::clock(recording.elapsed()));
-    let live_text = live.recording_problem.clone().unwrap_or(rate);
+    let live_text = live
+        .note
+        .as_ref()
+        .and_then(Note::current)
+        .map(str::to_string)
+        .or_else(|| live.recording_problem.clone())
+        .unwrap_or(rate);
     let mut actions = Vec::new();
     if features::console_recording() {
         let label = if live.recording.is_some() {
@@ -37,6 +44,9 @@ pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
             fl!("recording-start")
         };
         actions.push((label, Message::RecordPressed));
+    }
+    if features::screenshots() {
+        actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
     }
     Bar {
         summary,

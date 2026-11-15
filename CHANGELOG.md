@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.31.0 - 2026-11-15
+
+- Screenshots, an optional feature in Settings: a PNG of an RDP or VNC desktop, or the text on an SSH terminal's screen.
+
 ## 0.30.1 - 2026-11-15
 
 - Recordings are readable by their owner alone on Linux.

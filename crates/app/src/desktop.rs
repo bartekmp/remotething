@@ -15,12 +15,15 @@ use crate::desktop_cursor::Look;
 use crate::desktop_open::{self, Failure, Opened};
 use crate::desktop_size;
 use crate::display;
+use crate::features;
 use crate::i18n::fl;
 use crate::image_clipboard;
 use crate::meter::{Meter, Totals};
+use crate::note::Note;
 use crate::picture::Picture;
 use crate::quality_choice;
 use crate::scancodes::Scancode;
+use crate::screenshot;
 use crate::session::{Context, Sealed};
 
 /// The size of the remote desktop until resizing is supported.
@@ -84,6 +87,8 @@ pub(crate) struct Live {
     /// How the pointer looks over the desktop, and whether it is over it.
     pub(crate) cursor: Look,
     pub(crate) over: bool,
+    /// How the last screenshot went, for a few seconds.
+    pub(crate) note: Option<Note>,
 }
 
 #[derive(Debug, Clone)]
@@ -109,6 +114,10 @@ pub enum Message {
     PointerOver(bool),
     /// The (i) button was pressed.
     DetailsToggled,
+    /// The Screenshot button was pressed.
+    ScreenshotPressed,
+    /// A screenshot was saved, or could not be.
+    ScreenshotSaved(Result<String, String>),
     /// The Ctrl+Alt+Del button was pressed.
     CtrlAltDelPressed,
     /// The keys of Ctrl+Alt+Del were held long enough.
@@ -169,6 +178,7 @@ impl State {
             pointer: (0, 0),
             cursor: Look::default(),
             over: false,
+            note: None,
         }));
         typed
     }
@@ -276,6 +286,7 @@ impl State {
             pointer: (0, 0),
             cursor: Look::default(),
             over: false,
+            note: None,
         }));
 
         // The stream ends when the session thread stops, for example once this tab is closed.
@@ -461,6 +472,27 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::PointerOver(over) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.over = over;
+            }
+            Task::none()
+        }
+        Message::ScreenshotPressed => {
+            let Stage::Connected(live) = &state.stage else {
+                return Task::none();
+            };
+            Task::perform(
+                screenshot::save_picture(
+                    features::screenshots_folder(),
+                    state.connection.name.clone(),
+                    live.picture.width,
+                    live.picture.height,
+                    live.picture.pixels(),
+                ),
+                Message::ScreenshotSaved,
+            )
+        }
+        Message::ScreenshotSaved(result) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.note = Some(screenshot::note_for(result));
             }
             Task::none()
         }
