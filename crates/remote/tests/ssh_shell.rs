@@ -842,3 +842,49 @@ async fn dismissing_the_questions_cancels_the_sign_in() {
 
     assert!(matches!(result, Err(Error::SignInCancelled)));
 }
+
+async fn try_key_file(name: &str, passphrase: Option<&str>) -> Result<Shell, Error> {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    let auth = Auth::KeyFile {
+        username: USER.to_string(),
+        path: fixture(name),
+        passphrase: passphrase.map(|text| Secret::new(text.to_string())),
+    };
+    open_shell(&endpoint, &auth, known, SIZE).await
+}
+
+#[tokio::test]
+async fn a_putty_key_file_signs_in() {
+    let result = try_key_file("client_key.ppk", None).await;
+    assert!(result.is_ok(), "{:?}", result.err());
+}
+
+#[tokio::test]
+async fn an_encrypted_putty_key_asks_for_its_passphrase() {
+    let result = try_key_file("locked_key.ppk", None).await;
+
+    assert!(
+        matches!(result, Err(Error::KeyLocked(_))),
+        "{:?}",
+        result.err()
+    );
+}
+
+#[tokio::test]
+async fn an_encrypted_putty_key_signs_in_with_its_passphrase() {
+    let result = try_key_file("locked_key.ppk", Some("open sesame")).await;
+    assert!(result.is_ok(), "{:?}", result.err());
+}
+
+#[tokio::test]
+async fn a_wrong_putty_passphrase_is_not_a_request_for_one() {
+    let result = try_key_file("locked_key.ppk", Some("wrong")).await;
+
+    assert!(
+        matches!(result, Err(Error::KeyFile { .. })),
+        "{:?}",
+        result.err()
+    );
+}

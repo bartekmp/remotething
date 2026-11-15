@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.8.0 - 2026-11-15
+
+- PuTTY `.ppk` key files (versions 2 and 3, encrypted or not) work as private key credentials, including ones imported from PuTTY.
+
 ## 0.7.0 - 2026-11-15
 
 - Two-factor sign-in: a new "Keyboard-interactive" credential shows the server's questions (password, one-time code) in the tab.

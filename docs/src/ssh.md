@@ -12,7 +12,7 @@ What the app asks for depends on the connection's credential:
 | Password | The stored password is used; if none is stored, the tab asks for it |
 | ssh-agent | The keys of your running ssh-agent are tried in turn; nothing is typed or stored |
 | Keyboard-interactive | The server's questions (password, one-time code) are shown in the tab on every connect; nothing is stored |
-| Private key | The key file is used; if it is encrypted and no passphrase is stored, the tab asks for it |
+| Private key | The key file (OpenSSH, PEM or PuTTY `.ppk`) is used; if it is encrypted and no passphrase is stored, the tab asks for it |
 | Ask every time | The tab asks for the password on every connect |
 
 **ssh-agent** works with `ssh-agent` or any compatible agent (GNOME Keyring, KeePassXC, 1Password) through `SSH_AUTH_SOCK` on Linux. On Windows it uses the OpenSSH agent service, then Pageant. The credential needs a user name; the agent signs, so the private keys never reach this app. Add keys with `ssh-add`.
@@ -85,7 +85,6 @@ A connected session has a **Browse files** button above the terminal. It opens a
 
 | Feature | State |
 | --- | --- |
-| `.ppk` keys | Planned |
 | Search, selecting by word or line with a double or triple click | Planned |
 | Remote forwards (`-R`) and dynamic forwards (`-D`) | Planned |
 | Files: progress and a transfer queue, rename, delete, new folder, preview, the wide view with permissions and dates, drag and drop | Planned |

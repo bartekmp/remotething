@@ -210,6 +210,10 @@ async fn sign_in(session: &mut client::Handle<Handler>, auth: &Auth) -> Result<(
             let key =
                 russh::keys::load_secret_key(path, passphrase).map_err(|error| match error {
                     russh::keys::Error::KeyIsEncrypted => Error::KeyLocked(path.clone()),
+                    // The library does not say "needs a passphrase" for PuTTY keys.
+                    _ if passphrase.is_none() && is_encrypted_putty_key(path) => {
+                        Error::KeyLocked(path.clone())
+                    }
                     other => Error::KeyFile {
                         path: path.clone(),
                         reason: other.to_string(),
@@ -360,4 +364,15 @@ async fn ask(
         .await
         .map_err(|_| Error::SignInCancelled)?;
     answers.await.map_err(|_| Error::SignInCancelled)
+}
+
+/// Whether the file is a PuTTY key (`.ppk`) that is encrypted.
+fn is_encrypted_putty_key(path: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    text.starts_with("PuTTY-User-Key-File-")
+        && text
+            .lines()
+            .any(|line| line.starts_with("Encryption:") && !line.contains("none"))
 }

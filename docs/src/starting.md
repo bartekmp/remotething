@@ -129,7 +129,7 @@ In **Settings**, press **Import from PuTTY**. The screen lists the sessions it f
 
 - Sessions go into a new folder called **PuTTY**. "Default Settings" becomes that folder's default port and user name.
 - Host, port and user name are carried over. Sessions with the same user and key share one credential.
-- Not imported, and said so on the screen: sessions that are not SSH (telnet, serial, raw, rlogin), proxy settings, port forwards, and colours. A `.ppk` key file is kept as the credential's key file, but this app cannot use `.ppk` files yet; convert it with PuTTYgen to an OpenSSH key.
+- Not imported, and said so on the screen: sessions that are not SSH (telnet, serial, raw, rlogin), proxy settings, port forwards, and colours. A `.ppk` key file is kept as the credential's key file and used as it is.
 - Passwords are never imported; PuTTY does not store them.
 - PuTTY's data is only read, never changed.
 

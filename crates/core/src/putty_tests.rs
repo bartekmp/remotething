@@ -114,11 +114,10 @@ fn what_cannot_be_carried_over_is_noted_not_lost_silently() {
     let mut web = session("Web", "web.example.net");
     web.proxy_method = Some(3);
     web.forwardings = Some("L8080=localhost:80".to_string());
-    web.key_file = Some("/keys/id.PPK".to_string());
 
     let plan = plan(&[web]);
 
-    assert_eq!(plan.connections[0].notes.len(), 3);
+    assert_eq!(plan.connections[0].notes.len(), 2);
 }
 
 #[test]

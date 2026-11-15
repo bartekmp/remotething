@@ -229,13 +229,6 @@ fn planned(session: &PuttySession) -> std::result::Result<PlannedConnection, Str
     if session.forwardings.is_some() {
         notes.push("its port forwards were not imported".to_string());
     }
-    if session
-        .key_file
-        .as_deref()
-        .is_some_and(|file| file.to_lowercase().ends_with(".ppk"))
-    {
-        notes.push("its key is a PuTTY .ppk file, which this app cannot use yet".to_string());
-    }
     Ok(PlannedConnection {
         name: session.name.clone(),
         host,
