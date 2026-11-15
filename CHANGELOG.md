@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.8.1 - 2026-11-15
+
+- PuTTY import now brings over local port forwards.
+
 ## 0.8.0 - 2026-11-15
 
 - PuTTY `.ppk` key files (versions 2 and 3, encrypted or not) work as private key credentials, including ones imported from PuTTY.

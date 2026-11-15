@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use crate::forward::Forward;
 use crate::model::{Connection, Credential, CredentialKind, Folder, Protocol, Settings, Store};
 use crate::{Error, Result};
 
@@ -47,6 +48,8 @@ pub struct PlannedConnection {
     pub username: Option<String>,
     /// The private key file, when the session names one.
     pub key_file: Option<String>,
+    /// The local port forwards of the session.
+    pub forwards: Vec<Forward>,
     /// What could not be carried over, in words for the user.
     pub notes: Vec<String>,
 }
@@ -226,8 +229,14 @@ fn planned(session: &PuttySession) -> std::result::Result<PlannedConnection, Str
     if session.proxy_method.is_some_and(|method| method != 0) {
         notes.push("its proxy settings were not imported".to_string());
     }
-    if session.forwardings.is_some() {
-        notes.push("its port forwards were not imported".to_string());
+    let (forwards, left_out) = session
+        .forwardings
+        .as_deref()
+        .map_or((Vec::new(), 0), parse_forwardings);
+    if left_out > 0 {
+        notes.push(format!(
+            "{left_out} remote or dynamic port forward(s) were not imported"
+        ));
     }
     Ok(PlannedConnection {
         name: session.name.clone(),
@@ -235,8 +244,31 @@ fn planned(session: &PuttySession) -> std::result::Result<PlannedConnection, Str
         port: session.port.filter(|port| *port != 0),
         username: session.username.clone(),
         key_file: session.key_file.clone(),
+        forwards,
         notes,
     })
+}
+
+/// Reads PuTTY's `L8080=host:80,R9000=host:9000,D1080`. Returns the local
+/// forwards and how many others (remote, dynamic, unreadable) were left out.
+fn parse_forwardings(text: &str) -> (Vec<Forward>, usize) {
+    let mut forwards = Vec::new();
+    let mut left_out = 0;
+    for entry in text.split(',').filter(|entry| !entry.trim().is_empty()) {
+        match local_forward(entry.trim()) {
+            Some(forward) => forwards.push(forward),
+            None => left_out += 1,
+        }
+    }
+    (forwards, left_out)
+}
+
+/// `L8080=host:80`, optionally with a bind address before the port.
+fn local_forward(entry: &str) -> Option<Forward> {
+    let (source, target) = entry.strip_prefix('L')?.split_once('=')?;
+    // The bind address, if any, comes before the last colon.
+    let local_port = source.rsplit(':').next()?;
+    Forward::parse(&format!("{local_port}:{target}")).ok()
 }
 
 impl Store {
@@ -300,6 +332,7 @@ impl Store {
                 settings: Settings {
                     port: connection.port,
                     credential,
+                    forwards: connection.forwards.clone(),
                     ..Settings::default()
                 },
             });

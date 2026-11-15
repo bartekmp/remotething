@@ -113,11 +113,12 @@ fn default_settings_become_folder_defaults_not_a_connection() {
 fn what_cannot_be_carried_over_is_noted_not_lost_silently() {
     let mut web = session("Web", "web.example.net");
     web.proxy_method = Some(3);
-    web.forwardings = Some("L8080=localhost:80".to_string());
+    web.forwardings = Some("L8080=localhost:80,R9000=localhost:9000,D1080".to_string());
 
     let plan = plan(&[web]);
 
     assert_eq!(plan.connections[0].notes.len(), 2);
+    assert!(plan.connections[0].notes[1].contains('2'));
 }
 
 #[test]
@@ -183,4 +184,32 @@ fn choosing_nothing_adds_nothing_not_even_a_folder() {
     assert_eq!(store.import_putty(&plan, &[]).unwrap(), 0);
 
     assert!(store.folders.is_empty());
+}
+
+#[test]
+fn local_forwards_are_imported_with_or_without_a_bind_address() {
+    let mut web = session("Web", "web.example.net");
+    web.forwardings = Some("L8080=db:5432,L127.0.0.1:9000=cache:6379".to_string());
+
+    let plan = plan(&[web]);
+
+    let forwards: Vec<String> = plan.connections[0]
+        .forwards
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    assert_eq!(forwards, ["8080:db:5432", "9000:cache:6379"]);
+    assert!(plan.connections[0].notes.is_empty());
+}
+
+#[test]
+fn imported_forwards_end_up_on_the_connection() {
+    let mut web = session("Web", "web.example.net");
+    web.forwardings = Some("L8080=db:5432".to_string());
+    let plan = plan(&[web]);
+    let mut store = Store::default();
+
+    store.import_putty(&plan, &["Web".to_string()]).unwrap();
+
+    assert_eq!(store.connections[0].settings.forwards.len(), 1);
 }
