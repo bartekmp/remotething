@@ -61,6 +61,14 @@ pub fn start(connection: Connection, wanted: Vec<Forward>) -> Task<Message> {
 }
 
 impl Active {
+    /// The forwards that are open, as `local:host:port` texts.
+    pub fn open_forwards(&self) -> Vec<String> {
+        self.running
+            .iter()
+            .map(|(forward, _)| forward.to_string())
+            .collect()
+    }
+
     /// The lines shown above the terminal, or `None` when there is nothing to say.
     pub fn view(&self) -> Option<Element<'_, Message>> {
         if self.running.is_empty() && self.failed.is_empty() {

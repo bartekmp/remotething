@@ -248,3 +248,18 @@ details-frames = Frames per second
 details-uptime = Connected for
 
 desktop-ctrl-alt-del = Ctrl+Alt+Del
+
+details-user = User name
+details-method = Sign-in
+details-method-password = Password
+details-method-key = Key file
+details-method-agent = ssh-agent
+details-method-interactive = Keyboard-interactive
+details-server = Server software
+details-host-key = Host key type
+details-fingerprint = Host key fingerprint
+details-terminal = Terminal size
+details-forwards = Port forwards
+details-received = Received
+details-sent = Sent
+details-via = Through { $hosts }

@@ -65,6 +65,23 @@ If a trusted host later shows a different key, the tab warns you before anything
 - A closed session shows why it ended and a **Reconnect** button. Closing the tab closes the connection.
 - A keepalive is sent every 30 seconds so idle sessions are not dropped by firewalls.
 
+## Connection details
+
+A strip under the terminal shows `user@host:port` and the current download and upload rates. The **(i)** button at its right end opens a panel with:
+
+| Line | Meaning |
+| --- | --- |
+| Address | The IP address and port connected to, or the jump hosts the connection goes through |
+| User name, Sign-in | The account, and how you signed in: password, key file, ssh-agent or keyboard-interactive |
+| Server software | How the server calls itself, for example `SSH-2.0-OpenSSH_9.6` |
+| Host key type, fingerprint | The key the server proved itself with, as you trusted it |
+| Terminal size | Columns and lines |
+| Port forwards | The forwards that are open, when there are any |
+| Received, Sent | Bytes of shell data so far, with the current rate. Files and forwards are not counted |
+| Connected for | Time since the shell opened |
+
+Rates update once per second. The same strip is used by [Remote Desktop](rdp.md).
+
 ## Files
 
 A connected session has a **Browse files** button above the terminal. It opens a file pane on the right, beside the terminal, using the same SSH connection (SFTP), so there is no second sign-in.

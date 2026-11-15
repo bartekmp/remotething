@@ -6,20 +6,38 @@ use remotething_secrets::{HostKeyVerdict, KnownHosts};
 use russh::client;
 use russh::keys::{HashAlg, PublicKeyOrCertificate};
 
-use super::{Endpoint, Error, HostKey};
+use super::{Details, Endpoint, Error, HostKey};
 
 /// Where the handler leaves the reason for refusing a key, for [`super::open_shell`] to report.
 pub(super) type Refusal = Arc<Mutex<Option<Error>>>;
+
+/// Where the handler leaves what it learns about the connection.
+pub(super) type Learned = Arc<Mutex<Details>>;
 
 /// The russh callbacks of one connection attempt.
 pub(super) struct Handler {
     pub(super) endpoint: Endpoint,
     pub(super) known: KnownHosts,
     pub(super) refusal: Refusal,
+    pub(super) details: Learned,
 }
 
 impl client::Handler for Handler {
     type Error = russh::Error;
+
+    /// Our channel was opened: the server has identified itself by now.
+    async fn channel_open_confirmation(
+        &mut self,
+        _id: russh::ChannelId,
+        _max_packet_size: u32,
+        _window_size: u32,
+        session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        if let Ok(mut details) = self.details.lock() {
+            details.server = String::from_utf8_lossy(session.remote_sshid()).into_owned();
+        }
+        Ok(())
+    }
 
     /// Runs before anything secret is sent. Only an accepted key lets the handshake go on.
     async fn check_server_key(
@@ -31,13 +49,28 @@ impl client::Handler for Handler {
             Err(error) => Err(error),
         };
         match verdict {
-            Ok(()) => Ok(true),
+            Ok(()) => {
+                self.remember_key(offered);
+                Ok(true)
+            }
             Err(error) => {
                 if let Ok(mut refusal) = self.refusal.lock() {
                     *refusal = Some(error);
                 }
                 Ok(false)
             }
+        }
+    }
+}
+
+impl Handler {
+    fn remember_key(&self, offered: &PublicKeyOrCertificate) {
+        let PublicKeyOrCertificate::PublicKey { key, .. } = offered else {
+            return;
+        };
+        if let Ok(mut details) = self.details.lock() {
+            details.host_key_algorithm = key.algorithm().to_string();
+            details.fingerprint = key.fingerprint(HashAlg::Sha256).to_string();
         }
     }
 }

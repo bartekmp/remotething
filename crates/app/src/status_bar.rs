@@ -8,7 +8,7 @@ use crate::icons;
 use crate::theme;
 
 const HEIGHT: f32 = 30.0;
-const PANEL_WIDTH: f32 = 320.0;
+const PANEL_WIDTH: f32 = 360.0;
 
 /// What the bar shows.
 pub(crate) struct Bar<Message> {
@@ -71,8 +71,10 @@ fn details<'a, Message: 'a>(lines: Vec<(String, String)>) -> Element<'a, Message
                 .size(theme::TEXT_SMALL)
                 .style(theme::secondary_text)
                 .width(Length::FillPortion(2)),
+            // Long values such as fingerprints have no spaces to break at.
             text(value)
                 .size(theme::TEXT_SMALL)
+                .wrapping(text::Wrapping::Glyph)
                 .width(Length::FillPortion(3)),
         ]
         .spacing(8)

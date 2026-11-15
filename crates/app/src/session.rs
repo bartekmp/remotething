@@ -169,6 +169,10 @@ pub enum Message {
     /// The stored secrets of the jump hosts were read, or one is missing.
     JumpsLoaded(Result<SealedJumps, String>),
     SecretLoaded(Result<Sealed, String>),
+    /// A second has passed: time to read the traffic.
+    Tick,
+    /// The (i) button was pressed.
+    DetailsToggled,
     UsernameChanged(String),
     SecretChanged(Hidden),
     Submitted,
@@ -395,7 +399,11 @@ impl State {
             Some((event, events))
         });
         let forwards = forwards::start(connection, self.connection.forwards.clone());
-        Task::batch([Task::run(events, Message::Shell), forwards])
+        Task::batch([
+            Task::run(events, Message::Shell),
+            forwards,
+            crate::session_update::next_tick(),
+        ])
     }
 
     /// A key press for the terminal. Ctrl+Shift+V pastes.

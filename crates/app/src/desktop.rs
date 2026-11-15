@@ -11,10 +11,10 @@ use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
-use crate::desktop_meter::Meter;
 use crate::desktop_open::{Failure, Opened};
 use crate::desktop_size;
 use crate::i18n::fl;
+use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
 use crate::scancodes::Scancode;
 use crate::session::{Context, Sealed};
@@ -357,7 +357,11 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         }
         Message::Stats(stats) => {
             if let Stage::Connected(live) = &mut state.stage {
-                live.meter.sample(stats);
+                live.meter.sample(Totals {
+                    received: stats.received,
+                    sent: 0,
+                    frames: stats.frames,
+                });
             }
             Task::none()
         }

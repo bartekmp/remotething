@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.19.0 - 2026-11-15
+
+- SSH: a status strip under the terminal with an (i) button that shows address, user, sign-in method, server software, host key, traffic and uptime.
+
 ## 0.18.0 - 2026-11-15
 
 - Remote Desktop: a Ctrl+Alt+Del button in the status strip.

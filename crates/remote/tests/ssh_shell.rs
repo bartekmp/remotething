@@ -324,6 +324,23 @@ async fn an_accepted_host_gives_a_shell_that_carries_bytes_both_ways() {
 }
 
 #[tokio::test]
+async fn an_open_connection_tells_where_it_goes_and_who_answered() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+
+    let shell = open_shell(&endpoint, &password(PASSWORD), known, SIZE)
+        .await
+        .unwrap();
+
+    let details = shell.connection.details();
+    assert_eq!(details.peer.map(|peer| peer.port()), Some(endpoint.port));
+    assert!(details.server.starts_with("SSH-2.0-"), "{}", details.server);
+    assert!(details.fingerprint.starts_with("SHA256:"));
+    assert!(!details.host_key_algorithm.is_empty());
+}
+
+#[tokio::test]
 async fn a_resize_reaches_the_server() {
     let endpoint = start_server().await;
     let directory = tempfile::tempdir().unwrap();

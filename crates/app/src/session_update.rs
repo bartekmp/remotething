@@ -1,9 +1,11 @@
 //! What each message does to an SSH session, and how a live terminal sends
 //! input and pastes.
 
+use std::cell::Cell;
+
 use iced::Task;
 use iced::widget::canvas::Cache;
-use remotething_remote::ssh::{Connection, ShellEvent, ShellInput};
+use remotething_remote::ssh::{Connection, Details, ShellEvent, ShellInput};
 use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
@@ -12,6 +14,7 @@ use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::forwards;
 use crate::i18n::fl;
+use crate::meter::{Meter, Totals};
 use crate::paste;
 use crate::search;
 use crate::session::{
@@ -34,6 +37,13 @@ pub(crate) struct Live {
     pub(crate) forwards: forwards::Active,
     /// The search bar, while it is open.
     pub(crate) search: Option<search::Search>,
+    /// What is known about the connection, for the details panel.
+    pub(crate) details: Details,
+    pub(crate) details_open: bool,
+    pub(crate) meter: Meter,
+    /// Bytes of shell output received; input sent is counted in [`Live::send`].
+    received: u64,
+    sent: Cell<u64>,
 }
 
 impl Live {
@@ -46,16 +56,36 @@ impl Live {
             cache: Cache::new(),
             input,
             pending_paste: None,
-            connection,
             files: None,
             forwards: forwards::Active::default(),
             search: None,
+            details: connection
+                .as_ref()
+                .map(Connection::details)
+                .unwrap_or_default(),
+            details_open: false,
+            meter: Meter::new(),
+            received: 0,
+            sent: Cell::new(0),
+            connection,
         }
+    }
+
+    /// Takes a reading of the traffic so far.
+    fn sample(&mut self) {
+        self.meter.sample(Totals {
+            received: self.received,
+            sent: self.sent.get(),
+            frames: 0,
+        });
     }
 
     /// Queues input for the shell. When the queue is full the input is dropped
     /// rather than freezing the window.
     pub(crate) fn send(&self, input: ShellInput) {
+        if let ShellInput::Data(bytes) = &input {
+            self.sent.set(self.sent.get() + bytes.len() as u64);
+        }
         let _ = self.input.try_send(input);
     }
 
@@ -177,6 +207,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::ReconnectPressed => state.begin(context),
         Message::Shell(ShellEvent::Output(bytes)) => {
             if let Stage::Connected(live) = &mut state.stage {
+                live.received += bytes.len() as u64;
                 let replies = live.screen.feed(&bytes);
                 // New output moves the lines under the highlights.
                 live.screen.clear_found();
@@ -184,6 +215,20 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 if !replies.is_empty() {
                     live.send(ShellInput::Data(replies));
                 }
+            }
+            Task::none()
+        }
+        Message::Tick => {
+            let Stage::Connected(live) = &mut state.stage else {
+                // The session ended: no more readings.
+                return Task::none();
+            };
+            live.sample();
+            next_tick()
+        }
+        Message::DetailsToggled => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.details_open = !live.details_open;
             }
             Task::none()
         }
@@ -320,4 +365,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             Task::none()
         }
     }
+}
+
+/// How often the traffic is read.
+const TICK: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// Asks for the next reading of the traffic after a second.
+pub(crate) fn next_tick() -> Task<Message> {
+    Task::perform(async { tokio::time::sleep(TICK).await }, |()| Message::Tick)
 }

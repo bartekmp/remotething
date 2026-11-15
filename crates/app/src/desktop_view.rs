@@ -6,8 +6,8 @@ use remotething_rdp::Button;
 
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
-use crate::desktop_meter;
 use crate::i18n::fl;
+use crate::meter;
 use crate::picture;
 use crate::status_bar::{self, Bar};
 use crate::theme;
@@ -139,7 +139,7 @@ fn live_rate(live: &Live) -> String {
     match &live.meter.reading {
         Some(reading) => format!(
             "↓ {}/s · {} fps",
-            desktop_meter::bytes(reading.bytes_per_second),
+            meter::bytes(reading.received_per_second),
             reading.frames_per_second
         ),
         None => String::new(),
@@ -161,11 +161,11 @@ fn details(live: &Live, host: &str) -> Vec<(String, String)> {
     if let Some(reading) = &live.meter.reading {
         lines.push((
             fl!("details-rate"),
-            format!("{}/s", desktop_meter::bytes(reading.bytes_per_second)),
+            format!("{}/s", meter::bytes(reading.received_per_second)),
         ));
-        lines.push((fl!("details-total"), desktop_meter::bytes(reading.total)));
+        lines.push((fl!("details-total"), meter::bytes(reading.totals.received)));
         lines.push((fl!("details-frames"), reading.frames_per_second.to_string()));
-        lines.push((fl!("details-uptime"), desktop_meter::clock(reading.uptime)));
+        lines.push((fl!("details-uptime"), meter::clock(reading.uptime)));
     }
     lines
 }

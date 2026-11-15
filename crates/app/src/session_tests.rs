@@ -729,3 +729,47 @@ fn new_output_drops_the_highlights_and_escape_closes_the_bar() {
     let _ = state.key(&Key::Named(Named::Escape), Modifiers::empty(), None);
     assert!(live_of(&state).search.is_none());
 }
+
+fn reading(state: &State) -> Option<crate::meter::Reading> {
+    match &state.stage {
+        Stage::Connected(live) => live.meter.reading,
+        _ => panic!("expected a live terminal"),
+    }
+}
+
+#[test]
+fn a_tick_reads_the_bytes_received_and_sent() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+    let output = Message::Shell(ShellEvent::Output(b"hello".to_vec()));
+    fixture.send(&mut state, output);
+    let _ = state.key(&Key::Character("l".into()), Modifiers::empty(), Some("l"));
+
+    fixture.send(&mut state, Message::Tick);
+
+    let totals = reading(&state).unwrap().totals;
+    assert_eq!((totals.received, totals.sent), (5, 1));
+}
+
+#[test]
+fn a_tick_after_the_session_ended_reads_nothing() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+    fixture.send(&mut state, Message::Shell(ShellEvent::Closed(Some(0))));
+
+    fixture.send(&mut state, Message::Tick);
+
+    assert!(matches!(state.stage, Stage::Ended(_)));
+}
+
+#[test]
+fn the_info_button_opens_and_closes_the_details() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+    let open = |state: &State| matches!(&state.stage, Stage::Connected(live) if live.details_open);
+
+    fixture.send(&mut state, Message::DetailsToggled);
+    assert!(open(&state));
+    fixture.send(&mut state, Message::DetailsToggled);
+    assert!(!open(&state));
+}

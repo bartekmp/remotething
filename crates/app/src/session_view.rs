@@ -12,6 +12,8 @@ use crate::i18n::fl;
 use crate::paste;
 use crate::search;
 use crate::session::{Form, Message, Stage, State};
+use crate::session_strip;
+use crate::status_bar;
 use crate::terminal_view;
 use crate::theme;
 
@@ -58,7 +60,12 @@ pub fn view(state: &State) -> Element<'_, Message> {
             if let Some(open) = &live.search {
                 layers = layers.push(search::view(open, live.screen.found.len()));
             }
-            layers.push(body).into()
+            let content = layers.push(body).into();
+            status_bar::view(
+                content,
+                session_strip::bar(state, live),
+                Message::DetailsToggled,
+            )
         }
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))

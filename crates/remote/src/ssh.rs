@@ -95,6 +95,19 @@ pub struct Hop {
     pub auth: Auth,
 }
 
+/// What is known about an open connection, for showing to the user.
+#[derive(Debug, Clone, Default)]
+pub struct Details {
+    /// The server's address. `None` when the connection runs through a jump host.
+    pub peer: Option<std::net::SocketAddr>,
+    /// How the server calls itself, for example `SSH-2.0-OpenSSH_9.6`.
+    pub server: String,
+    /// The algorithm of the server's host key.
+    pub host_key_algorithm: String,
+    /// The SHA-256 fingerprint of the server's host key.
+    pub fingerprint: String,
+}
+
 /// The public key a server identified itself with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostKey {

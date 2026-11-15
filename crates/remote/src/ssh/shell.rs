@@ -6,8 +6,8 @@ use russh::client::{self, Msg};
 use russh::{Channel, ChannelMsg};
 use tokio::sync::mpsc;
 
-use super::host_key::Handler;
-use super::{Result, Shell, ShellEvent, ShellInput};
+use super::host_key::{Handler, Learned};
+use super::{Details, Result, Shell, ShellEvent, ShellInput};
 
 /// The byte stream of an SFTP channel.
 pub type SftpStream = russh::ChannelStream<Msg>;
@@ -20,9 +20,19 @@ pub struct Connection(Arc<Links>);
 struct Links {
     target: client::Handle<Handler>,
     _tunnel: Vec<client::Handle<Handler>>,
+    details: Learned,
 }
 
 impl Connection {
+    /// What is known about this connection.
+    pub fn details(&self) -> Details {
+        self.0
+            .details
+            .lock()
+            .map(|details| details.clone())
+            .unwrap_or_default()
+    }
+
     /// The client handle of the target, for opening more channels.
     pub(super) fn handle(&self) -> &client::Handle<Handler> {
         &self.0.target
@@ -44,12 +54,14 @@ pub(super) fn start(
     session: client::Handle<Handler>,
     tunnel: Vec<client::Handle<Handler>>,
     channel: Channel<Msg>,
+    details: Learned,
 ) -> Shell {
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(QUEUE);
     let connection = Connection(Arc::new(Links {
         target: session,
         _tunnel: tunnel,
+        details,
     }));
     tokio::spawn(run(connection.clone(), channel, events_tx, input_rx));
     Shell {

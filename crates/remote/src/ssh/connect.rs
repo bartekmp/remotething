@@ -11,7 +11,7 @@ use russh::keys::agent::client::AgentClient;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
-use super::host_key::{Handler, Refusal};
+use super::host_key::{Handler, Learned, Refusal};
 use super::{Auth, Challenge, Endpoint, Error, Hop, Prompt, Result, Shell, TerminalSize, shell};
 
 /// For reaching the server, the handshake and the sign-in together.
@@ -71,17 +71,24 @@ async fn connect(
     let mut tunnel: Vec<client::Handle<Handler>> = Vec::new();
     for (index, hop) in jumps.iter().enumerate() {
         let through = tunnel.last();
-        let session = establish(through, &hop.endpoint, &hop.auth, known.clone())
-            .await
-            .map_err(|error| {
-                // A refused relay is the doing of the host before this one.
-                let relay = index.checked_sub(1).map(|before| &jumps[before].endpoint);
-                on_jump(&hop.endpoint, relay, error)
-            })?;
+        let session = establish(
+            through,
+            &hop.endpoint,
+            &hop.auth,
+            known.clone(),
+            Learned::default(),
+        )
+        .await
+        .map_err(|error| {
+            // A refused relay is the doing of the host before this one.
+            let relay = index.checked_sub(1).map(|before| &jumps[before].endpoint);
+            on_jump(&hop.endpoint, relay, error)
+        })?;
         debug_assert_eq!(tunnel.len(), index);
         tunnel.push(session);
     }
-    let session = establish(tunnel.last(), endpoint, auth, known)
+    let details = Learned::default();
+    let session = establish(tunnel.last(), endpoint, auth, known, Arc::clone(&details))
         .await
         .map_err(|error| match (jumps.last(), error) {
             (Some(last), Error::ForwardingRefused { .. }) => Error::ForwardingRefused {
@@ -97,7 +104,7 @@ async fn connect(
         .await?;
     channel.request_shell(false).await?;
 
-    Ok(shell::start(session, tunnel, channel))
+    Ok(shell::start(session, tunnel, channel, details))
 }
 
 /// Says which jump host a failure belongs to. A host-key question already
@@ -124,6 +131,7 @@ async fn establish(
     endpoint: &Endpoint,
     auth: &Auth,
     known: KnownHosts,
+    details: Learned,
 ) -> Result<client::Handle<Handler>> {
     let config = Arc::new(client::Config {
         keepalive_interval: Some(KEEPALIVE),
@@ -134,6 +142,7 @@ async fn establish(
         endpoint: endpoint.clone(),
         known,
         refusal: Arc::clone(&refusal),
+        details: Arc::clone(&details),
     };
 
     let handshake = match through {
@@ -142,6 +151,9 @@ async fn establish(
             let tcp = TcpStream::connect(address)
                 .await
                 .map_err(|error| unreachable(endpoint, error))?;
+            if let Ok(mut details) = details.lock() {
+                details.peer = tcp.peer_addr().ok();
+            }
             client::connect_stream(config, tcp, handler).await
         }
         Some(jump) => {

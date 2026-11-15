@@ -275,7 +275,7 @@ fn totals_from_the_session_become_a_reading() {
     let Stage::Connected(live) = &state.stage else {
         panic!("not connected");
     };
-    assert_eq!(live.meter.reading.unwrap().total, 5000);
+    assert_eq!(live.meter.reading.unwrap().totals.received, 5000);
 }
 
 #[test]

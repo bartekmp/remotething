@@ -1,16 +1,24 @@
-//! Turns the session's running totals into rates for the connection details.
+//! Turns a session's running totals into rates for the connection details.
 
 use std::time::{Duration, Instant};
 
-use remotething_rdp::Stats;
+/// Running totals since the session began.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Totals {
+    pub(crate) received: u64,
+    pub(crate) sent: u64,
+    /// Pictures shown; stays 0 for sessions without a picture.
+    pub(crate) frames: u64,
+}
 
 /// What the details show about the traffic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Reading {
-    pub(crate) bytes_per_second: u64,
+    pub(crate) received_per_second: u64,
+    pub(crate) sent_per_second: u64,
     pub(crate) frames_per_second: u64,
-    /// Everything received so far.
-    pub(crate) total: u64,
+    /// Everything received and sent so far.
+    pub(crate) totals: Totals,
     /// Time since the session started.
     pub(crate) uptime: Duration,
 }
@@ -18,7 +26,7 @@ pub(crate) struct Reading {
 /// Remembers the previous totals so a rate can be taken between two reports.
 pub(crate) struct Meter {
     started: Instant,
-    last: (Duration, Stats),
+    last: (Duration, Totals),
     pub(crate) reading: Option<Reading>,
 }
 
@@ -26,16 +34,16 @@ impl Meter {
     pub(crate) fn new() -> Self {
         Self {
             started: Instant::now(),
-            last: (Duration::ZERO, Stats::default()),
+            last: (Duration::ZERO, Totals::default()),
             reading: None,
         }
     }
 
-    pub(crate) fn sample(&mut self, stats: Stats) {
-        self.sample_at(self.started.elapsed(), stats);
+    pub(crate) fn sample(&mut self, totals: Totals) {
+        self.sample_at(self.started.elapsed(), totals);
     }
 
-    fn sample_at(&mut self, at: Duration, stats: Stats) {
+    fn sample_at(&mut self, at: Duration, totals: Totals) {
         let (before, earlier) = self.last;
         let seconds = at.saturating_sub(before).as_secs_f64();
         if seconds <= 0.0 {
@@ -43,12 +51,13 @@ impl Meter {
         }
         let per_second = |now: u64, then: u64| (now.saturating_sub(then) as f64 / seconds) as u64;
         self.reading = Some(Reading {
-            bytes_per_second: per_second(stats.received, earlier.received),
-            frames_per_second: per_second(stats.frames, earlier.frames),
-            total: stats.received,
+            received_per_second: per_second(totals.received, earlier.received),
+            sent_per_second: per_second(totals.sent, earlier.sent),
+            frames_per_second: per_second(totals.frames, earlier.frames),
+            totals,
             uptime: at,
         });
-        self.last = (at, stats);
+        self.last = (at, totals);
     }
 }
 
@@ -82,31 +91,36 @@ pub(crate) fn clock(duration: Duration) -> String {
 mod tests {
     use super::*;
 
-    fn stats(received: u64, frames: u64) -> Stats {
-        Stats { received, frames }
+    fn totals(received: u64, frames: u64) -> Totals {
+        Totals {
+            received,
+            sent: received / 10,
+            frames,
+        }
     }
 
     #[test]
     fn the_first_report_is_averaged_over_the_whole_session() {
         let mut meter = Meter::new();
 
-        meter.sample_at(Duration::from_secs(2), stats(4000, 60));
+        meter.sample_at(Duration::from_secs(2), totals(4000, 60));
 
         let reading = meter.reading.unwrap();
-        assert_eq!(reading.bytes_per_second, 2000);
+        assert_eq!(reading.received_per_second, 2000);
+        assert_eq!(reading.sent_per_second, 200);
         assert_eq!(reading.frames_per_second, 30);
-        assert_eq!(reading.total, 4000);
+        assert_eq!(reading.totals.received, 4000);
     }
 
     #[test]
     fn later_reports_use_only_what_came_since_the_last_one() {
         let mut meter = Meter::new();
-        meter.sample_at(Duration::from_secs(1), stats(1000, 10));
+        meter.sample_at(Duration::from_secs(1), totals(1000, 10));
 
-        meter.sample_at(Duration::from_secs(3), stats(1400, 30));
+        meter.sample_at(Duration::from_secs(3), totals(1400, 30));
 
         let reading = meter.reading.unwrap();
-        assert_eq!(reading.bytes_per_second, 200);
+        assert_eq!(reading.received_per_second, 200);
         assert_eq!(reading.frames_per_second, 10);
         assert_eq!(reading.uptime, Duration::from_secs(3));
     }
@@ -115,7 +129,7 @@ mod tests {
     fn two_reports_at_the_same_moment_change_nothing() {
         let mut meter = Meter::new();
 
-        meter.sample_at(Duration::ZERO, stats(10, 1));
+        meter.sample_at(Duration::ZERO, totals(10, 1));
 
         assert_eq!(meter.reading, None);
     }
