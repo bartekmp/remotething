@@ -20,8 +20,11 @@ pub struct Planned {
     pub username: String,
     /// Where the password or passphrase is stored.
     pub credential_id: String,
-    /// The private key file, for a key credential; `None` means a password.
+    /// The private key file, for a key credential; `None` means a password
+    /// (or the agent, see `agent`).
     pub key_file: Option<PathBuf>,
+    /// Whether to sign in with the keys of a running ssh-agent.
+    pub agent: bool,
 }
 
 /// A jump host with everything needed to sign in to it.
@@ -30,12 +33,17 @@ pub struct Ready {
     endpoint: Endpoint,
     username: String,
     key_file: Option<PathBuf>,
+    agent: bool,
     secret: Option<Secret>,
 }
 
 impl Ready {
     pub fn hop(&self) -> Option<Hop> {
         let auth = match (&self.key_file, &self.secret) {
+            _ if self.agent => Auth::Agent {
+                username: self.username.clone(),
+                socket: None,
+            },
             (Some(path), passphrase) => Auth::KeyFile {
                 username: self.username.clone(),
                 path: path.clone(),
@@ -81,8 +89,9 @@ pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
             .clone()
             .filter(|username| !username.is_empty())
             .ok_or_else(needs_credential)?;
+        let agent = credential.kind == CredentialKind::Agent;
         let key_file = match (credential.kind, &credential.key_file) {
-            (CredentialKind::Password, _) => None,
+            (CredentialKind::Password | CredentialKind::Agent, _) => None,
             (CredentialKind::PrivateKey, Some(path)) => Some(PathBuf::from(path)),
             (CredentialKind::PrivateKey, None) | (CredentialKind::Ask, _) => {
                 return Err(needs_credential());
@@ -98,6 +107,7 @@ pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
             username,
             credential_id: credential.id.clone(),
             key_file,
+            agent,
         });
         next = resolved.jump;
     }
@@ -112,17 +122,23 @@ pub fn load(planned: Vec<Planned>, secrets: Arc<dyn SecretStore>) -> Result<Vec<
     planned
         .into_iter()
         .map(|jump| {
-            let secret = secrets
-                .get(&jump.credential_id)
-                .map_err(|error| error.to_string())?;
+            // The agent holds the keys; nothing is stored for it.
+            let secret = if jump.agent {
+                None
+            } else {
+                secrets
+                    .get(&jump.credential_id)
+                    .map_err(|error| error.to_string())?
+            };
             // A key file may need no passphrase; a password must be stored.
-            if jump.key_file.is_none() && secret.is_none() {
+            if !jump.agent && jump.key_file.is_none() && secret.is_none() {
                 return Err(fl!("jump-needs-credential", name = jump.name));
             }
             Ok(Ready {
                 endpoint: jump.endpoint,
                 username: jump.username,
                 key_file: jump.key_file,
+                agent: jump.agent,
                 secret,
             })
         })
@@ -228,6 +244,28 @@ mod tests {
             .unwrap();
         let ready = load(planned, secrets).unwrap();
         assert!(ready[0].hop().is_some());
+    }
+
+    #[test]
+    fn an_agent_jump_host_needs_no_stored_secret() {
+        let mut store = store();
+        store.credentials.push(remotething_core::Credential {
+            id: "agent".to_string(),
+            name: "Agent".to_string(),
+            username: Some("ops".to_string()),
+            domain: None,
+            kind: CredentialKind::Agent,
+            key_file: None,
+        });
+        store.connections[0].settings.credential = Some("agent".to_string());
+        let planned = plan(&store, "edge").unwrap();
+
+        let ready = load(planned, Arc::new(MemoryStore::new())).unwrap();
+
+        assert!(matches!(
+            ready[0].hop().map(|hop| hop.auth),
+            Some(Auth::Agent { .. })
+        ));
     }
 
     #[test]

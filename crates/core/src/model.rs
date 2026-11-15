@@ -48,6 +48,9 @@ pub enum CredentialKind {
     PrivateKey,
     /// Nothing is stored; the user is asked on every connect.
     Ask,
+    /// Keys held by a running ssh-agent (on Windows the OpenSSH agent or Pageant).
+    /// Only the user name is kept here.
+    Agent,
 }
 
 /// A folder in the tree. Its settings are inherited by everything inside it.

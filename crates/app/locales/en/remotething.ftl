@@ -198,3 +198,8 @@ putty-import = Import { $count } sessions
 putty-none = No PuTTY sessions were found.
 putty-skipped = Not imported:
 putty-done = Imported { $count } PuTTY sessions into the PuTTY folder.
+
+kind-agent = ssh-agent
+credentials-agent-note = The keys held by your running ssh-agent are used. Nothing is stored here except the user name.
+session-agent-needs-user = The credential for this connection uses ssh-agent and needs a user name. Set one on the Credentials screen.
+session-agent-refused = The server accepted none of the keys in your ssh-agent for this user.

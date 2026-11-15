@@ -36,6 +36,15 @@ pub enum Auth {
         /// Its password.
         password: Secret,
     },
+    /// Keys held by a running ssh-agent (on Windows the OpenSSH agent or Pageant).
+    /// The agent signs; the private keys never reach this app.
+    Agent {
+        /// The account on the server.
+        username: String,
+        /// The agent's socket. `None` uses the one the environment names
+        /// (`SSH_AUTH_SOCK`); on Windows `None` tries the OpenSSH pipe, then Pageant.
+        socket: Option<PathBuf>,
+    },
     /// A private key file in OpenSSH or PEM format.
     KeyFile {
         /// The account on the server.
@@ -132,6 +141,14 @@ pub enum Error {
     /// The server refused the user name, password or key.
     #[error("the server refused the sign-in")]
     AuthRefused,
+
+    /// No ssh-agent could be reached.
+    #[error("no ssh-agent is running: {0}")]
+    AgentUnavailable(String),
+
+    /// The ssh-agent holds no keys.
+    #[error("the ssh-agent holds no keys; add one with ssh-add")]
+    AgentEmpty,
 
     /// The key file is encrypted and no passphrase was given.
     #[error("the key file {0} needs its passphrase")]

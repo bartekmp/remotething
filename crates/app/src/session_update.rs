@@ -137,6 +137,10 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 state.stage = Stage::Ended(fl!("session-key-refused"));
                 Task::none()
             }
+            Method::Agent => {
+                state.stage = Stage::Ended(fl!("session-agent-refused"));
+                Task::none()
+            }
         },
         Message::Opened(Err(Failure::Other(reason))) => {
             state.stage = Stage::Ended(reason);

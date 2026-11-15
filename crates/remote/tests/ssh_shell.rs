@@ -546,3 +546,120 @@ async fn a_jump_host_that_forbids_forwarding_is_named_as_the_one_that_refused() 
         _ => panic!("expected the jump host to be named as refusing"),
     }
 }
+
+/// A running ssh-agent that is stopped when dropped.
+struct TestAgent {
+    process: std::process::Child,
+    socket: PathBuf,
+    _directory: tempfile::TempDir,
+}
+
+impl TestAgent {
+    /// Starts an agent and adds the keys named in `keys`.
+    fn start(keys: &[&str]) -> TestAgent {
+        let directory = tempfile::tempdir().unwrap();
+        let socket = directory.path().join("agent.sock");
+        let process = std::process::Command::new("ssh-agent")
+            .args(["-D", "-a"])
+            .arg(&socket)
+            .spawn()
+            .expect("ssh-agent must be installed to run this test");
+        // The socket appears a moment after the process starts.
+        for _ in 0..100 {
+            if socket.exists() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        for key in keys {
+            let path = directory.path().join(key);
+            std::fs::copy(fixture(key), &path).unwrap();
+            // ssh-add refuses key files that others can read.
+            std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o600))
+                .unwrap();
+            let added = std::process::Command::new("ssh-add")
+                .arg(&path)
+                .env("SSH_AUTH_SOCK", &socket)
+                .output()
+                .expect("ssh-add must be installed to run this test");
+            assert!(added.status.success(), "ssh-add failed");
+        }
+        TestAgent {
+            process,
+            socket,
+            _directory: directory,
+        }
+    }
+
+    fn auth(&self) -> Auth {
+        Auth::Agent {
+            username: USER.to_string(),
+            socket: Some(self.socket.clone()),
+        }
+    }
+}
+
+impl Drop for TestAgent {
+    fn drop(&mut self) {
+        let _ = self.process.kill();
+        let _ = self.process.wait();
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_key_held_by_the_agent_signs_in() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    // The agent also holds a key the server does not know; it must be skipped.
+    let agent = TestAgent::start(&["host_key", "client_key"]);
+
+    let mut shell = open_shell(&endpoint, &agent.auth(), known, SIZE)
+        .await
+        .unwrap();
+
+    read_until(&mut shell, "pty").await;
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_agent_whose_keys_the_server_does_not_accept_is_refused() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    let agent = TestAgent::start(&["host_key"]);
+
+    let result = open_shell(&endpoint, &agent.auth(), known, SIZE).await;
+
+    assert!(matches!(result, Err(Error::AuthRefused)));
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_empty_agent_says_it_has_no_keys() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    let agent = TestAgent::start(&[]);
+
+    let result = open_shell(&endpoint, &agent.auth(), known, SIZE).await;
+
+    assert!(matches!(result, Err(Error::AgentEmpty)));
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_missing_agent_says_none_is_running() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    let auth = Auth::Agent {
+        username: USER.to_string(),
+        socket: Some(directory.path().join("no-agent.sock")),
+    };
+
+    let result = open_shell(&endpoint, &auth, known, SIZE).await;
+
+    assert!(matches!(result, Err(Error::AgentUnavailable(_))));
+}

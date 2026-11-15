@@ -48,6 +48,8 @@ pub struct State {
 
 /// How to sign in, with the secret once it is known.
 pub(crate) enum Method {
+    /// The keys of a running ssh-agent; nothing is typed or stored.
+    Agent,
     Password(Option<Secret>),
     KeyFile {
         path: PathBuf,
@@ -258,6 +260,14 @@ impl State {
                 self.stage = Stage::Ended(fl!("session-no-key-file"));
                 Task::none()
             }
+            (CredentialKind::Agent, _) => {
+                if self.username.is_empty() {
+                    self.stage = Stage::Ended(fl!("session-agent-needs-user"));
+                    return Task::none();
+                }
+                self.method = Method::Agent;
+                self.connect(context)
+            }
         }
     }
 
@@ -290,6 +300,7 @@ impl State {
 
     pub(crate) fn set_secret(&mut self, secret: Option<Secret>) {
         match &mut self.method {
+            Method::Agent => {}
             Method::Password(password) => *password = secret,
             Method::KeyFile { passphrase, .. } => *passphrase = secret,
         }
@@ -301,6 +312,10 @@ impl State {
             return self.ask(None);
         }
         let auth = match &self.method {
+            Method::Agent => Auth::Agent {
+                username: self.username.clone(),
+                socket: None,
+            },
             Method::Password(None) => return self.ask(None),
             Method::Password(Some(password)) => Auth::Password {
                 username: self.username.clone(),

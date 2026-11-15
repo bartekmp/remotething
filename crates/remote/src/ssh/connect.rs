@@ -1,11 +1,13 @@
 //! Connecting and signing in.
 
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use remotething_secrets::KnownHosts;
 use russh::client;
 use russh::keys::PrivateKeyWithHashAlg;
+use russh::keys::agent::client::AgentClient;
 use tokio::net::TcpStream;
 
 use super::host_key::{Handler, Refusal};
@@ -187,6 +189,9 @@ async fn sign_in(session: &mut client::Handle<Handler>, auth: &Auth) -> Result<(
                 .authenticate_password(username, password.expose())
                 .await?
         }
+        Auth::Agent { username, socket } => {
+            return sign_in_with_agent(session, username, socket.as_deref()).await;
+        }
         Auth::KeyFile {
             username,
             path,
@@ -213,4 +218,73 @@ async fn sign_in(session: &mut client::Handle<Handler>, auth: &Auth) -> Result<(
     } else {
         Err(Error::AuthRefused)
     }
+}
+
+/// Offers the agent's keys to the server one by one; the first it accepts signs us in.
+async fn sign_in_with_agent(
+    session: &mut client::Handle<Handler>,
+    username: &str,
+    socket: Option<&Path>,
+) -> Result<()> {
+    #[cfg(unix)]
+    {
+        let client = match socket {
+            Some(path) => AgentClient::connect_uds(path).await,
+            None => AgentClient::connect_env().await,
+        };
+        let client = client.map_err(|error| Error::AgentUnavailable(error.to_string()))?;
+        offer_keys(session, username, client).await
+    }
+    #[cfg(windows)]
+    {
+        const OPENSSH_PIPE: &str = r"\\.\pipe\openssh-ssh-agent";
+        let pipe = socket.map_or(OPENSSH_PIPE.as_ref(), |path| path.as_os_str());
+        match AgentClient::connect_named_pipe(pipe).await {
+            Ok(client) => offer_keys(session, username, client).await,
+            Err(pipe_error) => {
+                // Pageant is PuTTY's agent; it has no socket, so only without an explicit one.
+                if socket.is_some() {
+                    return Err(Error::AgentUnavailable(pipe_error.to_string()));
+                }
+                let client = AgentClient::connect_pageant()
+                    .await
+                    .map_err(|_| Error::AgentUnavailable(pipe_error.to_string()))?;
+                offer_keys(session, username, client).await
+            }
+        }
+    }
+}
+
+async fn offer_keys<S>(
+    session: &mut client::Handle<Handler>,
+    username: &str,
+    mut agent: AgentClient<S>,
+) -> Result<()>
+where
+    S: russh::keys::agent::client::AgentStream + Unpin + Send + 'static,
+{
+    let identities = agent
+        .request_identities()
+        .await
+        .map_err(|error| Error::AgentUnavailable(error.to_string()))?;
+    if identities.is_empty() {
+        return Err(Error::AgentEmpty);
+    }
+    // RSA keys sign with the strongest hash the server announced.
+    let hash = session.best_supported_rsa_hash().await?.flatten();
+
+    for identity in identities {
+        // Certificates are not supported; plain keys only.
+        let russh::keys::agent::AgentIdentity::PublicKey { key, .. } = identity else {
+            continue;
+        };
+        let outcome = session
+            .authenticate_publickey_with(username, key, hash, &mut agent)
+            .await
+            .map_err(|error| Error::AgentUnavailable(error.to_string()))?;
+        if outcome.success() {
+            return Ok(());
+        }
+    }
+    Err(Error::AuthRefused)
 }

@@ -544,3 +544,32 @@ fn trusting_a_key_saves_it_for_the_host_it_came_from_not_the_target() {
         .check("web-01.example.net", 22, &jump_key.key);
     assert_eq!(target, remotething_secrets::HostKeyVerdict::Unknown);
 }
+
+#[test]
+fn an_agent_credential_connects_at_once_without_asking_for_anything() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Agent, None);
+
+    let state = fixture.start(Some("cred"));
+
+    assert!(matches!(state.stage, Stage::Connecting));
+}
+
+#[test]
+fn an_agent_credential_without_a_user_name_says_what_to_fix() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Agent, None);
+    fixture.store.credentials[0].username = None;
+
+    let state = fixture.start(Some("cred"));
+
+    assert!(matches!(state.stage, Stage::Ended(_)));
+}
+
+#[test]
+fn an_agent_that_the_server_refuses_ends_the_session_instead_of_asking_for_a_password() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Agent, None);
+    let mut state = fixture.start(Some("cred"));
+
+    fixture.send(&mut state, Message::Opened(Err(Failure::Refused)));
+
+    assert!(matches!(state.stage, Stage::Ended(_)));
+}
