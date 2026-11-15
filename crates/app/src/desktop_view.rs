@@ -6,6 +6,7 @@ use remotething_rdp::Button;
 
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
+use crate::desktop_cursor;
 use crate::i18n::fl;
 use crate::meter;
 use crate::picture;
@@ -182,8 +183,15 @@ fn details(live: &Live, host: &str, quality: remotething_core::Quality) -> Vec<(
 fn desktop(live: &Live) -> Element<'_, Message> {
     let picture = live.picture.clone();
     let remote = live.size;
+    let look = live.cursor.clone();
+    let (pointer, over) = (live.pointer, live.over);
+    let interaction = if look.hides_local() {
+        mouse::Interaction::Hidden
+    } else {
+        mouse::Interaction::None
+    };
     responsive(move |area| {
-        mouse_area(picture::view(&picture))
+        let desktop = mouse_area(picture::view(&picture))
             .on_move(move |point| {
                 let (x, y) = remote_position(area, remote, point);
                 Message::Moved(x, y)
@@ -195,8 +203,10 @@ fn desktop(live: &Live) -> Element<'_, Message> {
             .on_middle_press(Message::Button(Button::Middle, true))
             .on_middle_release(Message::Button(Button::Middle, false))
             .on_scroll(|delta| Message::Wheel(wheel_units(delta)))
-            .interaction(mouse::Interaction::None)
-            .into()
+            .on_enter(Message::PointerOver(true))
+            .on_exit(Message::PointerOver(false))
+            .interaction(interaction);
+        desktop_cursor::with_pointer(desktop.into(), &look, pointer, over, area, remote)
     })
     .into()
 }

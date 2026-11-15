@@ -393,3 +393,44 @@ fn a_changed_local_text_is_offered_again() {
         Input::Clipboard("two".to_string())
     );
 }
+
+fn shape_cursor() -> remotething_rdp::Cursor {
+    remotething_rdp::Cursor::Shape(remotething_rdp::CursorShape {
+        width: 2,
+        height: 2,
+        hotspot_x: 1,
+        hotspot_y: 1,
+        rgba: vec![255; 16],
+    })
+}
+
+#[test]
+fn a_pointer_picture_from_the_server_hides_the_local_pointer() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+    let hides =
+        |state: &State| matches!(&state.stage, Stage::Connected(live) if live.cursor.hides_local());
+
+    assert!(!hides(&state));
+    fixture.send(&mut state, Message::Cursor(shape_cursor()));
+    assert!(hides(&state));
+    fixture.send(
+        &mut state,
+        Message::Cursor(remotething_rdp::Cursor::Default),
+    );
+    assert!(!hides(&state));
+}
+
+#[test]
+fn the_pointer_is_drawn_only_while_it_is_over_the_picture() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+    let over = |state: &State| matches!(&state.stage, Stage::Connected(live) if live.over);
+
+    fixture.send(&mut state, Message::PointerOver(true));
+    assert!(over(&state));
+    fixture.send(&mut state, Message::PointerOver(false));
+    assert!(!over(&state));
+}

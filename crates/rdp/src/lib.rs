@@ -5,6 +5,7 @@
 //! Frames come out of [`Session::events`], input goes into [`Session::input`].
 
 mod clipboard;
+mod cursor;
 mod error;
 mod input;
 mod quality;
@@ -15,6 +16,7 @@ mod stats;
 mod tls;
 mod worker;
 
+pub use cursor::{Cursor, CursorShape};
 pub use error::{Certificate, Error, Result};
 pub use input::{Button, Input, ctrl_alt_delete};
 pub use quality::Quality;

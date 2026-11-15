@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.24.0 - 2026-11-15
+
+- Remote Desktop: the pointer takes the shapes the remote machine asks for (text cursor, resize arrows, busy ring).
+
 ## 0.23.0 - 2026-11-15
 
 - Remote Desktop: sharp picture and right-sized interface on screens with display scaling.

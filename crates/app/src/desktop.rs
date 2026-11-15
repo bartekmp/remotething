@@ -11,6 +11,7 @@ use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
+use crate::desktop_cursor::Look;
 use crate::desktop_open::{Failure, Opened};
 use crate::desktop_size;
 use crate::display;
@@ -76,7 +77,10 @@ pub(crate) struct Live {
     /// The clipboard text last seen locally or received from the server.
     clipboard: Option<String>,
     /// Where the pointer is on the remote desktop, for button presses.
-    pointer: (u16, u16),
+    pub(crate) pointer: (u16, u16),
+    /// How the pointer looks over the desktop, and whether it is over it.
+    pub(crate) cursor: Look,
+    pub(crate) over: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -92,6 +96,10 @@ pub enum Message {
     Stats(Stats),
     /// Text was copied on the server.
     Clipboard(String),
+    /// The server changed what the pointer looks like.
+    Cursor(remotething_rdp::Cursor),
+    /// The pointer came over the picture or left it.
+    PointerOver(bool),
     /// The (i) button was pressed.
     DetailsToggled,
     /// The Ctrl+Alt+Del button was pressed.
@@ -151,6 +159,8 @@ impl State {
             area: Size::ZERO,
             clipboard: None,
             pointer: (0, 0),
+            cursor: Look::default(),
+            over: false,
         }));
         typed
     }
@@ -268,6 +278,8 @@ impl State {
             area: Size::ZERO,
             clipboard: None,
             pointer: (0, 0),
+            cursor: Look::default(),
+            over: false,
         }));
 
         // The stream ends when the session thread stops, for example once this tab is closed.
@@ -278,6 +290,7 @@ impl State {
                 }
                 Event::Stats(stats) => Message::Stats(stats),
                 Event::Clipboard(text) => Message::Clipboard(text),
+                Event::Cursor(cursor) => Message::Cursor(cursor),
                 Event::Closed(reason) => Message::Closed(reason),
             };
             Some((message, events))
@@ -410,6 +423,18 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             // Remembered, so the next look at the local clipboard does not send it back.
             live.clipboard = Some(text.clone());
             iced::clipboard::write(text)
+        }
+        Message::Cursor(cursor) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.cursor = Look::from_server(&cursor);
+            }
+            Task::none()
+        }
+        Message::PointerOver(over) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.over = over;
+            }
+            Task::none()
         }
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {

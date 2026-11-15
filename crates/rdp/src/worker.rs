@@ -15,6 +15,7 @@ use ironrdp_session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput};
 use tokio::sync::mpsc;
 
 use crate::clipboard;
+use crate::cursor::Cursor;
 use crate::input::{self, Input};
 use crate::reactivate;
 use crate::session::{Event, Frame, TlsFramed};
@@ -54,6 +55,8 @@ pub(crate) struct Worker {
     local_text: Option<String>,
     /// The local clipboard changed and the server has not been told.
     announce: bool,
+    /// A pointer change the window has not been told yet.
+    cursor: Option<Cursor>,
 }
 
 impl Worker {
@@ -87,6 +90,7 @@ impl Worker {
             started: Instant::now(),
             local_text: None,
             announce: false,
+            cursor: None,
         }
     }
 
@@ -108,6 +112,7 @@ impl Worker {
             }
             self.ask_for_resize()?;
             self.share_clipboard(events)?;
+            self.send_cursor(events);
             if !self.send_frame(events) {
                 return Ok(());
             }
@@ -143,6 +148,11 @@ impl Worker {
                 ActiveStageOutput::GraphicsUpdate(_) => self.dirty = true,
                 ActiveStageOutput::Terminate(_) => return Ok(Flow::Terminate),
                 ActiveStageOutput::DeactivateAll => flow = Flow::Reactivate,
+                ActiveStageOutput::PointerDefault => self.cursor = Some(Cursor::Default),
+                ActiveStageOutput::PointerHidden => self.cursor = Some(Cursor::Hidden),
+                ActiveStageOutput::PointerBitmap(pointer) => {
+                    self.cursor = Cursor::from_decoded(&pointer).or(self.cursor.take());
+                }
                 _ => {}
             }
         }
@@ -244,6 +254,19 @@ impl Worker {
             let _ = events.try_send(Event::Clipboard(copied));
         }
         Ok(())
+    }
+
+    /// Tells the window about a pointer change.
+    fn send_cursor(&mut self, events: &mpsc::Sender<Event>) {
+        let Some(cursor) = self.cursor.take() else {
+            return;
+        };
+        // A full queue keeps the change for the next round.
+        if let Err(mpsc::error::TrySendError::Full(Event::Cursor(cursor))) =
+            events.try_send(Event::Cursor(cursor))
+        {
+            self.cursor = Some(cursor);
+        }
     }
 
     /// Passes the picture on when it changed. False when the window is gone.
