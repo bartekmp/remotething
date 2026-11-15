@@ -10,6 +10,7 @@ use crate::credentials;
 use crate::folder_removal;
 use crate::i18n::fl;
 use crate::icons::{self, Icon};
+use crate::import_preview;
 use crate::menu;
 use crate::organise;
 use crate::properties;
@@ -76,6 +77,10 @@ pub fn view(state: &State) -> Element<'_, Message> {
         }
         (_, Centre::Settings) => settings::view(&state.preferences).map(Message::Settings),
         (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
+        (_, Centre::Import) => match &state.import {
+            Some(screen) => import_preview::view(screen).map(Message::Preview),
+            None => settings::view(&state.preferences).map(Message::Settings),
+        },
     };
     let tabs = container(centre)
         .width(Length::Fill)

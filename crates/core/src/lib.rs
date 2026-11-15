@@ -11,6 +11,7 @@ mod forward;
 mod inherit;
 mod model;
 mod order;
+mod pick;
 mod putty;
 mod quick;
 mod remove;

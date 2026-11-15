@@ -13,6 +13,7 @@ use crate::credentials::{self};
 use crate::file_dialog;
 use crate::folder_removal;
 use crate::i18n::fl;
+use crate::import_preview;
 use crate::input;
 use crate::menu;
 use crate::preferences::{self, Preferences, ThemeChoice};
@@ -49,6 +50,8 @@ pub struct State {
     pub(crate) properties_open: bool,
     pub(crate) credentials: credentials::State,
     pub(crate) putty: putty_import::State,
+    /// The preview of a Remotething import, while it is shown.
+    pub(crate) import: Option<import_preview::State>,
     pub(crate) centre: Centre,
     pub(crate) secrets: Arc<dyn SecretStore>,
     /// The connections opened most recently, for the page of a new tab.
@@ -87,6 +90,8 @@ pub(crate) enum Centre {
     Settings,
     /// The preview of a PuTTY import.
     Putty,
+    /// The preview of an import of a Remotething file.
+    Import,
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +103,7 @@ pub enum Message {
     /// The secret store finished a save or delete.
     SecretStored(Result<(), String>),
     Putty(putty_import::Message),
+    Preview(import_preview::Message),
     Settings(settings::Message),
     Vault(vault::Message),
     /// Creating or unlocking the passwords file finished.
@@ -164,6 +170,7 @@ impl State {
             properties_open: false,
             credentials: credentials::State::default(),
             putty: putty_import::State::default(),
+            import: None,
             centre: Centre::Sessions,
             secrets,
             known_hosts,
@@ -382,7 +389,24 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         // `None` is a cancelled dialog.
         Message::ExportFilePicked(None) | Message::ImportFilePicked(None) => {}
         Message::ExportFilePicked(Some(file)) => state.export_to(&file),
-        Message::ImportFilePicked(Some(file)) => state.import_from(&file),
+        Message::ImportFilePicked(Some(file)) => state.preview_import(&file),
+        Message::Preview(message) => {
+            let Some(screen) = &mut state.import else {
+                return Task::none();
+            };
+            match import_preview::update(screen, message) {
+                Some(import_preview::Event::Close) => {
+                    state.import = None;
+                    state.centre = Centre::Settings;
+                }
+                Some(import_preview::Event::Apply(tree)) => {
+                    state.import = None;
+                    state.centre = Centre::Settings;
+                    state.import_tree(tree);
+                }
+                None => {}
+            }
+        }
         Message::Putty(message) => {
             let (task, event) = putty_import::update(&mut state.putty, message);
             match event {

@@ -220,3 +220,10 @@ removal-question = Remove the folder "{ $name }"?
 removal-contents = It holds { $folders } folders and { $connections } connections. They are removed with it, and this cannot be undone.
 removal-yes = Remove all
 removal-no = Keep
+
+preview-title = Import connections
+preview-explain = The connections in the file. Tick the ones to add; their folders, credentials and jump hosts come with them. Nothing that exists is changed, and passwords are not in the file.
+preview-none = The file holds no connections.
+preview-import = Import { $count } connections
+preview-all = Tick all
+preview-none-button = Tick none

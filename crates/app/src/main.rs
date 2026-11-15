@@ -13,6 +13,7 @@ mod folder_removal;
 mod forwards;
 mod i18n;
 mod icons;
+mod import_preview;
 mod input;
 mod items;
 mod jump;

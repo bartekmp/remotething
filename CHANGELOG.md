@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.12.0 - 2026-11-15
+
+- Importing a Remotething file shows its connections first, so you can leave some out.
+
 ## 0.11.0 - 2026-11-15
 
 - Folders and connections can be reordered with **Move up** and **Move down** in the tree's context menu.

@@ -7,9 +7,10 @@ use remotething_core::{
 
 use iced::Task;
 
-use crate::app::{Message, State};
+use crate::app::{Centre, Message, State};
 use crate::folder_removal;
 use crate::i18n::fl;
+use crate::import_preview;
 use crate::organise;
 use crate::session;
 use crate::tree::{DropTarget, Selection};
@@ -261,14 +262,25 @@ impl State {
         }
     }
 
-    /// Adds everything from an export file. Existing items are never changed.
-    pub(crate) fn import_from(&mut self, file: &std::path::Path) {
-        let mut updated = self.store.clone();
-        let merged = std::fs::read_to_string(file)
+    /// Reads an export file and shows what is in it, to choose from.
+    pub(crate) fn preview_import(&mut self, file: &std::path::Path) {
+        let read = std::fs::read_to_string(file)
             .map_err(|error| error.to_string())
-            .and_then(|text| Store::from_export(&text).map_err(|error| error.to_string()))
-            .and_then(|incoming| updated.merge(incoming).map_err(|error| error.to_string()));
-        match merged {
+            .and_then(|text| Store::from_export(&text).map_err(|error| error.to_string()));
+        match read {
+            Ok(incoming) => {
+                self.error = None;
+                self.import = Some(import_preview::State::new(incoming));
+                self.centre = Centre::Import;
+            }
+            Err(reason) => self.error = Some(format!("{} {reason}", fl!("import-failed"))),
+        }
+    }
+
+    /// Adds the chosen tree. Existing items are never changed.
+    pub(crate) fn import_tree(&mut self, incoming: Store) {
+        let mut updated = self.store.clone();
+        match updated.merge(incoming) {
             Ok(summary) => {
                 if self.commit(updated) {
                     self.notice = Some(fl!(
@@ -280,7 +292,7 @@ impl State {
                     ));
                 }
             }
-            Err(reason) => self.error = Some(format!("{} {reason}", fl!("import-failed"))),
+            Err(error) => self.error = Some(format!("{} {error}", fl!("import-failed"))),
         }
     }
 

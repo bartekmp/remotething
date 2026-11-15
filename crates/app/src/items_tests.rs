@@ -284,10 +284,16 @@ fn an_export_imported_into_the_same_tree_doubles_it_without_touching_what_was_th
     state.export_to(&file);
     assert!(std::fs::read_to_string(&file).unwrap().contains("web-01"));
 
-    state.import_from(&file);
+    state.preview_import(&file);
+    assert_eq!(state.centre, Centre::Import);
+    send(
+        &mut state,
+        Message::Preview(import_preview::Message::ImportPressed),
+    );
 
     assert!(state.error.is_none());
     assert!(state.notice.is_some());
+    assert_eq!(state.centre, Centre::Settings);
     let saved = on_disk(&state);
     assert_eq!(saved.folders.len(), 4);
     assert_eq!(saved.connections.len(), 2);
@@ -303,9 +309,10 @@ fn a_file_that_is_not_an_export_changes_nothing_and_says_why() {
     let file = directory.path().join("other.json");
     std::fs::write(&file, "{}").unwrap();
 
-    state.import_from(&file);
+    state.preview_import(&file);
 
     assert_eq!(on_disk(&state), before);
+    assert!(state.import.is_none());
     assert!(state.error.is_some());
 }
 
@@ -384,4 +391,24 @@ fn move_up_on_the_first_folder_changes_nothing() {
 
     let ids: Vec<String> = on_disk(&state).folders.into_iter().map(|f| f.id).collect();
     assert_eq!(ids, ["prod", "lab"]);
+}
+
+#[test]
+fn importing_with_nothing_ticked_changes_nothing() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory);
+    let file = directory.path().join("export.json");
+    state.export_to(&file);
+    state.preview_import(&file);
+
+    let untick = import_preview::Message::Toggled("web-01".to_string(), false);
+    send(&mut state, Message::Preview(untick));
+    send(
+        &mut state,
+        Message::Preview(import_preview::Message::ImportPressed),
+    );
+
+    // Nothing was ticked, so nothing happened and the screen stays.
+    assert_eq!(on_disk(&state).connections.len(), 1);
+    assert_eq!(on_disk(&state).folders.len(), 2);
 }

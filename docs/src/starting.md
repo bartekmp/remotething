@@ -138,12 +138,13 @@ In **Settings**, press **Import from PuTTY**. The screen lists the sessions it f
 
 1. In **Settings**, press **Export connections** and choose where to save the file.
 2. Copy the file to the other machine.
-3. There, press **Import connections** in **Settings** and pick the file.
+3. There, press **Import connections** in **Settings** and pick the file. A screen lists its connections, all ticked. Untick the ones you do not want and press **Import**.
 
 | | |
 | --- | --- |
 | In the file | Folders, connections, credential names, user names and key file paths, as JSON |
 | Never in the file | Passwords, passphrases, the key files themselves, trusted host keys |
+| What a tick brings | The connection, the folders above it, the credentials it uses and its jump hosts. Ticking everything imports the whole file, including empty folders |
 | Existing items | Never changed. An imported item whose id is already taken gets a new id, and what points at it follows |
 
 After an import, enter the passwords again on the **Credentials** screen. Importing the same file twice adds everything twice.
