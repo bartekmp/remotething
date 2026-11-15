@@ -23,7 +23,7 @@ impl Recording {
         lines: u16,
         keystrokes: bool,
     ) -> io::Result<Self> {
-        std::fs::create_dir_all(folder)?;
+        create_private_folder(folder)?;
         let unix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |since| since.as_secs());
@@ -62,6 +62,26 @@ impl Recording {
     }
 }
 
+/// Creates `folder` and its parents. On Unix the folder is for its owner alone,
+/// because a recording can hold anything that was on the screen.
+fn create_private_folder(folder: &Path) -> io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(folder)?;
+    #[cfg(unix)]
+    {
+        // A folder that was there already keeps its old permissions unless they are set here.
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(folder, std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
+}
+
 /// Creates the file for a recording. If the name is taken (a second recording
 /// in the same second), a number is put before the extension: `name-...-2.cast`.
 fn create_file(folder: &Path, name: &str) -> io::Result<(File, PathBuf)> {
@@ -74,11 +94,14 @@ fn create_file(folder: &Path, name: &str) -> io::Result<(File, PathBuf)> {
         };
         let path = folder.join(candidate);
         // `create_new` never overwrites a recording that is there.
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
         {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        match options.open(&path) {
             Ok(file) => return Ok((file, path)),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
             Err(error) => return Err(error),
@@ -183,6 +206,23 @@ mod tests {
         assert!(lines[0].contains("\"version\":2"));
         assert!(lines[1].contains("\"o\"") && lines[1].contains("hello"));
         assert!(lines[2].contains("100x30"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_folder_and_the_files_are_for_their_owner_alone() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let folder = directory.path().join("recordings");
+        // A folder that already exists with open permissions is closed again.
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let recording = Recording::start(&folder, "web-01", 80, 24, false).unwrap();
+
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&folder), 0o700);
+        assert_eq!(mode(recording.path()), 0o600);
     }
 
     #[test]

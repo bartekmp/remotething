@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.30.1 - 2026-11-15
+
+- Recordings are readable by their owner alone on Linux.
+
 ## 0.30.0 - 2026-11-15
 
 - Optional features in Settings, all off at first. The first one records SSH terminals as asciicast files, with a red indicator while it runs.

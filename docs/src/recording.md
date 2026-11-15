@@ -25,6 +25,8 @@ They use the asciicast v2 format. Play one with [asciinema](https://asciinema.or
 asciinema play web-01-20261115-231500.cast
 ```
 
+On Linux the folder and the files can be read by you alone, because a recording holds whatever was on the screen. On Windows they get the permissions of your user folder.
+
 Every event is written to the file as it happens, so a recording that is cut off by a crash or a lost connection still plays up to that point. Nothing is uploaded, and the app never opens a recording on its own.
 
 If writing fails, for example because the disk is full, the recording stops and the strip says why.

@@ -181,6 +181,8 @@ fn a_long_session_stays_up_and_does_not_grow() {
     let mut last_resize = Instant::now();
     let mut last_report = Instant::now();
     let mut wide = false;
+    // Alternates on its own, so every resize changes the size.
+    let mut resize_wide = false;
     let mut frames = 0u64;
     let mut baseline: Option<u64> = None;
     while Instant::now() < end {
@@ -204,7 +206,12 @@ fn a_long_session_stays_up_and_does_not_grow() {
         }
         if last_resize.elapsed() >= Duration::from_secs(60) {
             last_resize = Instant::now();
-            let (width, height) = if wide { (1280, 800) } else { (1000, 700) };
+            resize_wide = !resize_wide;
+            let (width, height) = if resize_wide {
+                (1280, 800)
+            } else {
+                (1000, 700)
+            };
             session
                 .input
                 .blocking_send(Input::Resize {
