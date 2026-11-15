@@ -667,6 +667,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
+name = "byteorder-lite"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
+
+[[package]]
 name = "bytes"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2337,6 +2343,7 @@ dependencies = [
  "iced_runtime",
  "iced_widget",
  "iced_winit",
+ "image",
  "thiserror 2.0.21",
 ]
 
@@ -2396,6 +2403,8 @@ dependencies = [
  "half",
  "iced_core",
  "iced_futures",
+ "image",
+ "kamadak-exif",
  "log",
  "lyon_path",
  "raw-window-handle",
@@ -2613,6 +2622,18 @@ checksum = "cb68373c0d6620ef8105e855e7745e18b0d00d3bdb07fb532e434244cdb9a714"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "image"
+version = "0.25.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
+dependencies = [
+ "bytemuck",
+ "byteorder-lite",
+ "moxcms",
+ "num-traits",
 ]
 
 [[package]]
@@ -2936,6 +2957,15 @@ dependencies = [
  "cfg-if",
  "futures-util",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kamadak-exif"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8772c92c0f41c4a672cbdee6728253e5ae8fcc1c5eb5c6c676579565684bbf68"
+dependencies = [
+ "mutate_once",
 ]
 
 [[package]]
@@ -3325,6 +3355,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "moxcms"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
+dependencies = [
+ "num-traits",
+ "pxfm",
+]
+
+[[package]]
 name = "mundy"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3348,6 +3388,12 @@ dependencies = [
  "windows 0.62.2",
  "zbus",
 ]
+
+[[package]]
+name = "mutate_once"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13d2233c9842d08cfe13f9eac96e207ca6a2ea10b80259ebe8ad0268be27d2af"
 
 [[package]]
 name = "naga"
@@ -4505,6 +4551,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d595e54a326bc53c1c197b32d295e14b169e3cfeaa8dc82b529f947fba6bcf5"
 
 [[package]]
+name = "pxfm"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
+
+[[package]]
 name = "quick-xml"
 version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4693,7 +4745,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -4702,6 +4754,7 @@ dependencies = [
  "iced",
  "remotething-core",
  "remotething-files",
+ "remotething-rdp",
  "remotething-remote",
  "remotething-secrets",
  "rfd",
@@ -4714,7 +4767,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4725,7 +4778,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "remotething-remote",
  "remotething-secrets",
@@ -4737,7 +4790,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-connector",
@@ -4755,7 +4808,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "remotething-secrets",
  "russh",
@@ -4766,7 +4819,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -7317,7 +7370,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.14.0"
+version = "0.15.0"
 
 [[package]]
 name = "yazi"

@@ -9,6 +9,7 @@ use iced::widget::{
 use iced::{Element, Length, Point};
 use remotething_core::{ResolvedConnection, Store};
 
+use crate::desktop_view;
 use crate::i18n::fl;
 use crate::icons;
 use crate::launcher;
@@ -179,6 +180,9 @@ fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Eleme
             .map(move |message| Message::Launcher(id, message)),
         Content::Session(session) => {
             session_view::view(session).map(move |message| Message::Session(id, message))
+        }
+        Content::Desktop(desktop) => {
+            desktop_view::view(desktop).map(move |message| Message::Desktop(id, message))
         }
         Content::Summary(connection) => view_summary(connection),
     }

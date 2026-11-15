@@ -197,6 +197,7 @@ pub enum Message {
 
 impl State {
     /// Works out how to sign in and starts as far as it can without the user.
+    #[cfg(test)]
     pub fn start(connection: ResolvedConnection, context: &Context<'_>) -> (Self, Task<Message>) {
         Self::start_as(connection, None, context)
     }

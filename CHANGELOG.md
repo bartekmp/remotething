@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.15.0 - 2026-11-15
+
+- Remote Desktop: RDP connections open in a tab with NLA sign-in, certificate pinning, mouse and keyboard.
+
 ## 0.14.0 - 2026-11-15
 
 - Groundwork for RDP: a new crate that connects to Windows hosts with NLA, pins the server certificate and passes frames and input. Not usable from the app yet.

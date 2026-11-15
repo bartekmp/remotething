@@ -123,10 +123,15 @@ pub enum Message {
     PointerReleased,
     KeyPressed {
         key: keyboard::Key,
+        /// The key by its place on the keyboard, for remote desktops.
+        physical: keyboard::key::Physical,
         modifiers: keyboard::Modifiers,
         text: Option<String>,
         /// Whether a text field already used the key.
         captured: bool,
+    },
+    KeyReleased {
+        physical: keyboard::key::Physical,
     },
     WindowResized(Size),
     /// The file chosen for an export, or `None` when the dialog was cancelled.
@@ -247,6 +252,19 @@ fn save(store: &Store, path: &std::path::Path) -> Result<(), String> {
     store.save(path).map_err(|error| error.to_string())
 }
 
+impl State {
+    /// Whether keys go to a remote desktop: one is in front, and nothing else wants them.
+    fn desktop_has_keys(&self) -> bool {
+        self.centre == Centre::Sessions
+            && self.vault.is_none()
+            && self.menu.is_none()
+            && self.removal.is_none()
+            && !self.properties_open
+            && !self.tree.is_busy()
+            && self.tabs.front_is_desktop()
+    }
+}
+
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::Tree(message) => {
@@ -264,12 +282,27 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::WindowResized(size) => state.window = size,
+        Message::KeyReleased { physical } => {
+            if state.desktop_has_keys() {
+                state.tabs.desktop_key(physical, false);
+            }
+        }
         Message::KeyPressed {
             key,
+            physical,
             modifiers,
             text,
             captured,
         } => {
+            // A remote desktop in front gets every key except the app's own tab shortcuts.
+            let app_shortcut = matches!(
+                input::Shortcut::of(&key, modifiers),
+                Some(input::Shortcut::NewTab | input::Shortcut::CloseTab)
+            );
+            if !captured && !app_shortcut && state.desktop_has_keys() {
+                state.tabs.desktop_key(physical, true);
+                return Task::none();
+            }
             if let Some(shortcut) = input::Shortcut::of(&key, modifiers) {
                 return input::on_shortcut(state, shortcut, captured);
             }

@@ -7,6 +7,7 @@ use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
 use remotething_core::{Protocol, Quality, QuickTarget, ResolvedConnection, parse_quick};
 
+use crate::desktop;
 use crate::i18n::fl;
 use crate::launcher;
 use crate::recent::Recent;
@@ -44,6 +45,7 @@ pub(crate) enum Content {
     /// A new tab that has not picked its connection yet, with the search typed so far.
     Launcher(String),
     Session(Box<session::State>),
+    Desktop(Box<desktop::State>),
     /// A protocol that cannot connect yet.
     Summary(ResolvedConnection),
 }
@@ -71,6 +73,7 @@ pub enum Message {
     MenuClosePressed,
     Launcher(u64, launcher::Message),
     Session(u64, session::Message),
+    Desktop(u64, desktop::Message),
 }
 
 impl State {
@@ -82,7 +85,7 @@ impl State {
         recent: &mut Recent,
     ) -> Task<Message> {
         let id = self.new_id();
-        let (title, content, task) = start(connection, context, recent);
+        let (title, content, task) = start(id, connection, context, recent);
         self.tabs.push(Tab {
             id,
             title,
@@ -90,7 +93,7 @@ impl State {
             unsaved: None,
         });
         self.active = self.tabs.len() - 1;
-        task.map(move |message| Message::Session(id, message))
+        task
     }
 
     /// Opens an empty tab that lists recent connections, with the keyboard in its search field.
@@ -126,6 +129,7 @@ impl State {
         tab.title = name.to_string();
         let connection = match &mut tab.content {
             Content::Session(session) => &mut session.connection,
+            Content::Desktop(desktop) => &mut desktop.connection,
             Content::Summary(connection) => connection,
             Content::Launcher(_) => return,
         };
@@ -136,6 +140,28 @@ impl State {
     /// Whether the tab in front is a live terminal, which gets Ctrl+W for itself.
     pub fn front_is_terminal(&self) -> bool {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
+    }
+
+    /// Whether a connected remote desktop is in front.
+    pub fn front_is_desktop(&self) -> bool {
+        matches!(
+            self.tabs.get(self.active),
+            Some(Tab { content: Content::Desktop(desktop), .. }) if desktop.is_connected()
+        )
+    }
+
+    /// Passes a key to the remote desktop in front, if there is one.
+    pub fn desktop_key(&mut self, physical: iced::keyboard::key::Physical, pressed: bool) {
+        let Some(Tab {
+            content: Content::Desktop(desktop),
+            ..
+        }) = self.tabs.get_mut(self.active)
+        else {
+            return;
+        };
+        if let Some(scancode) = crate::scancodes::of(physical) {
+            desktop.key(scancode, pressed);
+        }
     }
 
     /// Closes the tab in front, after a question when it holds a live session.
@@ -237,6 +263,7 @@ impl State {
             .iter()
             .filter_map(|tab| match &tab.content {
                 Content::Session(session) => Some(session.connection.id.as_str()),
+                Content::Desktop(desktop) => Some(desktop.connection.id.as_str()),
                 Content::Summary(connection) => Some(connection.id.as_str()),
                 Content::Launcher(_) => None,
             })
@@ -247,33 +274,56 @@ impl State {
 impl Tab {
     /// Whether closing this tab would cut a connection.
     fn is_live(&self) -> bool {
-        matches!(&self.content, Content::Session(session) if session.is_connected())
+        match &self.content {
+            Content::Session(session) => session.is_connected(),
+            Content::Desktop(desktop) => desktop.is_connected(),
+            _ => false,
+        }
     }
 }
 
 /// The title, content and first task of a tab for a connection.
 fn start(
+    id: u64,
     connection: ResolvedConnection,
     context: &Context<'_>,
     recent: &mut Recent,
-) -> (String, Content, Task<session::Message>) {
+) -> (String, Content, Task<Message>) {
     recent.touch(&connection.id);
+    start_connection(id, connection, None, context)
+}
+
+/// The title, content and first task of a tab for a connection, signing in as
+/// `typed_username` when the connection has no credential.
+fn start_connection(
+    id: u64,
+    connection: ResolvedConnection,
+    typed_username: Option<String>,
+    context: &Context<'_>,
+) -> (String, Content, Task<Message>) {
     let title = connection.name.clone();
     match connection.protocol {
         Protocol::Ssh => {
-            let (session, task) = session::State::start(connection, context);
+            let (session, task) = session::State::start_as(connection, typed_username, context);
+            let task = task.map(move |message| Message::Session(id, message));
             (title, Content::Session(Box::new(session)), task)
         }
-        Protocol::Rdp | Protocol::Vnc => (title, Content::Summary(connection), Task::none()),
+        Protocol::Rdp => {
+            let (desktop, task) = desktop::State::start(connection, typed_username, context);
+            let task = task.map(move |message| Message::Desktop(id, message));
+            (title, Content::Desktop(Box::new(desktop)), task)
+        }
+        Protocol::Vnc => (title, Content::Summary(connection), Task::none()),
     }
 }
 
 /// The title, content and first task of a tab for a typed connection string.
 /// Nothing is written to the tree or to the recent list.
 fn start_quick(
+    id: u64,
     target: &QuickTarget,
     context: &Context<'_>,
-) -> (String, Content, Task<session::Message>) {
+) -> (String, Content, Task<Message>) {
     let connection = ResolvedConnection {
         // Not in the tree, so it has no id yet.
         id: String::new(),
@@ -286,15 +336,7 @@ fn start_quick(
         forwards: Vec::new(),
         rdp_quality: Quality::default(),
     };
-    let title = connection.name.clone();
-    match connection.protocol {
-        Protocol::Ssh => {
-            let username = target.username.clone();
-            let (session, task) = session::State::start_as(connection, username, context);
-            (title, Content::Session(Box::new(session)), task)
-        }
-        Protocol::Rdp | Protocol::Vnc => (title, Content::Summary(connection), Task::none()),
-    }
+    start_connection(id, connection, target.username.clone(), context)
 }
 
 pub fn update(
@@ -351,6 +393,17 @@ pub fn update(
         Message::Launcher(id, message) => {
             return update_launcher(state, id, message, context, recent);
         }
+        Message::Desktop(id, message) => {
+            let desktop = state.tabs.iter_mut().find(|tab| tab.id == id);
+            if let Some(Tab {
+                content: Content::Desktop(desktop),
+                ..
+            }) = desktop
+            {
+                return desktop::update(desktop, message, context)
+                    .map(move |message| Message::Desktop(id, message));
+            }
+        }
         Message::Session(id, message) => {
             // The tab may have been closed while the result was on its way.
             let session = state.tabs.iter_mut().find(|tab| tab.id == id);
@@ -388,11 +441,11 @@ fn update_launcher(
         _ => None,
     };
     if let Some(target) = quick {
-        let (title, content, task) = start_quick(&target, context);
+        let (title, content, task) = start_quick(id, &target, context);
         tab.title = title;
         tab.content = content;
         tab.unsaved = Some(target);
-        return task.map(move |message| Message::Session(id, message));
+        return task;
     }
 
     let picked = match message {
@@ -411,10 +464,10 @@ fn update_launcher(
     };
 
     // The connection takes over the tab it was picked in.
-    let (title, content, task) = start(connection, context, recent);
+    let (title, content, task) = start(id, connection, context, recent);
     tab.title = title;
     tab.content = content;
-    task.map(move |message| Message::Session(id, message))
+    task
 }
 
 #[cfg(test)]

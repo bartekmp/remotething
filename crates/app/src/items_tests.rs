@@ -46,6 +46,7 @@ fn right_click(state: &mut State, target: Option<Selection>) {
 fn escape() -> Message {
     Message::KeyPressed {
         key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
+        physical: iced::keyboard::key::Physical::Code(iced::keyboard::key::Code::Escape),
         modifiers: iced::keyboard::Modifiers::empty(),
         text: None,
         captured: false,

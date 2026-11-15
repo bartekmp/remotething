@@ -50,10 +50,11 @@ anyhow = "1"
 i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"] }
 i18n-embed-fl = "0.10"
 # `tokio`: sessions run on a tokio runtime. `canvas`: the terminal is drawn cell by cell.
-iced = { version = "0.14", features = ["tokio", "canvas"] }
+iced = { version = "0.14", features = ["tokio", "canvas", "image-without-codecs"] }
 # The terminal's grid and escape-sequence handling.
 alacritty_terminal = "0.26"
 remotething-files = { path = "../files" }
+remotething-rdp = { path = "../rdp" }
 remotething-remote = { path = "../remote" }
 # System file dialogs, through the desktop portal on Linux.
 rfd = "0.18"

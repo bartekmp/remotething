@@ -76,15 +76,22 @@ pub(crate) fn window_event(
         }
         Event::Keyboard(keyboard::Event::KeyPressed {
             key,
+            physical_key,
             modifiers,
             text,
             ..
         }) => Some(Message::KeyPressed {
             key,
+            physical: physical_key,
             modifiers,
             text: text.map(|text| text.to_string()),
             captured: status == iced::event::Status::Captured,
         }),
+        Event::Keyboard(keyboard::Event::KeyReleased { physical_key, .. }) => {
+            Some(Message::KeyReleased {
+                physical: physical_key,
+            })
+        }
         Event::Window(window::Event::Opened { size, .. })
         | Event::Window(window::Event::Resized(size)) => Some(Message::WindowResized(size)),
         _ => None,
