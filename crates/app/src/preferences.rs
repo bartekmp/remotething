@@ -31,6 +31,9 @@ pub struct Features {
     /// Recording of SSH terminals, in the asciicast format.
     #[serde(default, skip_serializing_if = "is_false")]
     pub console_recording: bool,
+    /// Recording of remote desktops, as Motion JPEG video.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub desktop_recording: bool,
     /// Whether recordings also keep what was typed. Passwords are typed, so this is off by default.
     #[serde(default, skip_serializing_if = "is_false")]
     pub record_keystrokes: bool,
@@ -154,6 +157,7 @@ mod tests {
             features: Features {
                 screenshots: true,
                 console_recording: true,
+                desktop_recording: true,
                 record_keystrokes: false,
                 record_every_session: true,
             },

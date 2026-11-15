@@ -30,6 +30,7 @@ use crate::theme as look;
 use crate::tree::{self, Selection};
 use crate::tree_actions;
 use crate::vault;
+use crate::video_recording;
 
 /// The name offered when exporting.
 const EXPORT_FILE_NAME: &str = "remotething-connections.json";
@@ -137,6 +138,8 @@ pub enum Message {
         key: keyboard::Key,
         physical: keyboard::key::Physical,
     },
+    /// Time for the next picture of the recordings of remote desktops.
+    RecordTick,
     /// Time to look at the local clipboard, because a remote desktop is in front.
     ClipboardTick,
     /// The local clipboard text, if it holds any.
@@ -295,6 +298,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Menu(message) => return tree_actions::on_menu(state, message),
         Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
+        Message::RecordTick => state.tabs.record_tick(),
         Message::ClipboardTick => return iced::clipboard::read().map(Message::ClipboardRead),
         Message::ClipboardRead(text) => match text.filter(|text| !text.is_empty()) {
             Some(text) => state.tabs.desktop_clipboard(text),
@@ -520,10 +524,17 @@ pub fn subscription(state: &State) -> Subscription<Message> {
     } else {
         Subscription::none()
     };
+    // Recordings keep going whichever tab is in front.
+    let recording = if state.tabs.any_recording() {
+        iced::time::every(video_recording::TICK).map(|_| Message::RecordTick)
+    } else {
+        Subscription::none()
+    };
     Subscription::batch([
         iced::system::theme_changes().map(Message::SystemModeChanged),
         iced::event::listen_with(input::window_event),
         clipboard,
+        recording,
     ])
 }
 

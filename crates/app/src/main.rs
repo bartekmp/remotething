@@ -64,6 +64,7 @@ mod theme;
 mod tree;
 mod tree_actions;
 mod vault;
+mod video_recording;
 mod vnc_tab;
 mod vnc_view;
 mod window;

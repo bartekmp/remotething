@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.32.0 - 2026-11-15
+
+- Recording of remote desktops (RDP and VNC) as a Motion JPEG video, an optional feature in Settings.
+
 ## 0.31.0 - 2026-11-15
 
 - Screenshots, an optional feature in Settings: a PNG of an RDP or VNC desktop, or the text on an SSH terminal's screen.

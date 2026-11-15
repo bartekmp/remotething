@@ -41,6 +41,7 @@ pub enum Message {
     LanguagePicked(LanguageOption),
     ScreenshotsToggled(bool),
     ConsoleRecordingToggled(bool),
+    DesktopRecordingToggled(bool),
     KeystrokesToggled(bool),
     EveryRecordingToggled(bool),
     ExportPressed,
@@ -110,6 +111,10 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::ConsoleRecordingToggled(on) => {
             preferences.features.console_recording = on;
+            Event::Changed
+        }
+        Message::DesktopRecordingToggled(on) => {
+            preferences.features.desktop_recording = on;
             Event::Changed
         }
         Message::KeystrokesToggled(on) => {
@@ -223,8 +228,18 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
         checkbox(features.console_recording)
             .label(fl!("settings-feature-console"))
             .on_toggle(Message::ConsoleRecordingToggled),
+        checkbox(features.desktop_recording)
+            .label(fl!("settings-feature-desktop"))
+            .on_toggle(Message::DesktopRecordingToggled),
     ]
     .spacing(6);
+    if features.console_recording || features.desktop_recording {
+        switches = switches.push(
+            text(fl!("settings-features-note"))
+                .size(theme::TEXT_SMALL)
+                .style(theme::secondary_text),
+        );
+    }
     if features.console_recording {
         switches = switches
             .push(
@@ -236,11 +251,6 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
                 checkbox(features.record_keystrokes)
                     .label(fl!("settings-feature-keystrokes"))
                     .on_toggle(Message::KeystrokesToggled),
-            )
-            .push(
-                text(fl!("settings-features-note"))
-                    .size(theme::TEXT_SMALL)
-                    .style(theme::secondary_text),
             );
     }
     switches.into()

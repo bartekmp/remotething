@@ -137,10 +137,18 @@ fn with_status_bar<'a>(
     if features::screenshots() {
         actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
     }
+    if features::desktop_recording() {
+        let label = if live.video.is_active() {
+            fl!("recording-stop")
+        } else {
+            fl!("recording-start")
+        };
+        actions.push((label, Message::RecordPressed));
+    }
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
-        recording: None,
+        recording: live.video.elapsed().map(meter::clock),
         details: details(live, host, quality),
         details_open: live.details_open,
         actions,
@@ -155,6 +163,9 @@ fn with_status_bar<'a>(
 fn live_rate(live: &Live) -> String {
     if let Some(note) = live.note.as_ref().and_then(Note::current) {
         return note.to_string();
+    }
+    if let Some(problem) = live.video.problem() {
+        return problem.to_string();
     }
     match &live.meter.reading {
         Some(reading) => format!(
@@ -179,6 +190,9 @@ fn details(live: &Live, host: &str, quality: remotething_core::Quality) -> Vec<(
             format!("{} × {}", live.size.0, live.size.1),
         ),
     ];
+    if let Some(path) = live.video.path() {
+        lines.push((fl!("details-recording"), path.display().to_string()));
+    }
     if let Some(reading) = &live.meter.reading {
         lines.push((
             fl!("details-rate"),

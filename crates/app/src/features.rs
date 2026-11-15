@@ -47,6 +47,11 @@ pub(crate) fn console_recording() -> bool {
     SWITCHES.with(|switches| switches.borrow().features.console_recording)
 }
 
+/// Whether remote desktops can be recorded.
+pub(crate) fn desktop_recording() -> bool {
+    SWITCHES.with(|switches| switches.borrow().features.desktop_recording)
+}
+
 /// Whether recordings also keep what was typed.
 pub(crate) fn record_keystrokes() -> bool {
     SWITCHES.with(|switches| switches.borrow().features.record_keystrokes)

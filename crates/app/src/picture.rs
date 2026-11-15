@@ -40,6 +40,11 @@ impl Picture {
         }
     }
 
+    /// A number that differs between pictures, for telling a changed one from an unchanged one.
+    pub(crate) fn serial(&self) -> u64 {
+        self.serial
+    }
+
     /// The pixels, shared: cloning the handle is cheap.
     pub(crate) fn pixels(&self) -> Arc<Vec<u8>> {
         Arc::clone(&self.rgba)

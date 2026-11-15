@@ -26,6 +26,7 @@ use crate::picture::Picture;
 use crate::quality_choice;
 use crate::screenshot;
 use crate::session::{Context, Sealed, SealedJumps};
+use crate::video_recording::Video;
 
 pub struct State {
     pub(crate) connection: ResolvedConnection,
@@ -74,6 +75,8 @@ pub(crate) struct Live {
     pub(crate) over: bool,
     /// How the last screenshot went, for a few seconds.
     pub(crate) note: Option<Note>,
+    /// The recording of this desktop, if there is one.
+    pub(crate) video: Video,
     /// The keysym each held key sent, so its release lets go of the same one.
     held: HashMap<Physical, u32>,
 }
@@ -143,6 +146,7 @@ pub enum Message {
     /// The pointer came over the picture or left it.
     PointerOver(bool),
     DetailsToggled,
+    RecordPressed,
     ScreenshotPressed,
     ScreenshotSaved(Result<String, String>),
 }
@@ -171,6 +175,18 @@ impl State {
     /// The SSH servers the connection goes through.
     pub(crate) fn jumps(&self) -> impl Iterator<Item = &jump::Ready> {
         self.jumps.iter()
+    }
+
+    /// Takes the next slot of the recording, if one is going.
+    pub(crate) fn tick_recording(&mut self) {
+        if let Stage::Connected(live) = &mut self.stage {
+            live.video.tick(&live.picture);
+        }
+    }
+
+    /// Whether a recording is going.
+    pub(crate) fn is_recording(&self) -> bool {
+        matches!(&self.stage, Stage::Connected(live) if live.video.is_active())
     }
 
     /// Whether a desktop is showing, so closing the tab would cut it.
@@ -365,6 +381,7 @@ impl Live {
             cursor: Look::default(),
             over: false,
             note: None,
+            video: Video::default(),
             held: HashMap::new(),
         }
     }
@@ -501,6 +518,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::PointerOver(over) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.over = over;
+            }
+            Task::none()
+        }
+        Message::RecordPressed => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.video.toggle(&state.connection.name, &live.picture);
             }
             Task::none()
         }

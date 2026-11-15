@@ -33,6 +33,8 @@ allow = [
     "Zlib",
     "Unicode-3.0",
     "Unlicense",
+    # Independent JPEG Group: BSD-like, needs the credit given in its notice. Tables in the JPEG encoder.
+    "IJG",
 ]
 
 [licenses.private]

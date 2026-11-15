@@ -43,6 +43,20 @@ Every event is written to the file as it happens, so a recording that is cut off
 
 If writing fails, for example because the disk is full, the recording stops and the strip says why.
 
-## Coming next
+## Recording a remote desktop
 
-Recording of remote desktops is planned as a further feature in the same place.
+1. In **Settings**, tick **Record remote desktops (RDP and VNC)**.
+2. In an RDP or VNC tab press **Record** in the strip under the desktop. A red dot and the elapsed time show while it runs.
+3. Press **Stop recording**. The (i) panel shows the file while it is written.
+
+The video is an AVI file of Motion JPEG pictures, ten per second, in the same `recordings` folder as terminal recordings, for example `win11-20261115-231500.avi`. Any player opens it (`ffplay`, VLC, mpv). Nothing in the picture is hidden: passwords that show on the remote screen show in the video.
+
+- The file is finished when you press **Stop recording** or close the tab, so it plays right away.
+- When the remote desktop changes size, or the file reaches 1 GiB, the recording goes on in a new file with the next number.
+- Pictures that did not change take no space. A busy screen takes about one megabyte per second; an idle one almost nothing.
+- Recording goes on while another tab is in front.
+- The file is readable by you alone on Linux.
+
+## Credits
+
+The JPEG encoder is based in part on the work of the Independent JPEG Group.

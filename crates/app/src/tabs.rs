@@ -200,6 +200,26 @@ impl State {
         }
     }
 
+    /// Whether any remote desktop is being recorded, which needs a tick ten times a second.
+    pub fn any_recording(&self) -> bool {
+        self.tabs.iter().any(|tab| match &tab.content {
+            Content::Desktop(desktop) => desktop.is_recording(),
+            Content::Vnc(vnc) => vnc.is_recording(),
+            _ => false,
+        })
+    }
+
+    /// Takes the next slot of every desktop recording.
+    pub fn record_tick(&mut self) {
+        for tab in &mut self.tabs {
+            match &mut tab.content {
+                Content::Desktop(desktop) => desktop.tick_recording(),
+                Content::Vnc(vnc) => vnc.tick_recording(),
+                _ => {}
+            }
+        }
+    }
+
     /// Closes the tab in front, after a question when it holds a live session.
     pub fn close_front(&mut self) {
         self.request_close(self.active);
