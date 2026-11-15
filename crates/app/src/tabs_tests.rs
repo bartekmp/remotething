@@ -16,6 +16,7 @@ fn connection(id: &str, protocol: Protocol) -> ResolvedConnection {
         port: 22,
         credential: None,
         jump: None,
+        forwards: Vec::new(),
         rdp_quality: Quality::Balanced,
     }
 }

@@ -17,7 +17,7 @@ remotething-secrets = { path = "../secrets" }
 # `ring` instead of the default `aws-lc-rs` backend, which needs cmake.
 russh = { version = "0.65", default-features = false, features = ["ring", "flate2", "rsa"], optional = true }
 thiserror = "2"
-tokio = { version = "1", features = ["net", "rt", "sync", "time", "macros"], optional = true }
+tokio = { version = "1", features = ["net", "rt", "sync", "time", "macros", "io-util"], optional = true }
 
 [dev-dependencies]
 # The tests run a small SSH server in-process.

@@ -203,3 +203,8 @@ kind-agent = ssh-agent
 credentials-agent-note = The keys held by your running ssh-agent are used. Nothing is stored here except the user name.
 session-agent-needs-user = The credential for this connection uses ssh-agent and needs a user name. Set one on the Credentials screen.
 session-agent-refused = The server accepted none of the keys in your ssh-agent for this user.
+
+forwards-active = Port forwards: { $list }
+properties-forwards = Port forwards
+properties-forwards-hint = 8080:db.internal:5432, 9000:localhost:9000
+properties-error-forwards = Port forward { $text } is not local_port:host:port.

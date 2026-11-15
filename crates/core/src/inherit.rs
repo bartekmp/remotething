@@ -1,5 +1,6 @@
 //! Folder inheritance: a value left unset is taken from the nearest folder that sets it.
 
+use crate::forward::Forward;
 use crate::model::{Folder, Protocol, Quality, Settings, Store};
 use crate::{Error, Result};
 
@@ -20,6 +21,8 @@ pub struct ResolvedConnection {
     pub credential: Option<String>,
     /// Id of the connection to tunnel through, if any level sets one.
     pub jump: Option<String>,
+    /// Local port forwards to open with an SSH session.
+    pub forwards: Vec<Forward>,
     /// RDP quality preset; `Balanced` when no level sets one.
     pub rdp_quality: Quality,
 }
@@ -35,6 +38,9 @@ impl Settings {
         }
         if self.jump.is_none() {
             self.jump = fallback.jump.clone();
+        }
+        if self.forwards.is_empty() {
+            self.forwards = fallback.forwards.clone();
         }
         if self.rdp.quality.is_none() {
             self.rdp.quality = fallback.rdp.quality;
@@ -67,6 +73,7 @@ impl Store {
             port: settings.port.unwrap_or(connection.protocol.default_port()),
             credential: settings.credential,
             jump: settings.jump,
+            forwards: settings.forwards,
             rdp_quality: settings.rdp.quality.unwrap_or_default(),
         })
     }
@@ -236,5 +243,29 @@ mod tests {
         let error = store.resolve("web").unwrap_err();
 
         assert!(matches!(error, Error::FolderCycle(_)));
+    }
+
+    #[test]
+    fn forwards_come_from_the_folder_unless_the_connection_has_its_own() {
+        let forward = |local_port| crate::Forward {
+            local_port,
+            host: "db".to_string(),
+            port: 5432,
+        };
+        let with = |local_port| Settings {
+            forwards: vec![forward(local_port)],
+            ..Settings::default()
+        };
+        let store = Store {
+            folders: vec![folder("f", None, with(1000))],
+            connections: vec![
+                connection("plain", Some("f"), Settings::default()),
+                connection("own", Some("f"), with(2000)),
+            ],
+            ..Store::default()
+        };
+
+        assert_eq!(store.resolve("plain").unwrap().forwards, [forward(1000)]);
+        assert_eq!(store.resolve("own").unwrap().forwards, [forward(2000)]);
     }
 }

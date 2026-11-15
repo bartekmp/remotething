@@ -8,6 +8,7 @@ mod credentials;
 mod file_dialog;
 mod files_pane;
 mod files_view;
+mod forwards;
 mod i18n;
 mod icons;
 mod input;

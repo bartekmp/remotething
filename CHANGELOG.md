@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.6.0 - 2026-11-15
+
+- Local port forwards (`-L`) per connection or folder, opened with the SSH session.
+
 ## 0.5.0 - 2026-11-14
 
 - Sign in with keys held by ssh-agent (OpenSSH agent or Pageant on Windows) through a new "ssh-agent" credential kind, also for jump hosts.

@@ -168,3 +168,32 @@ fn save_and_delete_are_reported_to_the_window() {
     );
     assert_eq!(draft.name, "x");
 }
+
+#[test]
+fn port_forwards_are_typed_as_a_list_and_stored_parsed() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    draft.forwards = "8080:db.internal:5432, 9000:localhost:9000".to_string();
+
+    let updated = draft.apply(&original, &web()).unwrap();
+
+    let forwards = &updated.connections[1].settings.forwards;
+    assert_eq!(forwards.len(), 2);
+    assert_eq!(forwards[0].local_port, 8080);
+    let reloaded = Draft::load(&updated, &web()).unwrap();
+    assert_eq!(
+        reloaded.forwards,
+        "8080:db.internal:5432, 9000:localhost:9000"
+    );
+}
+
+#[test]
+fn a_broken_port_forward_names_the_text_and_changes_nothing() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    draft.forwards = "8080:db".to_string();
+
+    let error = draft.apply(&original, &web()).unwrap_err();
+
+    assert!(error.contains("8080:db"));
+}

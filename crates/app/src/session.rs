@@ -16,6 +16,7 @@ use remotething_secrets::{KnownHosts, Secret, SecretStore};
 
 use crate::credentials::Hidden;
 use crate::files_pane;
+use crate::forwards;
 use crate::i18n::fl;
 use crate::jump;
 use crate::keys;
@@ -167,6 +168,7 @@ pub enum Message {
     Submitted,
     Opened(Result<Opened, Failure>),
     Shell(ShellEvent),
+    ForwardsStarted(forwards::Started),
     Terminal(terminal_view::Event),
     TrustPressed,
     ReconnectPressed,
@@ -353,6 +355,7 @@ impl State {
         let Some(shell) = shell else {
             return Task::none();
         };
+        let connection = shell.connection.clone();
         let live = Live::new(shell.input, Some(shell.connection));
         self.stage = Stage::Connected(Box::new(live));
 
@@ -361,7 +364,8 @@ impl State {
             let event = events.recv().await?;
             Some((event, events))
         });
-        Task::run(events, Message::Shell)
+        let forwards = forwards::start(connection, self.connection.forwards.clone());
+        Task::batch([Task::run(events, Message::Shell), forwards])
     }
 
     /// A key press for the terminal. Ctrl+Shift+V pastes.

@@ -30,7 +30,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
                 Some(pending) => stack![terminal, paste_question(pending)].into(),
                 None => terminal,
             };
-            match &live.files {
+            let body: Element<'_, Message> = match &live.files {
                 // The pane takes its own space beside the terminal; it does not cover it.
                 Some(pane) => {
                     let pane = container(files_view::view(pane).map(Message::Files))
@@ -47,6 +47,10 @@ pub fn view(state: &State) -> Element<'_, Message> {
                     let toolbar = container(browse).align_right(Length::Fill);
                     column![toolbar, terminal].spacing(6).into()
                 }
+            };
+            match live.forwards.view() {
+                Some(bar) => column![bar, body].spacing(6).into(),
+                None => body,
             }
         }
         Stage::Ended(reason) => {

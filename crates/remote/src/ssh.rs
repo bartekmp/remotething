@@ -7,6 +7,7 @@
 //! closes the connection.
 
 mod connect;
+mod forward;
 mod host_key;
 mod shell;
 
@@ -16,6 +17,7 @@ use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
 pub use connect::{open_shell, open_shell_through};
+pub use forward::Forwarding;
 pub use shell::{Connection, SftpStream};
 
 /// Where the SSH server listens.
@@ -177,6 +179,15 @@ pub enum Error {
         host: String,
         /// What went wrong there.
         reason: Box<Error>,
+    },
+
+    /// The local port of a forward could not be listened on, usually because it is in use.
+    #[error("cannot listen on port {port}: {reason}")]
+    ListenFailed {
+        /// The local port.
+        port: u16,
+        /// What the operating system said.
+        reason: String,
     },
 
     /// Anything else the SSH layer reported.

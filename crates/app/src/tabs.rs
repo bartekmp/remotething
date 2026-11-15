@@ -283,6 +283,7 @@ fn start_quick(
         port: target.port_or_default(),
         credential: None,
         jump: None,
+        forwards: Vec::new(),
         rdp_quality: Quality::default(),
     };
     let title = connection.name.clone();

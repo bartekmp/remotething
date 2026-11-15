@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::files_pane;
+use crate::forwards;
 use crate::i18n::fl;
 use crate::paste;
 use crate::session::{
@@ -27,6 +28,8 @@ pub(crate) struct Live {
     pub(crate) connection: Option<Connection>,
     /// The file pane, while it is open.
     pub(crate) files: Option<files_pane::State>,
+    /// The port forwards of this session.
+    pub(crate) forwards: forwards::Active,
 }
 
 impl Live {
@@ -41,6 +44,7 @@ impl Live {
             pending_paste: None,
             connection,
             files: None,
+            forwards: forwards::Active::default(),
         }
     }
 
@@ -169,6 +173,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 if !replies.is_empty() {
                     live.send(ShellInput::Data(replies));
                 }
+            }
+            Task::none()
+        }
+        Message::ForwardsStarted(started) => {
+            if let (Stage::Connected(live), Some(active)) = (&mut state.stage, started.take()) {
+                live.forwards = active;
             }
             Task::none()
         }

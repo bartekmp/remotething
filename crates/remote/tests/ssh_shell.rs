@@ -663,3 +663,96 @@ async fn a_missing_agent_says_none_is_running() {
 
     assert!(matches!(result, Err(Error::AgentUnavailable(_))));
 }
+
+/// A TCP server that answers every line with the line in capitals.
+async fn start_shouting_server() -> u16 {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut stream, _)) = listener.accept().await else {
+                return;
+            };
+            tokio::spawn(async move {
+                let mut buffer = [0u8; 64];
+                while let Ok(read) = stream.read(&mut buffer).await {
+                    if read == 0 {
+                        return;
+                    }
+                    let shouted = buffer[..read].to_ascii_uppercase();
+                    let _ = stream.write_all(&shouted).await;
+                }
+            });
+        }
+    });
+    port
+}
+
+async fn connected_shell() -> Shell {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    open_shell(&endpoint, &password(PASSWORD), known, SIZE)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_local_forward_reaches_a_host_behind_the_server() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let target = start_shouting_server().await;
+    let shell = connected_shell().await;
+    let forward = shell
+        .connection
+        .forward_local(0, "127.0.0.1".to_string(), target)
+        .await
+        .unwrap();
+
+    let mut client = tokio::net::TcpStream::connect(("127.0.0.1", forward.local_port()))
+        .await
+        .unwrap();
+    client.write_all(b"hello").await.unwrap();
+    let mut answer = [0u8; 5];
+    client.read_exact(&mut answer).await.unwrap();
+
+    assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_port_that_is_taken_is_reported() {
+    let taken = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let port = taken.local_addr().unwrap().port();
+    let shell = connected_shell().await;
+
+    let result = shell
+        .connection
+        .forward_local(port, "127.0.0.1".to_string(), 1)
+        .await;
+
+    assert!(matches!(result, Err(Error::ListenFailed { port: p, .. }) if p == port));
+}
+
+#[tokio::test]
+async fn dropping_a_forward_closes_its_port() {
+    let shell = connected_shell().await;
+    let forward = shell
+        .connection
+        .forward_local(0, "127.0.0.1".to_string(), 1)
+        .await
+        .unwrap();
+    let port = forward.local_port();
+
+    drop(forward);
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    assert!(
+        tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_err()
+    );
+}

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::forward::Forward;
 use serde::{Deserialize, Serialize};
 
 /// The whole connection tree, exactly as stored in the connections file.
@@ -105,6 +106,9 @@ pub struct Settings {
     /// Id of the connection to tunnel through.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump: Option<String>,
+    /// Local port forwards opened with an SSH session. Empty means "inherit".
+    #[serde(default, rename = "forward", skip_serializing_if = "Vec::is_empty")]
+    pub forwards: Vec<Forward>,
     /// Settings that only apply to RDP.
     #[serde(default, skip_serializing_if = "RdpSettings::is_empty")]
     pub rdp: RdpSettings,

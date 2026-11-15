@@ -29,6 +29,15 @@ A connection, or a folder above it, can name another connection as its **Jump ho
 - The jump host's SSH server must allow forwarding (`AllowTcpForwarding yes`, the OpenSSH default). If it does not, the tab says which host refused.
 - The connections to the jump hosts stay open as long as the session does, and close with it.
 
+## Port forwards
+
+The **Port forwards** field of a connection, or of a folder above it, lists local forwards like `ssh -L`: `8080:db.internal:5432, 9000:localhost:9000`. Each is `local_port:host:port`, with `host` as the SSH server sees it.
+
+- The forwards open when the session connects and close with the tab.
+- They listen on `127.0.0.1` only, so only this machine can use them.
+- A port that is already in use is shown in red above the terminal; the other forwards still open.
+- A connection with its own list ignores the folder's; leave it empty to inherit.
+
 ## Host keys
 
 The first time you connect to a host, nothing is sent to it yet. The tab shows the fingerprint of the server's key:
@@ -75,6 +84,6 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | --- | --- |
 | `.ppk` keys, two-factor prompts | Planned |
 | Search, selecting by word or line with a double or triple click | Planned |
-| Port forwards | Planned |
+| Remote forwards (`-R`) and dynamic forwards (`-D`) | Planned |
 | Files: progress and a transfer queue, rename, delete, new folder, preview, the wide view with permissions and dates, drag and drop | Planned |
 | Host certificates | Not supported; the server must offer a plain host key |

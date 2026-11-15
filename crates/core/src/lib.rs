@@ -7,6 +7,7 @@ mod config;
 mod edit;
 mod error;
 mod exchange;
+mod forward;
 mod inherit;
 mod model;
 mod putty;
@@ -15,6 +16,7 @@ mod validate;
 
 pub use error::Error;
 pub use exchange::ImportSummary;
+pub use forward::{BadForward, Forward, format_forwards, parse_forwards};
 pub use inherit::ResolvedConnection;
 pub use model::{
     Connection, Credential, CredentialKind, Folder, Protocol, Quality, RdpSettings, Settings, Store,

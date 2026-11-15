@@ -4,7 +4,7 @@ use std::fmt;
 
 use iced::widget::{button, column, row, scrollable, text};
 use iced::{Element, Length};
-use remotething_core::{Protocol, Settings, Store};
+use remotething_core::{Forward, Protocol, Settings, Store, format_forwards, parse_forwards};
 
 use crate::i18n::fl;
 use crate::icons;
@@ -30,6 +30,8 @@ pub struct Draft {
     pub parent: Option<String>,
     pub credential: Option<String>,
     pub jump: Option<String>,
+    /// Local port forwards as typed, `local:host:port` separated by commas. Empty means "inherit".
+    pub forwards: String,
     /// `None` means the default icon for the kind of item.
     pub icon: Option<String>,
 }
@@ -45,6 +47,7 @@ pub enum Message {
     ParentPicked(Choice),
     CredentialPicked(Choice),
     JumpPicked(Choice),
+    ForwardsChanged(String),
     SavePressed,
     DeletePressed,
 }
@@ -126,6 +129,7 @@ impl Draft {
             parent: parent.clone(),
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
+            forwards: format_forwards(&settings.forwards),
             icon: icon.clone(),
         }
     }
@@ -139,6 +143,8 @@ impl Draft {
             return Err(fl!("properties-error-name"));
         }
         let port = parse_port(&self.port)?;
+        let forwards = parse_forwards(&self.forwards)
+            .map_err(|bad| fl!("properties-error-forwards", text = bad.0))?;
 
         let mut updated = store.clone();
         match selection {
@@ -148,7 +154,7 @@ impl Draft {
                     folder.name = name.to_string();
                     folder.parent = self.parent.clone();
                     folder.icon = self.icon.clone();
-                    self.write_settings(&mut folder.settings, port);
+                    self.write_settings(&mut folder.settings, port, &forwards);
                 }
             }
             Selection::Connection(id) => {
@@ -163,7 +169,7 @@ impl Draft {
                     connection.protocol = self.protocol;
                     connection.parent = self.parent.clone();
                     connection.icon = self.icon.clone();
-                    self.write_settings(&mut connection.settings, port);
+                    self.write_settings(&mut connection.settings, port, &forwards);
                 }
             }
         }
@@ -172,8 +178,9 @@ impl Draft {
         Ok(updated)
     }
 
-    fn write_settings(&self, settings: &mut Settings, port: Option<u16>) {
+    fn write_settings(&self, settings: &mut Settings, port: Option<u16>, forwards: &[Forward]) {
         settings.port = port;
+        settings.forwards = forwards.to_vec();
         settings.credential = self.credential.clone();
         settings.jump = self.jump.clone();
     }
@@ -201,6 +208,7 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::ParentPicked(choice) => draft.parent = choice.id,
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
+        Message::ForwardsChanged(text) => draft.forwards = text,
         Message::SavePressed => return Some(Event::Save),
         Message::DeletePressed => return Some(Event::Delete),
     }
@@ -276,6 +284,11 @@ pub fn view<'a>(
         jump_choices(store, selection),
         &draft.jump,
         Message::JumpPicked,
+    ));
+    fields = fields.push(labelled(
+        fl!("properties-forwards"),
+        theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
+            .on_input(Message::ForwardsChanged),
     ));
 
     let buttons = row![

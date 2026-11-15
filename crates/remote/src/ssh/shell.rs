@@ -23,6 +23,11 @@ struct Links {
 }
 
 impl Connection {
+    /// The client handle of the target, for opening more channels.
+    pub(super) fn handle(&self) -> &client::Handle<Handler> {
+        &self.0.target
+    }
+
     /// Opens a channel on this connection and starts the server's SFTP service on it.
     pub async fn open_sftp(&self) -> Result<SftpStream> {
         let channel = self.0.target.channel_open_session().await?;

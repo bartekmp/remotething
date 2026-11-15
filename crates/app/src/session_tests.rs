@@ -53,6 +53,7 @@ impl Fixture {
             port: 22,
             credential: credential.map(str::to_string),
             jump: None,
+            forwards: Vec::new(),
             rdp_quality: Quality::Balanced,
         };
         State::start(connection, &self.context()).0
@@ -102,6 +103,7 @@ fn a_typed_user_name_is_not_asked_for_again() {
         port: 22,
         credential: None,
         jump: None,
+        forwards: Vec::new(),
         rdp_quality: Quality::Balanced,
     };
 
@@ -443,6 +445,7 @@ fn connection_with_jump(jump: &str) -> ResolvedConnection {
         port: 22,
         credential: None,
         jump: Some(jump.to_string()),
+        forwards: Vec::new(),
         rdp_quality: Quality::Balanced,
     }
 }
