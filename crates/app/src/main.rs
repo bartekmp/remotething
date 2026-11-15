@@ -82,6 +82,7 @@ fn main() -> Result<()> {
     let (preferences, settings_problem) = load_preferences(&path);
     i18n::set_language_override(preferences.language.clone());
 
+    picture::detect_gpu();
     let keyring = open_keyring();
     let vault_file = vault::path_beside(&path);
 

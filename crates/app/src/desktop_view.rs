@@ -1,13 +1,13 @@
 //! Draws a Remote Desktop tab and turns the pointer over it into input.
 
-use iced::widget::{button, column, container, mouse_area, responsive, row, shader, text};
+use iced::widget::{button, column, container, mouse_area, responsive, row, text};
 use iced::{Element, Font, Length, Point, Size, Theme, mouse};
 use remotething_rdp::Button;
 
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
 use crate::i18n::fl;
-use crate::picture::Screen;
+use crate::picture;
 use crate::theme;
 
 const FORM_WIDTH: f32 = 320.0;
@@ -123,10 +123,7 @@ fn desktop(live: &Live) -> Element<'_, Message> {
     let picture = live.picture.clone();
     let remote = live.size;
     responsive(move |area| {
-        let screen = shader(Screen(picture.clone()))
-            .width(Length::Fill)
-            .height(Length::Fill);
-        mouse_area(screen)
+        mouse_area(picture::view(&picture))
             .on_move(move |point| {
                 let (x, y) = remote_position(area, remote, point);
                 Message::Moved(x, y)

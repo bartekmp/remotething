@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.15.2 - 2026-11-15
+
+- Remote Desktop: on machines without a usable GPU the desktop is drawn as a plain image instead of staying blank.
+
 ## 0.15.1 - 2026-11-15
 
 - Remote Desktop: the picture is drawn through one GPU texture updated in place, to stop the blinking on some drivers.

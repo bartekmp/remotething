@@ -4,12 +4,14 @@
 //! texture per frame, which blinks on some drivers.
 
 use std::fmt;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, OnceLock};
 
 use iced::wgpu;
+use iced::widget::image::Handle;
 use iced::widget::shader::{self, Viewport};
-use iced::{Rectangle, Size, mouse};
+use iced::widget::{image, shader as shader_widget};
+use iced::{ContentFit, Element, Length, Rectangle, Size, mouse};
 
 /// One picture of the remote desktop: RGBA bytes, cheap to clone.
 #[derive(Clone)]
@@ -44,8 +46,42 @@ impl Picture {
     }
 }
 
+static GPU_DRAWING: OnceLock<bool> = OnceLock::new();
+
+/// Looks for a graphics adapter. Without one the toolkit draws on the CPU,
+/// and that renderer cannot run the texture shader below.
+///
+/// Call once at start-up, before the first picture is drawn.
+pub(crate) fn detect_gpu() {
+    let forced_cpu = std::env::var("ICED_BACKEND").is_ok_and(|backend| backend == "tiny-skia");
+    let found = !forced_cpu && {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::from_env_or_default());
+        let options = wgpu::RequestAdapterOptions::default();
+        iced::futures::executor::block_on(instance.request_adapter(&options)).is_ok()
+    };
+    let _ = GPU_DRAWING.set(found);
+}
+
+/// The picture as a widget, scaled to fit and centred: through the texture on
+/// a GPU, as a plain image on the CPU renderer.
+pub(crate) fn view<'a, Message: 'a>(picture: &Picture) -> Element<'a, Message> {
+    if GPU_DRAWING.get().copied().unwrap_or(true) {
+        shader_widget(Screen(picture.clone()))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+    } else {
+        let handle = Handle::from_rgba(picture.width, picture.height, picture.rgba.to_vec());
+        image(handle)
+            .content_fit(ContentFit::Contain)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+    }
+}
+
 /// The widget's program: draws a picture scaled to fit its bounds.
-pub(crate) struct Screen(pub(crate) Picture);
+struct Screen(pub(crate) Picture);
 
 impl<Message> shader::Program<Message> for Screen {
     type State = ();
