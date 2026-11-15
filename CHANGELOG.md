@@ -5,6 +5,14 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.10.1 - 2026-11-15
+
+- Tab titles too long for the tab are cut with an ellipsis; the full title shows when you hover over the tab.
+
+## 0.10.0 - 2026-11-15
+
+- Terminal: double-click selects a word, triple-click a line.
+
 ## 0.9.0 - 2026-11-15
 
 - Removing a folder with content now asks first and removes everything inside it.

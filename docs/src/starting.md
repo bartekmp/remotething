@@ -46,6 +46,7 @@ A folder cannot be dropped into itself or into one of its own sub-folders. Folde
 | New tab | **Ctrl+Shift+T**, or the **+** at the end of the tab bar. It lists your recent connections; type to search all of them, press Enter for the first match |
 | Close the tab in front | **Ctrl+Shift+W**, or the **x** on the tab. **Ctrl+W** works too, except in a connected terminal, where the shell uses it to delete a word |
 | Reorder | Drag a tab onto another tab |
+| Long titles | A title too long for its tab ends with an ellipsis; hover over the tab to see the whole title |
 
 ### Connecting without saving
 

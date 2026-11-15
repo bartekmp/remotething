@@ -3,6 +3,18 @@
 use std::ops::Range;
 
 pub const TAB_WIDTH: f32 = 170.0;
+/// How many characters of a title fit in a tab beside its close button.
+const TITLE_CHARS: usize = 16;
+
+/// The title as shown in a tab: cut with an ellipsis when it would not fit.
+/// `None` when the whole title fits.
+pub fn shortened(title: &str) -> Option<String> {
+    if title.chars().count() <= TITLE_CHARS {
+        return None;
+    }
+    let kept: String = title.chars().take(TITLE_CHARS - 1).collect();
+    Some(format!("{}…", kept.trim_end()))
+}
 pub const TAB_HEIGHT: f32 = 34.0;
 pub const GAP: f32 = 6.0;
 /// The "new tab" button and the "more tabs" button.
@@ -45,6 +57,27 @@ pub fn height(lines: usize) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_short_title_is_shown_as_it_is() {
+        assert_eq!(shortened("media"), None);
+        assert_eq!(shortened(&"x".repeat(TITLE_CHARS)), None);
+    }
+
+    #[test]
+    fn a_long_title_is_cut_with_an_ellipsis_and_fits() {
+        let cut = shortened("bartek@workstation.monolith.local").unwrap();
+
+        assert_eq!(cut, "bartek@workstat…");
+        assert!(cut.chars().count() <= TITLE_CHARS);
+    }
+
+    #[test]
+    fn cutting_counts_characters_not_bytes() {
+        let cut = shortened(&"żółw".repeat(10)).unwrap();
+
+        assert_eq!(cut.chars().count(), TITLE_CHARS);
+    }
 
     /// A bar exactly wide enough for `tabs` tabs and the new-tab button.
     fn width_for(tabs: usize) -> f32 {

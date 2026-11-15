@@ -82,6 +82,28 @@ pub struct Screen {
     replies: Replies,
     /// Where the mouse button went down for the selection being made.
     anchor: Option<Point>,
+    /// Whether the selection grows by characters, words or lines.
+    granularity: Granularity,
+}
+
+/// The unit a selection grows by: a click selects characters, a double click
+/// words and a triple click whole lines.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Granularity {
+    #[default]
+    Character,
+    Word,
+    Line,
+}
+
+impl Granularity {
+    fn selection_type(self) -> SelectionType {
+        match self {
+            Granularity::Character => SelectionType::Simple,
+            Granularity::Word => SelectionType::Semantic,
+            Granularity::Line => SelectionType::Lines,
+        }
+    }
 }
 
 impl Screen {
@@ -93,6 +115,7 @@ impl Screen {
             parser: Processor::new(),
             replies,
             anchor: None,
+            granularity: Granularity::default(),
         }
     }
 
@@ -140,9 +163,16 @@ impl Screen {
     }
 
     /// Starts a selection at a visible position, dropping any earlier one.
-    pub fn start_selection(&mut self, column: usize, line: usize) {
+    ///
+    /// A word or a line is selected at once, and dragging grows it by whole
+    /// words or lines.
+    pub fn start_selection_by(&mut self, column: usize, line: usize, granularity: Granularity) {
         self.anchor = Some(self.grid_point(column, line));
+        self.granularity = granularity;
         self.term.selection = None;
+        if granularity != Granularity::Character {
+            self.extend_selection(column, line);
+        }
     }
 
     /// Stretches the selection from where it started to a visible position.
@@ -157,7 +187,7 @@ impl Screen {
         } else {
             (Side::Right, Side::Left)
         };
-        let mut selection = Selection::new(SelectionType::Simple, anchor, anchor_side);
+        let mut selection = Selection::new(self.granularity.selection_type(), anchor, anchor_side);
         selection.update(point, point_side);
         self.term.selection = Some(selection);
     }
@@ -452,11 +482,35 @@ mod tests {
     }
 
     #[test]
+    fn a_double_click_selects_the_word_and_a_triple_click_the_line() {
+        let mut screen = Screen::new(20, 4);
+        screen.feed(b"hello world");
+
+        screen.start_selection_by(8, 0, Granularity::Word);
+        assert_eq!(screen.selected_text().as_deref(), Some("world"));
+
+        screen.start_selection_by(2, 0, Granularity::Line);
+        // A selected line ends with its line break, like in other terminals.
+        assert_eq!(screen.selected_text().as_deref(), Some("hello world\n"));
+    }
+
+    #[test]
+    fn dragging_after_a_double_click_grows_by_words() {
+        let mut screen = Screen::new(20, 4);
+        screen.feed(b"hello big world");
+
+        screen.start_selection_by(1, 0, Granularity::Word);
+        screen.extend_selection(7, 0);
+
+        assert_eq!(screen.selected_text().as_deref(), Some("hello big"));
+    }
+
+    #[test]
     fn a_drag_selects_the_characters_between_both_ends() {
         let mut screen = Screen::new(20, 4);
         screen.feed(b"hello world");
 
-        screen.start_selection(6, 0);
+        screen.start_selection_by(6, 0, Granularity::Character);
         screen.extend_selection(10, 0);
 
         assert_eq!(screen.selected_text().as_deref(), Some("world"));
@@ -473,7 +527,7 @@ mod tests {
         let mut screen = Screen::new(20, 4);
         screen.feed(b"hello world");
 
-        screen.start_selection(10, 0);
+        screen.start_selection_by(10, 0, Granularity::Character);
         screen.extend_selection(6, 0);
 
         assert_eq!(screen.selected_text().as_deref(), Some("world"));
@@ -484,7 +538,7 @@ mod tests {
         let mut screen = Screen::new(20, 4);
         screen.feed(b"one\r\ntwo");
 
-        screen.start_selection(1, 0);
+        screen.start_selection_by(1, 0, Granularity::Character);
         screen.extend_selection(1, 1);
 
         assert_eq!(screen.selected_text().as_deref(), Some("ne\ntw"));
@@ -497,10 +551,10 @@ mod tests {
     fn a_click_without_a_drag_selects_nothing() {
         let mut screen = Screen::new(20, 4);
         screen.feed(b"hello");
-        screen.start_selection(0, 0);
+        screen.start_selection_by(0, 0, Granularity::Character);
         screen.extend_selection(4, 0);
 
-        screen.start_selection(2, 0);
+        screen.start_selection_by(2, 0, Granularity::Character);
 
         assert_eq!(screen.selected_text(), None);
         assert!(screen.selected_spans().is_empty());
@@ -510,7 +564,7 @@ mod tests {
     fn a_selection_stays_on_its_text_when_the_view_scrolls() {
         let mut screen = Screen::new(20, 2);
         screen.feed(b"one\r\ntwo\r\nthree");
-        screen.start_selection(0, 1);
+        screen.start_selection_by(0, 1, Granularity::Character);
         screen.extend_selection(4, 1);
         assert_eq!(screen.selected_text().as_deref(), Some("three"));
 

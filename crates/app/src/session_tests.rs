@@ -347,7 +347,11 @@ fn dragging_over_the_terminal_selects_text_and_ctrl_shift_c_does_not_type() {
     let output = Message::Shell(ShellEvent::Output(b"hello world".to_vec()));
     fixture.send(&mut state, output);
 
-    let started = terminal_view::Event::SelectionStarted { column: 0, line: 0 };
+    let started = terminal_view::Event::SelectionStarted {
+        column: 0,
+        line: 0,
+        granularity: crate::terminal::Granularity::Character,
+    };
     let extended = terminal_view::Event::SelectionExtended { column: 4, line: 0 };
     fixture.send(&mut state, Message::Terminal(started));
     fixture.send(&mut state, Message::Terminal(extended));

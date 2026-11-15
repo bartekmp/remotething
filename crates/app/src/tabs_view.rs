@@ -4,7 +4,7 @@
 use iced::alignment::Vertical;
 use iced::widget::{
     button, column, container, mouse_area, opaque, pin, responsive, row, scrollable, space, stack,
-    text,
+    text, tooltip,
 };
 use iced::{Element, Length, Point};
 use remotething_core::{ResolvedConnection, Store};
@@ -124,7 +124,9 @@ fn view_tab(state: &State, index: usize) -> Element<'_, Message> {
             .dragged
             .is_some_and(|id| state.index_of(id) != Some(index));
 
-    let title = text(tab.title.as_str())
+    let shortened = tab_bar::shortened(&tab.title);
+    let shown = shortened.as_deref().unwrap_or(tab.title.as_str());
+    let title = text(shown.to_string())
         .wrapping(text::Wrapping::None)
         .width(Length::Fill);
     let close = button(icons::view(icons::CLOSE, theme::TEXT_SMALL))
@@ -144,6 +146,14 @@ fn view_tab(state: &State, index: usize) -> Element<'_, Message> {
         tab_box.style(theme::tab(is_active))
     };
 
+    // A cut title shows in full when the pointer rests on the tab.
+    let tab_box: Element<'_, Message> = match shortened {
+        Some(_) => tooltip(tab_box, text(tab.title.as_str()), tooltip::Position::Bottom)
+            .gap(4)
+            .style(theme::floating)
+            .into(),
+        None => tab_box.into(),
+    };
     mouse_area(tab_box)
         .on_right_press(Message::MenuRequested(index))
         .on_press(Message::TabPressed(index))

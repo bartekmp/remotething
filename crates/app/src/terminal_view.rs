@@ -1,11 +1,13 @@
 //! Draws a terminal screen on a canvas and reports how many characters fit.
 
+use std::time::{Duration, Instant};
+
 use iced::widget::canvas::{self, Cache, Geometry};
 use iced::widget::{Action, container};
 use iced::{Color, Element, Font, Length, Point, Rectangle, Renderer, Size, Theme, font, mouse};
 use remotething_remote::ssh::TerminalSize;
 
-use crate::terminal::{Cell, Paint, Screen};
+use crate::terminal::{Cell, Granularity, Paint, Screen};
 
 pub const FONT_REGULAR: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Regular.ttf");
 pub const FONT_BOLD: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Bold.ttf");
@@ -119,7 +121,12 @@ pub enum Event {
     /// The wheel turned, by this many lines back.
     Scrolled(i32),
     /// The mouse button went down on this character.
-    SelectionStarted { column: usize, line: usize },
+    SelectionStarted {
+        column: usize,
+        line: usize,
+        /// By characters for a click, words for two clicks, lines for three.
+        granularity: Granularity,
+    },
     /// The pointer moved to this character with the button held.
     SelectionExtended { column: usize, line: usize },
     /// The button was released.
@@ -159,7 +166,37 @@ struct Program<'a, Message> {
 
 /// Whether the mouse button is held down from a press inside the view.
 #[derive(Default)]
-struct Dragging(bool);
+struct Dragging {
+    held: bool,
+    /// The last press, to tell a double or triple click.
+    last_click: Option<Press>,
+}
+
+/// A press of the left button, to tell a double or triple click.
+#[derive(Clone, Copy)]
+struct Press {
+    at: Instant,
+    column: usize,
+    line: usize,
+    count: u8,
+}
+
+/// How close in time presses on the same character must be to count together.
+const MULTI_CLICK: Duration = Duration::from_millis(400);
+
+/// The press count for a press now: 1 for a single click, up to 3.
+fn press_count(previous: Option<Press>, now: Instant, column: usize, line: usize) -> u8 {
+    match previous {
+        Some(before)
+            if before.column == column
+                && before.line == line
+                && now.duration_since(before.at) <= MULTI_CLICK =>
+        {
+            (before.count % 3) + 1
+        }
+        _ => 1,
+    }
+}
 
 impl<Message> canvas::Program<Message> for Program<'_, Message> {
     type State = Dragging;
@@ -183,13 +220,30 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 }
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     if let Some(position) = cursor.position_in(bounds) {
-                        dragging.0 = true;
+                        dragging.held = true;
                         let (column, line) = cell_at(position);
-                        let started = Event::SelectionStarted { column, line };
+                        let now = Instant::now();
+                        let count = press_count(dragging.last_click, now, column, line);
+                        let granularity = match count {
+                            1 => Granularity::Character,
+                            2 => Granularity::Word,
+                            _ => Granularity::Line,
+                        };
+                        dragging.last_click = Some(Press {
+                            at: now,
+                            column,
+                            line,
+                            count,
+                        });
+                        let started = Event::SelectionStarted {
+                            column,
+                            line,
+                            granularity,
+                        };
                         return publish(started).map(Action::and_capture);
                     }
                 }
-                mouse::Event::CursorMoved { .. } if dragging.0 => {
+                mouse::Event::CursorMoved { .. } if dragging.held => {
                     // Outside the view the nearest character counts, so a drag can overshoot.
                     if let Some(position) = cursor.position_from(bounds.position()) {
                         let (column, line) = cell_at(position);
@@ -199,8 +253,8 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 mouse::Event::ButtonPressed(mouse::Button::Middle) if cursor.is_over(bounds) => {
                     return publish(Event::PasteRequested).map(Action::and_capture);
                 }
-                mouse::Event::ButtonReleased(mouse::Button::Left) if dragging.0 => {
-                    dragging.0 = false;
+                mouse::Event::ButtonReleased(mouse::Button::Left) if dragging.held => {
+                    dragging.held = false;
                     return publish(Event::SelectionEnded);
                 }
                 _ => {}
@@ -364,6 +418,37 @@ mod tests {
         let mut screen = Screen::new(40, 4);
         screen.feed(bytes);
         screen.cells()
+    }
+
+    #[test]
+    fn quick_presses_on_one_character_count_up_to_three_and_start_over() {
+        let start = Instant::now();
+        let press = |count, after_ms: u64| Press {
+            at: start + Duration::from_millis(after_ms),
+            column: 3,
+            line: 1,
+            count,
+        };
+
+        assert_eq!(press_count(None, start, 3, 1), 1);
+        assert_eq!(press_count(Some(press(1, 0)), press(1, 100).at, 3, 1), 2);
+        assert_eq!(press_count(Some(press(2, 0)), press(1, 100).at, 3, 1), 3);
+        assert_eq!(press_count(Some(press(3, 0)), press(1, 100).at, 3, 1), 1);
+    }
+
+    #[test]
+    fn a_slow_or_moved_press_is_a_new_click() {
+        let start = Instant::now();
+        let before = Press {
+            at: start,
+            column: 3,
+            line: 1,
+            count: 1,
+        };
+        let later = start + Duration::from_millis(900);
+
+        assert_eq!(press_count(Some(before), later, 3, 1), 1);
+        assert_eq!(press_count(Some(before), start, 4, 1), 1);
     }
 
     #[test]

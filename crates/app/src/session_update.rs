@@ -229,8 +229,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                     live.send(ShellInput::Resize(size));
                 }
                 terminal_view::Event::Scrolled(lines) => live.screen.scroll(lines),
-                terminal_view::Event::SelectionStarted { column, line } => {
-                    live.screen.start_selection(column, line);
+                terminal_view::Event::SelectionStarted {
+                    column,
+                    line,
+                    granularity,
+                } => {
+                    live.screen.start_selection_by(column, line, granularity);
                 }
                 terminal_view::Event::SelectionExtended { column, line } => {
                     live.screen.extend_selection(column, line);

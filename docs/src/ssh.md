@@ -57,7 +57,7 @@ If a trusted host later shows a different key, the tab warns you before anything
 - 16, 256 and true colours, bold and underline. The colours follow the app's light or dark theme.
 - The terminal resizes with the window, and the remote programs are told.
 - The mouse wheel, or **Shift+Page Up** and **Shift+Page Down**, looks back through up to 10,000 lines. Typing returns to the newest line.
-- Drag over text to select it. On Linux the selection is copied at once for middle-click paste; **Ctrl+Shift+C** copies it to the clipboard.
+- Drag over text to select it. Double-click selects a word and triple-click a line; dragging after that grows the selection by words or lines. On Linux the selection is copied at once for middle-click paste; **Ctrl+Shift+C** copies it to the clipboard.
 - **Ctrl+Shift+V** pastes from the clipboard. A middle click pastes what was last selected.
 - A paste with a line break or another control character, or longer than 2,000 characters, asks first and shows its size and first lines. Enter pastes, Escape cancels. Line breaks are sent as Enter. Control characters other than tab and line breaks are removed from pasted text.
 - Programs that ask for it (most shells and editors) are told that the text is a paste, so they do not run or indent it as if it was typed.
@@ -85,7 +85,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 
 | Feature | State |
 | --- | --- |
-| Search, selecting by word or line with a double or triple click | Planned |
+| Search in the terminal | Planned |
 | Remote forwards (`-R`) and dynamic forwards (`-D`) | Planned |
 | Files: progress and a transfer queue, rename, delete, new folder, preview, the wide view with permissions and dates, drag and drop | Planned |
 | Host certificates | Not supported; the server must offer a plain host key |
