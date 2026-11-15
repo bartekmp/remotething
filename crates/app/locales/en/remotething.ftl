@@ -265,3 +265,9 @@ details-sent = Sent
 details-via = Through { $hosts }
 
 about-rights = © 2026 Bartosz Pollok. All rights reserved.
+
+properties-quality = Remote desktop quality
+quality-lan = Best picture (fast network)
+quality-balanced = Balanced
+quality-low-bandwidth = Low bandwidth
+details-quality = Quality preset

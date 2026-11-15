@@ -33,6 +33,7 @@ mod preferences;
 mod properties;
 mod putty_import;
 mod putty_source;
+mod quality_choice;
 mod recent;
 mod rows;
 mod scancodes;

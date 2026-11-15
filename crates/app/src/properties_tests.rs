@@ -197,3 +197,31 @@ fn a_broken_port_forward_names_the_text_and_changes_nothing() {
 
     assert!(error.contains("8080:db"));
 }
+
+#[test]
+fn a_picked_quality_is_stored_on_the_item() {
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    assert_eq!(draft.rdp_quality, None);
+
+    update(
+        &mut draft,
+        Message::QualityPicked(QualityChoice(Some(Quality::LowBandwidth))),
+    );
+    let updated = draft.apply(&store(), &web()).unwrap();
+
+    assert_eq!(
+        updated.connections[1].settings.rdp.quality,
+        Some(Quality::LowBandwidth)
+    );
+}
+
+#[test]
+fn choosing_inherit_clears_the_quality() {
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    draft.rdp_quality = Some(Quality::Lan);
+
+    update(&mut draft, Message::QualityPicked(QualityChoice(None)));
+    let updated = draft.apply(&store(), &web()).unwrap();
+
+    assert_eq!(updated.connections[1].settings.rdp.quality, None);
+}

@@ -4,10 +4,13 @@ use std::fmt;
 
 use iced::widget::{button, column, row, scrollable, text};
 use iced::{Element, Length};
-use remotething_core::{Forward, Protocol, Settings, Store, format_forwards, parse_forwards};
+use remotething_core::{
+    Forward, Protocol, Quality, Settings, Store, format_forwards, parse_forwards,
+};
 
 use crate::i18n::fl;
 use crate::icons;
+use crate::quality_choice::{self, QualityChoice};
 use crate::theme;
 use crate::tree::{Selection, protocol_label};
 
@@ -32,6 +35,8 @@ pub struct Draft {
     pub jump: Option<String>,
     /// Local port forwards as typed, `local:host:port` separated by commas. Empty means "inherit".
     pub forwards: String,
+    /// RDP only. `None` means "inherit".
+    pub rdp_quality: Option<Quality>,
     /// `None` means the default icon for the kind of item.
     pub icon: Option<String>,
 }
@@ -48,6 +53,7 @@ pub enum Message {
     CredentialPicked(Choice),
     JumpPicked(Choice),
     ForwardsChanged(String),
+    QualityPicked(QualityChoice),
     SavePressed,
     DeletePressed,
 }
@@ -130,6 +136,7 @@ impl Draft {
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
             forwards: format_forwards(&settings.forwards),
+            rdp_quality: settings.rdp.quality,
             icon: icon.clone(),
         }
     }
@@ -183,6 +190,7 @@ impl Draft {
         settings.forwards = forwards.to_vec();
         settings.credential = self.credential.clone();
         settings.jump = self.jump.clone();
+        settings.rdp.quality = self.rdp_quality;
     }
 }
 
@@ -209,6 +217,7 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
+        Message::QualityPicked(choice) => draft.rdp_quality = choice.0,
         Message::SavePressed => return Some(Event::Save),
         Message::DeletePressed => return Some(Event::Delete),
     }
@@ -290,6 +299,18 @@ pub fn view<'a>(
         theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
             .on_input(Message::ForwardsChanged),
     ));
+    // Folders can set it for the connections inside; a connection only if it uses RDP.
+    if !is_connection || draft.protocol == Protocol::Rdp {
+        fields = fields.push(labelled(
+            fl!("properties-quality"),
+            theme::pick(
+                quality_choice::CHOICES,
+                Some(QualityChoice(draft.rdp_quality)),
+                Message::QualityPicked,
+            )
+            .width(Length::Fill),
+        ));
+    }
 
     let buttons = row![
         button(text(fl!("properties-save")))

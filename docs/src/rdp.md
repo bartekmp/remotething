@@ -31,6 +31,18 @@ If the certificate later changes, the tab warns before sending anything. Trust t
 - Closing the tab ends the session and asks first.
 - A closed or lost session shows why, with a **Reconnect** button.
 
+## Quality
+
+Choose **Remote desktop quality** in the properties panel of a connection, or of a folder for everything inside it. Without a choice the connection uses **Balanced**.
+
+| Preset | Colours | What the server skips | Data in the first 8 seconds of an idle Windows 11 desktop |
+| --- | --- | --- | --- |
+| Best picture (fast network) | 32 bit | Nothing: wallpaper, window animations and desktop composition stay on | about 1.2 MB |
+| Balanced | 32 bit | Wallpaper, menu animations, window contents while dragging | about 0.18 MB |
+| Low bandwidth | 16 bit | The same, and visual themes, cursor shadow and cursor settings | about 0.13 MB |
+
+All presets offer the RemoteFX codec, which the server uses when it can. A change applies the next time you connect.
+
 ## Connection details
 
 A strip under the desktop shows the host, the desktop size and the current download rate and frames per second. The **(i)** button at its right end opens a panel with:
@@ -39,7 +51,8 @@ A strip under the desktop shows the host, the desktop size and the current downl
 | --- | --- |
 | Address | The IP address and port actually connected to |
 | Security | How the connection is secured |
-| Picture codec | How the server sends the picture. Only classic bitmap updates are used so far, so a busy screen takes more bandwidth than in other clients |
+| Quality preset | The preset this connection uses |
+| Picture codec | What the client offers: RemoteFX, with classic bitmaps as the fallback |
 | Desktop size | Pixels of the remote desktop |
 | Receiving, Received in total | Current rate and total of RDP data received, without TLS overhead |
 | Frames per second | Pictures shown per second, at most 30 |
@@ -52,7 +65,6 @@ The rates appear after the first second and update once per second. The same str
 | Feature | State |
 | --- | --- |
 | Scaling for HiDPI screens | Planned |
-| Quality presets | Planned (the setting exists, it is not used yet) |
 | Clipboard images and files | Planned (text works) |
 | Cursor shape from the remote machine | Planned: the local pointer is shown |
 | Kerberos sign-in, RD Gateway, audio, drive redirection | Not planned for now |

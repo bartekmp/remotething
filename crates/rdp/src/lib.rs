@@ -7,6 +7,7 @@
 mod clipboard;
 mod error;
 mod input;
+mod quality;
 mod reactivate;
 mod session;
 mod settings;
@@ -16,5 +17,6 @@ mod worker;
 
 pub use error::{Certificate, Error, Result};
 pub use input::{Button, Input, ctrl_alt_delete};
+pub use quality::Quality;
 pub use session::{Event, Frame, Info, Session, Target, connect};
 pub use stats::Stats;

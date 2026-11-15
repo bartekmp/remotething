@@ -16,6 +16,7 @@ use crate::desktop_size;
 use crate::i18n::fl;
 use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
+use crate::quality_choice;
 use crate::scancodes::Scancode;
 use crate::session::{Context, Sealed};
 
@@ -224,6 +225,7 @@ impl State {
             domain: self.domain.clone(),
             width: WIDTH,
             height: HEIGHT,
+            quality: quality_choice::for_session(self.connection.rdp_quality),
         };
         let known = context.known_hosts.clone();
         self.stage = Stage::Connecting;

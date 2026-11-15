@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
-use remotething_rdp::{Button, Error, Event, Input, Target, connect};
+use remotething_rdp::{Button, Error, Event, Input, Quality, Target, connect};
 use remotething_secrets::{KnownHosts, Secret};
 
 fn env(name: &str) -> String {
@@ -20,6 +20,7 @@ fn target(password: &str) -> Target {
         domain: None,
         width: 1280,
         height: 800,
+        quality: Quality::default(),
     }
 }
 
@@ -113,4 +114,31 @@ fn the_desktop_follows_a_resize() {
         }
     }
     panic!("no frame of the new size within 30 seconds, sizes seen: {sizes:?}");
+}
+
+#[test]
+#[ignore = "needs RT_RDP_HOST, RT_RDP_USER and RT_RDP_PASSWORD"]
+fn every_quality_preset_gives_a_desktop() {
+    let (_directory, known) = trusting();
+    for quality in [Quality::Lan, Quality::Balanced, Quality::LowBandwidth] {
+        let mut wanted = target(&env("RT_RDP_PASSWORD"));
+        wanted.quality = quality;
+        let mut session = connect(wanted, &known).unwrap();
+
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut most = 0;
+        while Instant::now() < deadline && most < 8 {
+            if let Some(Event::Frame(frame)) = session.events.blocking_recv() {
+                most = most.max(colours(&frame.rgba));
+            }
+        }
+        // Without a wallpaper the desktop has few colours, but more than one.
+        assert!(
+            most >= 8,
+            "{quality:?}: only {most} colours within 30 seconds"
+        );
+        drop(session);
+        // The server needs a moment to let go of the old connection.
+        std::thread::sleep(Duration::from_secs(3));
+    }
 }

@@ -9,6 +9,7 @@ use crate::desktop::{Form, Live, Message, Stage, State};
 use crate::i18n::fl;
 use crate::meter;
 use crate::picture;
+use crate::quality_choice;
 use crate::status_bar::{self, Bar};
 use crate::theme;
 
@@ -32,7 +33,9 @@ pub fn view(state: &State) -> Element<'_, Message> {
             &certificate.fingerprint,
             *changed,
         )),
-        Stage::Connected(live) => with_status_bar(live, &state.connection.host),
+        Stage::Connected(live) => {
+            with_status_bar(live, &state.connection.host, state.connection.rdp_quality)
+        }
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)
@@ -120,11 +123,15 @@ fn certificate_question<'a>(
         .into()
 }
 
-fn with_status_bar<'a>(live: &'a Live, host: &str) -> Element<'a, Message> {
+fn with_status_bar<'a>(
+    live: &'a Live,
+    host: &str,
+    quality: remotething_core::Quality,
+) -> Element<'a, Message> {
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
-        details: details(live, host),
+        details: details(live, host, quality),
         details_open: live.details_open,
         actions: vec![(fl!("desktop-ctrl-alt-del"), Message::CtrlAltDelPressed)],
     };
@@ -146,12 +153,13 @@ fn live_rate(live: &Live) -> String {
     }
 }
 
-fn details(live: &Live, host: &str) -> Vec<(String, String)> {
+fn details(live: &Live, host: &str, quality: remotething_core::Quality) -> Vec<(String, String)> {
     let mut lines = vec![
         (fl!("details-protocol"), "RDP".to_string()),
         (fl!("details-host"), host.to_string()),
         (fl!("details-address"), live.info.peer.to_string()),
         (fl!("details-security"), live.info.security.to_string()),
+        (fl!("details-quality"), quality_choice::label(quality)),
         (fl!("details-codec"), live.info.codec.to_string()),
         (
             fl!("details-size"),

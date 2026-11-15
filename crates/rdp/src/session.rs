@@ -14,6 +14,7 @@ use tokio::sync::mpsc;
 use crate::clipboard;
 use crate::error::{Error, Result};
 use crate::input::Input;
+use crate::quality::Quality;
 use crate::stats::Stats;
 use crate::worker::Worker;
 use crate::{settings, tls};
@@ -41,6 +42,8 @@ pub struct Target {
     pub width: u16,
     /// The height of the remote desktop in pixels.
     pub height: u16,
+    /// How to trade picture quality for bandwidth.
+    pub quality: Quality,
 }
 
 /// A full copy of the remote desktop, 4 bytes per pixel, opaque.
