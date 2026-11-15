@@ -93,7 +93,8 @@ pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
         let key_file = match (credential.kind, &credential.key_file) {
             (CredentialKind::Password | CredentialKind::Agent, _) => None,
             (CredentialKind::PrivateKey, Some(path)) => Some(PathBuf::from(path)),
-            (CredentialKind::PrivateKey, None) | (CredentialKind::Ask, _) => {
+            (CredentialKind::PrivateKey, None)
+            | (CredentialKind::Ask | CredentialKind::Interactive, _) => {
                 return Err(needs_credential());
             }
         };
@@ -280,5 +281,21 @@ mod tests {
 
         assert_eq!(ready.len(), 2);
         assert!(ready[1].hop().is_some());
+    }
+
+    #[test]
+    fn a_keyboard_interactive_jump_host_is_refused_by_name() {
+        let mut store = store();
+        store.credentials.push(remotething_core::Credential {
+            id: "otp".to_string(),
+            name: "Otp".to_string(),
+            username: Some("ops".to_string()),
+            domain: None,
+            kind: CredentialKind::Interactive,
+            key_file: None,
+        });
+        store.connections[0].settings.credential = Some("otp".to_string());
+
+        assert!(plan(&store, "edge").unwrap_err().contains("edge"));
     }
 }

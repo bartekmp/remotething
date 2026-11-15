@@ -2,6 +2,7 @@
 
 use remotething_core::{Credential, Protocol, Quality};
 use remotething_secrets::MemoryStore;
+use tokio::sync::oneshot;
 
 use super::*;
 
@@ -570,6 +571,90 @@ fn an_agent_credential_without_a_user_name_says_what_to_fix() {
 #[test]
 fn an_agent_that_the_server_refuses_ends_the_session_instead_of_asking_for_a_password() {
     let mut fixture = Fixture::new().with_credential(CredentialKind::Agent, None);
+    let mut state = fixture.start(Some("cred"));
+
+    fixture.send(&mut state, Message::Opened(Err(Failure::Refused)));
+
+    assert!(matches!(state.stage, Stage::Ended(_)));
+}
+
+fn challenge(
+    prompts: &[&str],
+) -> (
+    remotething_remote::ssh::Challenge,
+    oneshot::Receiver<Vec<Secret>>,
+) {
+    let (reply, answers) = oneshot::channel();
+    let challenge = remotething_remote::ssh::Challenge {
+        name: String::new(),
+        instructions: String::new(),
+        prompts: prompts
+            .iter()
+            .map(|text| remotething_remote::ssh::Prompt {
+                text: text.to_string(),
+                echo: false,
+            })
+            .collect(),
+        reply,
+    };
+    (challenge, answers)
+}
+
+fn asked(challenge: remotething_remote::ssh::Challenge) -> Message {
+    Message::Challenged(challenge::Asked::new(challenge))
+}
+
+#[test]
+fn an_interactive_credential_connects_without_asking_first() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Interactive, None);
+
+    let state = fixture.start(Some("cred"));
+
+    assert!(matches!(state.method, Method::Interactive));
+    assert!(matches!(state.stage, Stage::Connecting));
+}
+
+#[test]
+fn the_servers_questions_are_shown_and_the_answers_sent() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Interactive, None);
+    let mut state = fixture.start(Some("cred"));
+    let (challenge, mut answers) = challenge(&["Password: ", "Verification code: "]);
+
+    fixture.send(&mut state, asked(challenge));
+    fixture.send(
+        &mut state,
+        Message::AnswerChanged(0, Hidden("pw".to_string())),
+    );
+    fixture.send(
+        &mut state,
+        Message::AnswerChanged(1, Hidden("123456".to_string())),
+    );
+    fixture.send(&mut state, Message::AnswersSubmitted);
+
+    let sent = answers.try_recv().unwrap();
+    let texts: Vec<&str> = sent.iter().map(|secret| secret.expose()).collect();
+    assert_eq!(texts, ["pw", "123456"]);
+    assert!(matches!(state.stage, Stage::Connecting));
+}
+
+#[test]
+fn cancelling_the_questions_drops_the_reply() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Interactive, None);
+    let mut state = fixture.start(Some("cred"));
+    let (challenge, mut answers) = challenge(&["Code: "]);
+    fixture.send(&mut state, asked(challenge));
+
+    fixture.send(&mut state, Message::AnswersCancelled);
+
+    assert!(matches!(
+        answers.try_recv(),
+        Err(oneshot::error::TryRecvError::Closed)
+    ));
+}
+
+#[test]
+fn a_refused_interactive_sign_in_ends_with_a_reason() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Interactive, None);
     let mut state = fixture.start(Some("cred"));
 
     fixture.send(&mut state, Message::Opened(Err(Failure::Refused)));

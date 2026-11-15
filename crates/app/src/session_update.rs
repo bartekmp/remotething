@@ -7,6 +7,7 @@ use remotething_remote::ssh::{Connection, ShellEvent, ShellInput};
 use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
+use crate::challenge;
 use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::forwards;
@@ -145,6 +146,10 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 state.stage = Stage::Ended(fl!("session-agent-refused"));
                 Task::none()
             }
+            Method::Interactive => {
+                state.stage = Stage::Ended(fl!("session-interactive-refused"));
+                Task::none()
+            }
         },
         Message::Opened(Err(Failure::Other(reason))) => {
             state.stage = Stage::Ended(reason);
@@ -174,6 +179,29 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                     live.send(ShellInput::Data(replies));
                 }
             }
+            Task::none()
+        }
+        Message::Challenged(asked) => {
+            if let (Stage::Connecting, Some(challenge)) = (&state.stage, asked.take()) {
+                state.stage = Stage::Questions(challenge::Form::new(challenge));
+            }
+            Task::none()
+        }
+        Message::AnswerChanged(index, Hidden(text)) => {
+            if let Stage::Questions(form) = &mut state.stage {
+                form.set_answer(index, text);
+            }
+            Task::none()
+        }
+        Message::AnswersSubmitted => {
+            if let Stage::Questions(form) = std::mem::replace(&mut state.stage, Stage::Connecting) {
+                form.submit();
+            }
+            Task::none()
+        }
+        // Dropping the form cancels the sign-in, which ends the attempt.
+        Message::AnswersCancelled => {
+            state.stage = Stage::Connecting;
             Task::none()
         }
         Message::ForwardsStarted(started) => {

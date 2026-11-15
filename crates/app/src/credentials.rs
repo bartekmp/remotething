@@ -13,10 +13,11 @@ use crate::theme;
 
 const LIST_WIDTH: f32 = 220.0;
 
-const KINDS: [KindChoice; 4] = [
+const KINDS: [KindChoice; 5] = [
     KindChoice(CredentialKind::Password),
     KindChoice(CredentialKind::PrivateKey),
     KindChoice(CredentialKind::Agent),
+    KindChoice(CredentialKind::Interactive),
     KindChoice(CredentialKind::Ask),
 ];
 
@@ -89,6 +90,7 @@ impl fmt::Display for KindChoice {
             CredentialKind::PrivateKey => fl!("kind-private-key"),
             CredentialKind::Ask => fl!("kind-ask"),
             CredentialKind::Agent => fl!("kind-agent"),
+            CredentialKind::Interactive => fl!("kind-interactive"),
         };
         formatter.write_str(&label)
     }
@@ -118,7 +120,7 @@ impl State {
         };
         let typed = std::mem::take(&mut draft.secret);
 
-        if matches!(draft.kind, CredentialKind::Ask | CredentialKind::Agent) {
+        if !draft.kind.stores_secret() {
             // These kinds hold no secret, and must not leave an old password behind.
             return SecretAction::Delete;
         }
@@ -282,15 +284,20 @@ fn view_form(draft: &Draft) -> Element<'_, Message> {
         ));
     }
 
-    if draft.kind == CredentialKind::Agent {
+    let note = match draft.kind {
+        CredentialKind::Agent => Some(fl!("credentials-agent-note")),
+        CredentialKind::Interactive => Some(fl!("credentials-interactive-note")),
+        _ => None,
+    };
+    if let Some(note) = note {
         fields = fields.push(
-            text(fl!("credentials-agent-note"))
+            text(note)
                 .size(theme::TEXT_SMALL)
                 .style(theme::secondary_text),
         );
     }
 
-    if !matches!(draft.kind, CredentialKind::Ask | CredentialKind::Agent) {
+    if draft.kind.stores_secret() {
         let label = match draft.kind {
             CredentialKind::PrivateKey => fl!("credentials-passphrase"),
             _ => fl!("credentials-password"),

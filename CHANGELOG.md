@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.7.0 - 2026-11-15
+
+- Two-factor sign-in: a new "Keyboard-interactive" credential shows the server's questions (password, one-time code) in the tab.
+
 ## 0.6.0 - 2026-11-15
 
 - Local port forwards (`-L`) per connection or folder, opened with the SSH session.

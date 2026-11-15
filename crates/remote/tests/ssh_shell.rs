@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use remotething_remote::ssh::{
-    Auth, Endpoint, Error, Hop, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
+    Auth, Challenge, Endpoint, Error, Hop, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
     open_shell_through,
 };
 use remotething_secrets::{KnownHosts, Secret};
@@ -62,6 +62,36 @@ impl server::Handler for TestServer {
             return Ok(server::Auth::Accept);
         }
         Ok(server::Auth::reject())
+    }
+
+    async fn auth_keyboard_interactive<'a>(
+        &'a mut self,
+        user: &str,
+        _submethods: &str,
+        response: Option<server::Response<'a>>,
+    ) -> Result<server::Auth, Self::Error> {
+        if user != USER {
+            return Ok(server::Auth::reject());
+        }
+        let Some(response) = response else {
+            // Like PAM with a one-time code: the password, then the code.
+            return Ok(server::Auth::Partial {
+                name: "".into(),
+                instructions: "".into(),
+                prompts: vec![
+                    ("Password: ".into(), false),
+                    ("Verification code: ".into(), false),
+                ]
+                .into(),
+            });
+        };
+        let answers: Vec<Vec<u8>> = response.map(|answer| answer.to_vec()).collect();
+        let right = answers == [PASSWORD.as_bytes(), b"123456"];
+        Ok(if right {
+            server::Auth::Accept
+        } else {
+            server::Auth::reject()
+        })
     }
 
     async fn channel_open_session(
@@ -755,4 +785,60 @@ async fn dropping_a_forward_closes_its_port() {
             .await
             .is_err()
     );
+}
+
+/// Signs in interactively, answering each question with `answer`; `None` cancels.
+async fn interactive_attempt(
+    answer: impl Fn(&Challenge) -> Option<Vec<Secret>> + Send + 'static,
+) -> (Result<Shell, Error>, Vec<String>) {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+    let (challenges, mut asked) = tokio::sync::mpsc::channel::<Challenge>(4);
+    let auth = Auth::Interactive {
+        username: USER.to_string(),
+        challenges,
+    };
+    let user = tokio::spawn(async move {
+        let mut seen = Vec::new();
+        while let Some(challenge) = asked.recv().await {
+            seen.extend(challenge.prompts.iter().map(|prompt| prompt.text.clone()));
+            if let Some(answers) = answer(&challenge) {
+                let _ = challenge.reply.send(answers);
+            }
+        }
+        seen
+    });
+    let result = open_shell(&endpoint, &auth, known, SIZE).await;
+    drop(auth);
+    (result, user.await.unwrap())
+}
+
+fn secrets(texts: &[&str]) -> Vec<Secret> {
+    texts
+        .iter()
+        .map(|text| Secret::new(text.to_string()))
+        .collect()
+}
+
+#[tokio::test]
+async fn keyboard_interactive_asks_the_servers_questions_and_signs_in() {
+    let (result, asked) = interactive_attempt(|_| Some(secrets(&[PASSWORD, "123456"]))).await;
+
+    assert!(result.is_ok());
+    assert_eq!(asked, ["Password: ", "Verification code: "]);
+}
+
+#[tokio::test]
+async fn a_wrong_one_time_code_is_refused() {
+    let (result, _) = interactive_attempt(|_| Some(secrets(&[PASSWORD, "000000"]))).await;
+
+    assert!(matches!(result, Err(Error::AuthRefused)));
+}
+
+#[tokio::test]
+async fn dismissing_the_questions_cancels_the_sign_in() {
+    let (result, _) = interactive_attempt(|_| None).await;
+
+    assert!(matches!(result, Err(Error::SignInCancelled)));
 }

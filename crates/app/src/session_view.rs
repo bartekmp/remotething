@@ -4,6 +4,7 @@ use iced::widget::{button, column, container, opaque, row, stack, text};
 use iced::{Element, Font, Length, Theme};
 use remotething_remote::ssh::HostKey;
 
+use crate::challenge;
 use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::files_view;
@@ -22,6 +23,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
             centred(text(fl!("session-connecting", host = host)).style(theme::secondary_text))
         }
         Stage::Asking(form) => centred(sign_in_form(state, form)),
+        Stage::Questions(form) => centred(challenge::view(&state.connection.name, form)),
         // The key may belong to a jump host on the way, so its own host is shown.
         Stage::HostKey { key, changed } => centred(host_key_question(key, *changed)),
         Stage::Connected(live) => {

@@ -52,6 +52,16 @@ pub enum CredentialKind {
     /// Keys held by a running ssh-agent (on Windows the OpenSSH agent or Pageant).
     /// Only the user name is kept here.
     Agent,
+    /// The server asks questions at sign-in (password, one-time code).
+    /// Only the user name is kept here.
+    Interactive,
+}
+
+impl CredentialKind {
+    /// Whether a secret is kept in the secret store for this kind.
+    pub fn stores_secret(self) -> bool {
+        matches!(self, CredentialKind::Password | CredentialKind::PrivateKey)
+    }
 }
 
 /// A folder in the tree. Its settings are inherited by everything inside it.

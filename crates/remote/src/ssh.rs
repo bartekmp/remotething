@@ -14,7 +14,7 @@ mod shell;
 use std::path::PathBuf;
 
 use remotething_secrets::Secret;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 pub use connect::{open_shell, open_shell_through};
 pub use forward::Forwarding;
@@ -47,6 +47,14 @@ pub enum Auth {
         /// (`SSH_AUTH_SOCK`); on Windows `None` tries the OpenSSH pipe, then Pageant.
         socket: Option<PathBuf>,
     },
+    /// Keyboard-interactive: the server asks questions (password, one-time
+    /// code) and each is sent as a [`Challenge`] for the user to answer.
+    Interactive {
+        /// The account on the server.
+        username: String,
+        /// Where the questions go. The answer to each comes back on the challenge.
+        challenges: mpsc::Sender<Challenge>,
+    },
     /// A private key file in OpenSSH or PEM format.
     KeyFile {
         /// The account on the server.
@@ -56,6 +64,27 @@ pub enum Auth {
         /// The passphrase, if the key file is encrypted.
         passphrase: Option<Secret>,
     },
+}
+
+/// One question of a keyboard-interactive sign-in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Prompt {
+    /// The text the server shows, like `Verification code: `.
+    pub text: String,
+    /// Whether what is typed may be shown. False for passwords and codes.
+    pub echo: bool,
+}
+
+/// What the server asks in one round of a keyboard-interactive sign-in.
+pub struct Challenge {
+    /// The server's title for the round; often empty.
+    pub name: String,
+    /// The server's instructions; often empty.
+    pub instructions: String,
+    /// The questions, in order.
+    pub prompts: Vec<Prompt>,
+    /// Send one answer per prompt here. Dropping it cancels the sign-in.
+    pub reply: oneshot::Sender<Vec<Secret>>,
 }
 
 /// A server to connect through on the way to the target, and how to sign in to it.
@@ -151,6 +180,10 @@ pub enum Error {
     /// The ssh-agent holds no keys.
     #[error("the ssh-agent holds no keys; add one with ssh-add")]
     AgentEmpty,
+
+    /// The user dismissed the questions of a keyboard-interactive sign-in.
+    #[error("the sign-in was cancelled")]
+    SignInCancelled,
 
     /// The key file is encrypted and no passphrase was given.
     #[error("the key file {0} needs its passphrase")]

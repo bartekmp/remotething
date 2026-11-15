@@ -4,14 +4,15 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use remotething_secrets::KnownHosts;
-use russh::client;
+use remotething_secrets::{KnownHosts, Secret};
+use russh::client::{self, KeyboardInteractiveAuthResponse};
 use russh::keys::PrivateKeyWithHashAlg;
 use russh::keys::agent::client::AgentClient;
 use tokio::net::TcpStream;
+use tokio::sync::{mpsc, oneshot};
 
 use super::host_key::{Handler, Refusal};
-use super::{Auth, Endpoint, Error, Hop, Result, Shell, TerminalSize, shell};
+use super::{Auth, Challenge, Endpoint, Error, Hop, Prompt, Result, Shell, TerminalSize, shell};
 
 /// For reaching the server, the handshake and the sign-in together.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -49,6 +50,10 @@ pub async fn open_shell_through(
     size: TerminalSize,
 ) -> Result<Shell> {
     let attempt = connect(jumps, endpoint, auth, known, size);
+    // Typing a one-time code takes the user longer than any fixed limit.
+    if matches!(auth, Auth::Interactive { .. }) {
+        return attempt.await;
+    }
     match tokio::time::timeout(CONNECT_TIMEOUT, attempt).await {
         Ok(result) => result,
         Err(_) => Err(Error::TimedOut(CONNECT_TIMEOUT.as_secs())),
@@ -192,6 +197,10 @@ async fn sign_in(session: &mut client::Handle<Handler>, auth: &Auth) -> Result<(
         Auth::Agent { username, socket } => {
             return sign_in_with_agent(session, username, socket.as_deref()).await;
         }
+        Auth::Interactive {
+            username,
+            challenges,
+        } => return sign_in_interactively(session, username, challenges).await,
         Auth::KeyFile {
             username,
             path,
@@ -287,4 +296,68 @@ where
         }
     }
     Err(Error::AuthRefused)
+}
+
+/// Answers the server's questions one round at a time until it lets us in.
+async fn sign_in_interactively(
+    session: &mut client::Handle<Handler>,
+    username: &str,
+    challenges: &mpsc::Sender<Challenge>,
+) -> Result<()> {
+    let mut response = session
+        .authenticate_keyboard_interactive_start(username, None)
+        .await?;
+    loop {
+        match response {
+            KeyboardInteractiveAuthResponse::Success => return Ok(()),
+            KeyboardInteractiveAuthResponse::Failure { .. } => return Err(Error::AuthRefused),
+            KeyboardInteractiveAuthResponse::InfoRequest {
+                name,
+                instructions,
+                prompts,
+            } => {
+                // A round without questions only wants an empty acknowledgement.
+                let answers = if prompts.is_empty() {
+                    Vec::new()
+                } else {
+                    ask(challenges, name, instructions, prompts).await?
+                };
+                let answers = answers
+                    .iter()
+                    .map(|answer| answer.expose().to_string())
+                    .collect();
+                response = session
+                    .authenticate_keyboard_interactive_respond(answers)
+                    .await?;
+            }
+        }
+    }
+}
+
+/// Hands one round of questions to the user and waits for the answers.
+async fn ask(
+    challenges: &mpsc::Sender<Challenge>,
+    name: String,
+    instructions: String,
+    prompts: Vec<russh::client::Prompt>,
+) -> Result<Vec<Secret>> {
+    let (reply, answers) = oneshot::channel();
+    let prompts = prompts
+        .into_iter()
+        .map(|prompt| Prompt {
+            text: prompt.prompt,
+            echo: prompt.echo,
+        })
+        .collect();
+    let challenge = Challenge {
+        name,
+        instructions,
+        prompts,
+        reply,
+    };
+    challenges
+        .send(challenge)
+        .await
+        .map_err(|_| Error::SignInCancelled)?;
+    answers.await.map_err(|_| Error::SignInCancelled)
 }

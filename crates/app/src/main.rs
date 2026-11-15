@@ -3,6 +3,7 @@
 //! Usage: remotething [--config <connections file>] | --version
 
 mod app;
+mod challenge;
 mod credential_actions;
 mod credentials;
 mod file_dialog;

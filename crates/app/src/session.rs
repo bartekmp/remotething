@@ -14,6 +14,7 @@ use remotething_remote::ssh::{
 };
 use remotething_secrets::{KnownHosts, Secret, SecretStore};
 
+use crate::challenge;
 use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::forwards;
@@ -51,6 +52,8 @@ pub struct State {
 pub(crate) enum Method {
     /// The keys of a running ssh-agent; nothing is typed or stored.
     Agent,
+    /// The server asks the questions; nothing is known beforehand.
+    Interactive,
     Password(Option<Secret>),
     KeyFile {
         path: PathBuf,
@@ -64,6 +67,8 @@ pub(crate) enum Stage {
     /// Waiting for the user to type what is missing.
     Asking(Form),
     Connecting,
+    /// The server asks questions at sign-in; the user answers.
+    Questions(challenge::Form),
     /// The server's key is new or has changed; the user decides.
     HostKey {
         key: HostKey,
@@ -169,6 +174,11 @@ pub enum Message {
     Opened(Result<Opened, Failure>),
     Shell(ShellEvent),
     ForwardsStarted(forwards::Started),
+    /// The server asked questions during a keyboard-interactive sign-in.
+    Challenged(challenge::Asked),
+    AnswerChanged(usize, Hidden),
+    AnswersSubmitted,
+    AnswersCancelled,
     Terminal(terminal_view::Event),
     TrustPressed,
     ReconnectPressed,
@@ -262,12 +272,16 @@ impl State {
                 self.stage = Stage::Ended(fl!("session-no-key-file"));
                 Task::none()
             }
-            (CredentialKind::Agent, _) => {
+            (CredentialKind::Agent | CredentialKind::Interactive, _) => {
                 if self.username.is_empty() {
                     self.stage = Stage::Ended(fl!("session-agent-needs-user"));
                     return Task::none();
                 }
-                self.method = Method::Agent;
+                self.method = if credential.kind == CredentialKind::Agent {
+                    Method::Agent
+                } else {
+                    Method::Interactive
+                };
                 self.connect(context)
             }
         }
@@ -302,7 +316,7 @@ impl State {
 
     pub(crate) fn set_secret(&mut self, secret: Option<Secret>) {
         match &mut self.method {
-            Method::Agent => {}
+            Method::Agent | Method::Interactive => {}
             Method::Password(password) => *password = secret,
             Method::KeyFile { passphrase, .. } => *passphrase = secret,
         }
@@ -313,7 +327,13 @@ impl State {
         if self.username.is_empty() {
             return self.ask(None);
         }
+        let mut questions = None;
         let auth = match &self.method {
+            Method::Interactive => {
+                let (auth, asked) = challenge::auth(self.username.clone());
+                questions = Some(asked);
+                auth
+            }
             Method::Agent => Auth::Agent {
                 username: self.username.clone(),
                 socket: None,
@@ -337,7 +357,7 @@ impl State {
         let hops: Vec<Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
 
         self.stage = Stage::Connecting;
-        Task::perform(
+        let open = Task::perform(
             async move {
                 let shell =
                     ssh::open_shell_through(&hops, &endpoint, &auth, known, INITIAL_SIZE).await;
@@ -347,7 +367,11 @@ impl State {
                 }
             },
             Message::Opened,
-        )
+        );
+        match questions {
+            Some(asked) => Task::batch([open, challenge::questions(asked)]),
+            None => open,
+        }
     }
 
     pub(crate) fn go_live(&mut self, opened: Opened) -> Task<Message> {

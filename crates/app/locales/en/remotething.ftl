@@ -208,3 +208,8 @@ forwards-active = Port forwards: { $list }
 properties-forwards = Port forwards
 properties-forwards-hint = 8080:db.internal:5432, 9000:localhost:9000
 properties-error-forwards = Port forward { $text } is not local_port:host:port.
+
+kind-interactive = Keyboard-interactive
+credentials-interactive-note = For servers that ask for a password and a one-time code. The questions are shown on every connect. Nothing is stored here except the user name.
+session-interactive-refused = The server did not accept the answers.
+session-cancel = Cancel
