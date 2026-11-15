@@ -291,3 +291,35 @@ fn the_info_button_opens_and_closes_the_details() {
     fixture.send(&mut state, Message::DetailsToggled);
     assert!(!open(&state));
 }
+
+#[test]
+fn a_settled_area_asks_the_server_for_that_size() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+    let area = Size::new(1500.0, 900.0);
+
+    fixture.send(&mut state, Message::AreaChanged(area));
+    fixture.send(&mut state, Message::AreaSettled(area));
+
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::Resize {
+            width: 1500,
+            height: 900
+        }
+    );
+}
+
+#[test]
+fn an_area_that_changed_again_is_not_asked_for() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    fixture.send(&mut state, Message::AreaChanged(Size::new(1500.0, 900.0)));
+    fixture.send(&mut state, Message::AreaChanged(Size::new(1600.0, 900.0)));
+    fixture.send(&mut state, Message::AreaSettled(Size::new(1500.0, 900.0)));
+
+    assert!(input.try_recv().is_err());
+}

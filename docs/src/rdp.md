@@ -22,7 +22,8 @@ If the certificate later changes, the tab warns before sending anything. Trust t
 
 ## Using the desktop
 
-- The picture is scaled to fit the tab. The desktop is 1280 x 800 for now.
+- The remote desktop follows the size of the tab: a moment after you stop resizing the window or the tree, the server is asked for a desktop of that size. It starts at 1280 x 800 and is asked to resize about two seconds after connecting. Until the new size arrives the picture is scaled to fit.
+- Screens with display scaling show the desktop at one remote pixel per logical pixel, so text is as small as on a 100 % screen.
 - The mouse works as on the remote machine: move, the three buttons and the wheel.
 - Keys are sent by their position on the keyboard, so the remote keyboard layout decides which character appears. Everything is sent except **Ctrl+Shift+T** and **Ctrl+Shift+W**, which stay with the app for opening and closing tabs. **Ctrl+W** goes to the remote machine.
 - Closing the tab ends the session and asks first.
@@ -48,7 +49,7 @@ The rates appear after the first second and update once per second. The same str
 
 | Feature | State |
 | --- | --- |
-| Resizing the desktop with the window, scaling for HiDPI | Planned |
+| Scaling for HiDPI screens | Planned |
 | Quality presets | Planned (the setting exists, it is not used yet) |
 | Clipboard, Ctrl+Alt+Del button | Planned |
 | Cursor shape from the remote machine | Planned: the local pointer is shown |

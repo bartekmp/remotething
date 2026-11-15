@@ -58,7 +58,7 @@ remotething-rdp = { path = "../rdp" }
 remotething-remote = { path = "../remote" }
 # System file dialogs, through the desktop portal on Linux.
 rfd = "0.18"
-tokio = { version = "1", features = ["sync"] }
+tokio = { version = "1", features = ["sync", "time"] }
 remotething-core = { path = "../core" }
 remotething-secrets = { path = "../secrets" }
 rust-embed = "8"

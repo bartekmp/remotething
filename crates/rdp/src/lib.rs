@@ -6,10 +6,12 @@
 
 mod error;
 mod input;
+mod reactivate;
 mod session;
 mod settings;
 mod stats;
 mod tls;
+mod worker;
 
 pub use error::{Certificate, Error, Result};
 pub use input::{Button, Input};

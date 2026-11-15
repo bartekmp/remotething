@@ -52,7 +52,6 @@ fn a_desktop_arrives_and_input_is_accepted() {
     let mut rich = false;
     while Instant::now() < deadline && !rich {
         if let Some(Event::Frame(frame)) = session.events.blocking_recv() {
-            assert_eq!((frame.width, frame.height), (1280, 800));
             rich = colours(&frame.rgba) > 1000;
         }
     }
@@ -81,4 +80,37 @@ fn a_wrong_password_is_refused_after_the_certificate_was_trusted() {
         "{:?}",
         result.err()
     );
+}
+
+#[test]
+#[ignore = "needs RT_RDP_HOST, RT_RDP_USER and RT_RDP_PASSWORD"]
+fn the_desktop_follows_a_resize() {
+    let (_directory, known) = trusting();
+    let mut session = connect(target(&env("RT_RDP_PASSWORD")), &known).unwrap();
+    session
+        .input
+        .blocking_send(Input::Resize {
+            width: 1024,
+            height: 768,
+        })
+        .unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let mut sizes = Vec::new();
+    while Instant::now() < deadline {
+        let event = session.events.blocking_recv();
+        if let Some(Event::Closed(reason)) = &event {
+            panic!("session closed: {reason:?}, sizes seen: {sizes:?}");
+        }
+        if let Some(Event::Frame(frame)) = event {
+            let size = (frame.width, frame.height);
+            if sizes.last() != Some(&size) {
+                sizes.push(size);
+            }
+            if size == (1024, 768) {
+                return;
+            }
+        }
+    }
+    panic!("no frame of the new size within 30 seconds, sizes seen: {sizes:?}");
 }

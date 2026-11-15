@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.17.0 - 2026-11-15
+
+- Remote Desktop: the desktop resizes with the tab.
+
 ## 0.16.0 - 2026-11-15
 
 - Remote Desktop: a status strip under the desktop with an (i) button that shows address, security, codec, bandwidth, frame rate and uptime.

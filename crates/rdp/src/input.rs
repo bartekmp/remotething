@@ -45,6 +45,13 @@ pub enum Input {
         /// Pixels from the top edge.
         y: u16,
     },
+    /// The window around the desktop changed size; the server is asked to match it.
+    Resize {
+        /// The wanted width in pixels.
+        width: u16,
+        /// The wanted height in pixels.
+        height: u16,
+    },
     /// A key went down or up, by its scancode (the position of the key, not its letter).
     Key {
         /// The set-1 scancode without the extended prefix.
@@ -59,6 +66,8 @@ pub enum Input {
 /// The RDP events for one input.
 pub(crate) fn to_events(input: Input) -> Vec<FastPathInputEvent> {
     match input {
+        // Not an input event: the session sends it over its own channel.
+        Input::Resize { .. } => Vec::new(),
         Input::MouseMoved { x, y } => vec![mouse(PointerFlags::MOVE, 0, x, y)],
         Input::Button {
             button,

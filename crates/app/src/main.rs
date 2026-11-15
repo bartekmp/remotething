@@ -9,6 +9,7 @@ mod credentials;
 mod desktop;
 mod desktop_meter;
 mod desktop_open;
+mod desktop_size;
 mod desktop_view;
 mod file_dialog;
 mod files_pane;

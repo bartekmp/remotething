@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use iced::Task;
 use iced::futures::stream;
+use iced::{Size, Task};
 use remotething_core::{CredentialKind, ResolvedConnection};
 use remotething_rdp::{Button, Certificate, Event, Info, Input, Session, Stats, Target};
 use remotething_secrets::Secret;
@@ -13,6 +13,7 @@ use tokio::sync::mpsc;
 use crate::credentials::Hidden;
 use crate::desktop_meter::Meter;
 use crate::desktop_open::{Failure, Opened};
+use crate::desktop_size;
 use crate::i18n::fl;
 use crate::picture::Picture;
 use crate::scancodes::Scancode;
@@ -21,6 +22,8 @@ use crate::session::{Context, Sealed};
 /// The size of the remote desktop until resizing is supported.
 const WIDTH: u16 = 1280;
 const HEIGHT: u16 = 800;
+/// How long the room for the picture must stay the same before the server is asked to match it.
+const RESIZE_SETTLE: std::time::Duration = std::time::Duration::from_millis(400);
 
 pub struct State {
     pub(crate) connection: ResolvedConnection,
@@ -64,6 +67,8 @@ pub(crate) struct Live {
     pub(crate) info: Info,
     pub(crate) meter: Meter,
     pub(crate) details_open: bool,
+    /// The latest room for the picture.
+    area: Size,
     /// Where the pointer is on the remote desktop, for button presses.
     pointer: (u16, u16),
 }
@@ -81,6 +86,10 @@ pub enum Message {
     Stats(Stats),
     /// The (i) button was pressed.
     DetailsToggled,
+    /// The room for the picture changed.
+    AreaChanged(Size),
+    /// The room stayed the same for a moment, so it is worth asking the server.
+    AreaSettled(Size),
     /// The session ended, with the reason when it was not the user's doing.
     Closed(Option<String>),
     TrustPressed,
@@ -127,6 +136,7 @@ impl State {
             },
             meter: Meter::new(),
             details_open: false,
+            area: Size::ZERO,
             pointer: (0, 0),
         }));
         typed
@@ -240,6 +250,7 @@ impl State {
             info,
             meter: Meter::new(),
             details_open: false,
+            area: Size::ZERO,
             pointer: (0, 0),
         }));
 
@@ -347,6 +358,29 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.details_open = !live.details_open;
+            }
+            Task::none()
+        }
+        Message::AreaChanged(area) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            live.area = area;
+            // A window being dragged reports many sizes; only the last one counts.
+            Task::perform(
+                async move {
+                    tokio::time::sleep(RESIZE_SETTLE).await;
+                    area
+                },
+                Message::AreaSettled,
+            )
+        }
+        Message::AreaSettled(area) => {
+            if let Stage::Connected(live) = &state.stage
+                && live.area == area
+                && let Some((width, height)) = desktop_size::wanted(area, live.size)
+            {
+                state.send(Input::Resize { width, height });
             }
             Task::none()
         }
