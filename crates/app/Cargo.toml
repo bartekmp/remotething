@@ -55,6 +55,7 @@ iced = { version = "0.14", features = ["tokio", "canvas", "image-without-codecs"
 alacritty_terminal = "0.26"
 remotething-files = { path = "../files" }
 remotething-rdp = { path = "../rdp" }
+remotething-vnc = { path = "../vnc" }
 remotething-remote = { path = "../remote" }
 # System file dialogs, through the desktop portal on Linux.
 rfd = "0.18"

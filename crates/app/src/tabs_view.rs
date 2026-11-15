@@ -7,7 +7,7 @@ use iced::widget::{
     text, tooltip,
 };
 use iced::{Element, Length, Point};
-use remotething_core::{ResolvedConnection, Store};
+use remotething_core::Store;
 
 use crate::desktop_view;
 use crate::i18n::fl;
@@ -19,7 +19,7 @@ use crate::session_view;
 use crate::tab_bar;
 use crate::tabs::{Content, Message, State, Tab};
 use crate::theme;
-use crate::tree::protocol_label;
+use crate::vnc_view;
 
 pub fn view<'a>(
     state: &'a State,
@@ -184,7 +184,7 @@ fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Eleme
         Content::Desktop(desktop) => {
             desktop_view::view(desktop).map(move |message| Message::Desktop(id, message))
         }
-        Content::Summary(connection) => view_summary(connection),
+        Content::Vnc(vnc) => vnc_view::view(vnc).map(move |message| Message::Vnc(id, message)),
     }
 }
 
@@ -256,31 +256,4 @@ fn close_question(title: &str) -> Element<'_, Message> {
         .padding(theme::PANEL_PADDING)
         .style(theme::floating);
     opaque(container(dialog).center(Length::Fill))
-}
-
-/// What a connection resolves to, for protocols that cannot connect yet.
-fn view_summary(connection: &ResolvedConnection) -> Element<'_, Message> {
-    let address = fl!(
-        "session-address",
-        protocol = protocol_label(connection.protocol),
-        host = connection.host.as_str(),
-        port = connection.port.to_string()
-    );
-    let credential = match &connection.credential {
-        Some(id) => fl!("session-credential", credential = id.as_str()),
-        None => fl!("session-no-credential"),
-    };
-
-    let mut lines = column![
-        text(connection.name.as_str()).size(theme::TEXT_DISPLAY),
-        text(address),
-        text(credential),
-    ]
-    .spacing(8);
-    if let Some(jump) = &connection.jump {
-        lines = lines.push(text(fl!("session-jump", jump = jump.as_str())));
-    }
-    lines
-        .push(text(fl!("session-not-implemented")).style(theme::secondary_text))
-        .into()
 }

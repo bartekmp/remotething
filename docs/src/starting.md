@@ -57,7 +57,7 @@ Type a connection string into the search field of a new tab and press Enter. The
 | `ssh ops@192.168.0.1` | SSH as `ops`, port 22 |
 | `ssh ops@web-01 -p 2222` or `ops@web-01:2222` | SSH on port 2222 |
 | `ssh://ops@web-01:2222` | The same, as a URL |
-| `rdp://desk` or `vnc://tv:5901` | RDP or VNC (these do not connect yet) |
+| `rdp://desk` or `vnc://tv:5901` | RDP or VNC |
 
 To keep it, right-click the tab and choose **Save this connection**. It is added at the top level, and the properties panel opens with name, host, protocol and port filled in. A typed user name is saved as an "ask every time" credential linked to the connection.
 
@@ -78,7 +78,7 @@ Right-click an item and choose **Edit**. Change its fields in the properties pan
 
 If a change is refused, nothing is saved, the panel stays open and the reason appears at the top of the window.
 
-SSH connections open a terminal; see [SSH](ssh.md). RDP and VNC cannot connect yet: their tab shows what the connection resolves to.
+SSH connections open a terminal; see [SSH](ssh.md). RDP connections open a Windows desktop, see [Remote Desktop](rdp.md), and VNC connections open a desktop too, see [VNC](vnc.md).
 
 ## Credentials
 

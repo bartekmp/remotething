@@ -227,7 +227,7 @@ pub(crate) fn remote_position(view: Size, remote: (u32, u32), point: Point) -> (
 }
 
 /// One notch of a wheel is 120 units, like on Windows.
-fn wheel_units(delta: mouse::ScrollDelta) -> i16 {
+pub(crate) fn wheel_units(delta: mouse::ScrollDelta) -> i16 {
     match delta {
         mouse::ScrollDelta::Lines { y, .. } => (y * 120.0) as i16,
         // Touchpads report pixels; a few pixels per notch feels about right.

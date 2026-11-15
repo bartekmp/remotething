@@ -25,6 +25,7 @@ mod input;
 mod items;
 mod jump;
 mod keys;
+mod keysym;
 mod launcher;
 mod menu;
 mod meter;
@@ -56,6 +57,8 @@ mod theme;
 mod tree;
 mod tree_actions;
 mod vault;
+mod vnc_tab;
+mod vnc_view;
 mod window;
 
 use std::ffi::OsString;

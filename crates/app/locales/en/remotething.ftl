@@ -4,11 +4,6 @@ tree-empty = No connections yet.
 
 tabs-empty = Double-click a connection to open it, or press Ctrl+Shift+T for recent ones.
 
-session-address = { $protocol } to { $host }, port { $port }
-session-credential = Credential: { $credential }
-session-no-credential = No credential
-session-jump = Through jump host: { $jump }
-session-not-implemented = Connecting is not available yet. Protocols arrive in the next releases.
 
 protocol-ssh = SSH
 protocol-rdp = RDP
@@ -271,3 +266,8 @@ quality-lan = Best picture (fast network)
 quality-balanced = Balanced
 quality-low-bandwidth = Low bandwidth
 details-quality = Quality preset
+
+vnc-credential-kind = This connection uses a credential that is for SSH. For VNC use a password credential, or ask every time.
+vnc-needs-password = The server asks for a password.
+vnc-refused = The server refused the password.
+details-encodings = Picture encodings

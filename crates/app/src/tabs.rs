@@ -12,6 +12,7 @@ use crate::i18n::fl;
 use crate::launcher;
 use crate::recent::Recent;
 use crate::session::{self, Context};
+use crate::vnc_tab;
 
 #[derive(Default)]
 pub struct State {
@@ -46,8 +47,7 @@ pub(crate) enum Content {
     Launcher(String),
     Session(Box<session::State>),
     Desktop(Box<desktop::State>),
-    /// A protocol that cannot connect yet.
-    Summary(ResolvedConnection),
+    Vnc(Box<vnc_tab::State>),
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +74,7 @@ pub enum Message {
     Launcher(u64, launcher::Message),
     Session(u64, session::Message),
     Desktop(u64, desktop::Message),
+    Vnc(u64, vnc_tab::Message),
 }
 
 impl State {
@@ -130,7 +131,7 @@ impl State {
         let connection = match &mut tab.content {
             Content::Session(session) => &mut session.connection,
             Content::Desktop(desktop) => &mut desktop.connection,
-            Content::Summary(connection) => connection,
+            Content::Vnc(vnc) => &mut vnc.connection,
             Content::Launcher(_) => return,
         };
         connection.id = connection_id.to_string();
@@ -142,25 +143,32 @@ impl State {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
     }
 
-    /// Whether a connected remote desktop is in front.
+    /// Whether a connected remote desktop (RDP or VNC) is in front.
     pub fn front_is_desktop(&self) -> bool {
-        matches!(
-            self.tabs.get(self.active),
-            Some(Tab { content: Content::Desktop(desktop), .. }) if desktop.is_connected()
-        )
+        match self.tabs.get(self.active).map(|tab| &tab.content) {
+            Some(Content::Desktop(desktop)) => desktop.is_connected(),
+            Some(Content::Vnc(vnc)) => vnc.is_connected(),
+            _ => false,
+        }
     }
 
-    /// Passes a key to the remote desktop in front, if there is one.
-    pub fn desktop_key(&mut self, physical: iced::keyboard::key::Physical, pressed: bool) {
-        let Some(Tab {
-            content: Content::Desktop(desktop),
-            ..
-        }) = self.tabs.get_mut(self.active)
-        else {
-            return;
-        };
-        if let Some(scancode) = crate::scancodes::of(physical) {
-            desktop.key(scancode, pressed);
+    /// Passes a key to the remote desktop in front, if there is one. RDP takes the
+    /// place of the key, VNC the character it makes.
+    pub fn desktop_key(
+        &mut self,
+        key: &iced::keyboard::Key,
+        physical: iced::keyboard::key::Physical,
+        text: Option<&str>,
+        pressed: bool,
+    ) {
+        match self.tabs.get_mut(self.active).map(|tab| &mut tab.content) {
+            Some(Content::Desktop(desktop)) => {
+                if let Some(scancode) = crate::scancodes::of(physical) {
+                    desktop.key(scancode, pressed);
+                }
+            }
+            Some(Content::Vnc(vnc)) => vnc.key(key, physical, text, pressed),
+            _ => {}
         }
     }
 
@@ -175,12 +183,10 @@ impl State {
 
     /// Offers the local clipboard text to the remote desktop in front, if there is one.
     pub fn desktop_clipboard(&mut self, text: String) {
-        if let Some(Tab {
-            content: Content::Desktop(desktop),
-            ..
-        }) = self.tabs.get_mut(self.active)
-        {
-            desktop.local_clipboard(text);
+        match self.tabs.get_mut(self.active).map(|tab| &mut tab.content) {
+            Some(Content::Desktop(desktop)) => desktop.local_clipboard(text),
+            Some(Content::Vnc(vnc)) => vnc.local_clipboard(text),
+            _ => {}
         }
     }
 
@@ -284,7 +290,7 @@ impl State {
             .filter_map(|tab| match &tab.content {
                 Content::Session(session) => Some(session.connection.id.as_str()),
                 Content::Desktop(desktop) => Some(desktop.connection.id.as_str()),
-                Content::Summary(connection) => Some(connection.id.as_str()),
+                Content::Vnc(vnc) => Some(vnc.connection.id.as_str()),
                 Content::Launcher(_) => None,
             })
             .collect()
@@ -297,6 +303,7 @@ impl Tab {
         match &self.content {
             Content::Session(session) => session.is_connected(),
             Content::Desktop(desktop) => desktop.is_connected(),
+            Content::Vnc(vnc) => vnc.is_connected(),
             _ => false,
         }
     }
@@ -333,7 +340,11 @@ fn start_connection(
             let task = task.map(move |message| Message::Desktop(id, message));
             (title, Content::Desktop(Box::new(desktop)), task)
         }
-        Protocol::Vnc => (title, Content::Summary(connection), Task::none()),
+        Protocol::Vnc => {
+            let (vnc, task) = vnc_tab::State::start(connection, context);
+            let task = task.map(move |message| Message::Vnc(id, message));
+            (title, Content::Vnc(Box::new(vnc)), task)
+        }
     }
 }
 
@@ -422,6 +433,17 @@ pub fn update(
             {
                 return desktop::update(desktop, message, context)
                     .map(move |message| Message::Desktop(id, message));
+            }
+        }
+        Message::Vnc(id, message) => {
+            let vnc = state.tabs.iter_mut().find(|tab| tab.id == id);
+            if let Some(Tab {
+                content: Content::Vnc(vnc),
+                ..
+            }) = vnc
+            {
+                return vnc_tab::update(vnc, message, context)
+                    .map(move |message| Message::Vnc(id, message));
             }
         }
         Message::Session(id, message) => {

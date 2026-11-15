@@ -8,8 +8,6 @@ use iced::widget::{image, pin, stack};
 use iced::{Element, Length, Point, Size};
 use remotething_rdp::Cursor;
 
-use crate::desktop::Message;
-
 /// A pointer picture ready to draw.
 #[derive(Clone)]
 pub(crate) struct Shape {
@@ -33,16 +31,22 @@ impl Look {
         match cursor {
             Cursor::Default => Look::Local,
             Cursor::Hidden => Look::Hidden,
-            Cursor::Shape(shape) => Look::Shape(Shape {
-                handle: image::Handle::from_rgba(
-                    u32::from(shape.width),
-                    u32::from(shape.height),
-                    shape.rgba.clone(),
-                ),
-                size: (shape.width, shape.height),
-                hotspot: (shape.hotspot_x, shape.hotspot_y),
-            }),
+            Cursor::Shape(shape) => Look::from_pixels(
+                shape.width,
+                shape.height,
+                (shape.hotspot_x, shape.hotspot_y),
+                shape.rgba.clone(),
+            ),
         }
+    }
+
+    /// A pointer picture of `width` by `height` RGBA pixels.
+    pub(crate) fn from_pixels(width: u16, height: u16, hotspot: (u16, u16), rgba: Vec<u8>) -> Look {
+        Look::Shape(Shape {
+            handle: image::Handle::from_rgba(u32::from(width), u32::from(height), rgba),
+            size: (width, height),
+            hotspot,
+        })
     }
 
     /// Whether the local pointer has to be hidden over the desktop.
@@ -52,7 +56,7 @@ impl Look {
 }
 
 /// `picture` with the pointer drawn over it at `pointer`, when the pointer is over it.
-pub(crate) fn with_pointer<'a>(
+pub(crate) fn with_pointer<'a, Message: 'a>(
     picture: Element<'a, Message>,
     look: &Look,
     pointer: (u16, u16),

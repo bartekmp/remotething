@@ -132,6 +132,7 @@ pub enum Message {
         captured: bool,
     },
     KeyReleased {
+        key: keyboard::Key,
         physical: keyboard::key::Physical,
     },
     /// Time to look at the local clipboard, because a remote desktop is in front.
@@ -299,9 +300,9 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             display::set_scale(scale);
             state.tabs.rescale_desktops();
         }
-        Message::KeyReleased { physical } => {
+        Message::KeyReleased { key, physical } => {
             if state.desktop_has_keys() {
-                state.tabs.desktop_key(physical, false);
+                state.tabs.desktop_key(&key, physical, None, false);
             }
         }
         Message::KeyPressed {
@@ -317,7 +318,9 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 Some(input::Shortcut::NewTab | input::Shortcut::CloseTab)
             );
             if !captured && !app_shortcut && state.desktop_has_keys() {
-                state.tabs.desktop_key(physical, true);
+                state
+                    .tabs
+                    .desktop_key(&key, physical, text.as_deref(), true);
                 return Task::none();
             }
             if let Some(shortcut) = input::Shortcut::of(&key, modifiers) {

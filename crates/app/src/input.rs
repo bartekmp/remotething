@@ -87,11 +87,12 @@ pub(crate) fn window_event(
             text: text.map(|text| text.to_string()),
             captured: status == iced::event::Status::Captured,
         }),
-        Event::Keyboard(keyboard::Event::KeyReleased { physical_key, .. }) => {
-            Some(Message::KeyReleased {
-                physical: physical_key,
-            })
-        }
+        Event::Keyboard(keyboard::Event::KeyReleased {
+            key, physical_key, ..
+        }) => Some(Message::KeyReleased {
+            key,
+            physical: physical_key,
+        }),
         Event::Window(window::Event::Rescaled(scale)) => Some(Message::ScaleChanged(scale)),
         Event::Window(window::Event::Opened { size, .. })
         | Event::Window(window::Event::Resized(size)) => Some(Message::WindowResized(size)),
