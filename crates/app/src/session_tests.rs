@@ -1,5 +1,6 @@
 //! Tests of `session.rs`.
 
+use crate::preferences::Preferences;
 use remotething_core::{Credential, Protocol, Quality};
 use remotething_secrets::MemoryStore;
 use tokio::sync::oneshot;
@@ -772,4 +773,79 @@ fn the_info_button_opens_and_closes_the_details() {
     assert!(open(&state));
     fixture.send(&mut state, Message::DetailsToggled);
     assert!(!open(&state));
+}
+
+fn recording_lines(live: &Live) -> Vec<String> {
+    let path = live
+        .recording
+        .as_ref()
+        .expect("recording")
+        .path()
+        .to_path_buf();
+    std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+/// One test for all of it: the switches are shared by the whole process.
+#[test]
+fn recording_follows_the_feature_switches_and_keeps_typing_only_when_asked() {
+    let directory = tempfile::tempdir().unwrap();
+    let connections = directory.path().join("connections.toml");
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+
+    // Switched off: the button does nothing.
+    crate::features::apply(&Preferences::default(), &connections);
+    fixture.send(&mut state, Message::RecordPressed);
+    assert!(matches!(&state.stage, Stage::Connected(live) if live.recording.is_none()));
+
+    // Switched on, typing not recorded.
+    let mut preferences = Preferences::default();
+    preferences.features.console_recording = true;
+    crate::features::apply(&preferences, &connections);
+    fixture.send(&mut state, Message::RecordPressed);
+    fixture.send(
+        &mut state,
+        Message::Shell(ShellEvent::Output(b"hello\r\n".to_vec())),
+    );
+    let _ = state.key(&Key::Character("x".into()), Modifiers::empty(), Some("x"));
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    assert!(
+        live.recording_problem.is_none(),
+        "{:?}",
+        live.recording_problem
+    );
+    let lines = recording_lines(live);
+    assert!(lines[0].contains("\"version\":2"), "{lines:?}");
+    assert!(lines.iter().any(|line| line.contains("hello")), "{lines:?}");
+    assert!(
+        !lines.iter().any(|line| line.contains("\"i\"")),
+        "{lines:?}"
+    );
+    assert!(directory.path().join("recordings").is_dir());
+
+    // The button again stops it.
+    fixture.send(&mut state, Message::RecordPressed);
+    assert!(matches!(&state.stage, Stage::Connected(live) if live.recording.is_none()));
+
+    // Typing recorded when asked for.
+    preferences.features.record_keystrokes = true;
+    crate::features::apply(&preferences, &connections);
+    fixture.send(&mut state, Message::RecordPressed);
+    let _ = state.key(&Key::Character("y".into()), Modifiers::empty(), Some("y"));
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    assert!(
+        recording_lines(live)
+            .iter()
+            .any(|line| line.contains("\"i\"") && line.contains('y'))
+    );
+
+    crate::features::apply(&Preferences::default(), &connections);
 }

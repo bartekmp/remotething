@@ -11,6 +11,7 @@ use remotething_secrets::{KnownHosts, SecretStore};
 
 use crate::credentials::{self};
 use crate::display;
+use crate::features;
 use crate::file_dialog;
 use crate::folder_removal;
 use crate::i18n::fl;
@@ -211,10 +212,12 @@ impl State {
     /// Starts with the preferences read from the settings file.
     pub fn with_preferences(mut self, preferences: Preferences) -> Self {
         self.preferences = preferences;
+        features::apply(&self.preferences, &self.path);
         self
     }
 
     pub(crate) fn save_preferences(&mut self) {
+        features::apply(&self.preferences, &self.path);
         let path = preferences::path_beside(&self.path);
         match preferences::save(&self.preferences, &path) {
             Ok(()) => self.error = None,

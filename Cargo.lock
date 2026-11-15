@@ -4903,7 +4903,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -4911,6 +4911,7 @@ dependencies = [
  "i18n-embed",
  "i18n-embed-fl",
  "iced",
+ "remotething-capture",
  "remotething-core",
  "remotething-files",
  "remotething-rdp",
@@ -4926,8 +4927,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "remotething-capture"
+version = "0.30.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "remotething-core"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4938,7 +4946,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "remotething-remote",
  "remotething-secrets",
@@ -4950,7 +4958,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-cliprdr",
@@ -4972,7 +4980,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "remotething-secrets",
  "russh",
@@ -4983,7 +4991,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -4999,7 +5007,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-vnc"
-version = "0.29.1"
+version = "0.30.0"
 dependencies = [
  "remotething-secrets",
  "tempfile",
@@ -7629,7 +7637,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.29.1"
+version = "0.30.0"
 
 [[package]]
 name = "yazi"

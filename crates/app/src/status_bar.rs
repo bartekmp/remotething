@@ -16,6 +16,8 @@ pub(crate) struct Bar<Message> {
     pub(crate) summary: String,
     /// Right side, for example the current bandwidth.
     pub(crate) live: String,
+    /// While something is being recorded: shown in red, so it cannot be missed.
+    pub(crate) recording: Option<String>,
     /// Label and value of every line in the details panel.
     pub(crate) details: Vec<(String, String)>,
     pub(crate) details_open: bool,
@@ -45,10 +47,18 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
         space().width(Length::Fill),
+    ]
+    .extend(bar.recording.map(|elapsed| {
+        text(format!("● {elapsed}"))
+            .size(theme::TEXT_SMALL)
+            .style(text::danger)
+            .into()
+    }))
+    .push(
         text(bar.live)
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
-    ]
+    )
     .extend(actions)
     .push(info)
     .spacing(8)

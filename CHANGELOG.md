@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.30.0 - 2026-11-15
+
+- Optional features in Settings, all off at first. The first one records SSH terminals as asciicast files, with a red indicator while it runs.
+
 ## 0.29.1 - 2026-11-15
 
 - Remote Desktop: a connection that the server drops half way through, as happens right after closing the previous session, is retried once.

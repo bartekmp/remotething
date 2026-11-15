@@ -9,8 +9,10 @@ use iced::futures::stream;
 use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
 use remotething_core::{CredentialKind, ResolvedConnection, Store};
+#[cfg(test)]
+use remotething_remote::ssh::ShellInput;
 use remotething_remote::ssh::{
-    self, Auth, Endpoint, Hop, HostKey, Shell, ShellEvent, ShellInput, TerminalSize,
+    self, Auth, Endpoint, Hop, HostKey, Shell, ShellEvent, TerminalSize,
 };
 use remotething_secrets::{KnownHosts, Secret, SecretStore};
 
@@ -91,7 +93,7 @@ impl State {
     #[cfg(test)]
     pub(crate) fn connect_for_test(&mut self) -> tokio::sync::mpsc::Receiver<ShellInput> {
         let (input, typed) = tokio::sync::mpsc::channel(4);
-        self.stage = Stage::Connected(Box::new(Live::new(input, None)));
+        self.stage = Stage::Connected(Box::new(Live::new(input, None, &self.connection.name)));
         typed
     }
 
@@ -173,6 +175,8 @@ pub enum Message {
     Tick,
     /// The (i) button was pressed.
     DetailsToggled,
+    /// The Record button was pressed.
+    RecordPressed,
     UsernameChanged(String),
     SecretChanged(Hidden),
     Submitted,
@@ -390,7 +394,7 @@ impl State {
             return Task::none();
         };
         let connection = shell.connection.clone();
-        let live = Live::new(shell.input, Some(shell.connection));
+        let live = Live::new(shell.input, Some(shell.connection), &self.connection.name);
         self.stage = Stage::Connected(Box::new(live));
 
         // The stream ends when the session task stops, for example once this tab is closed.
@@ -465,7 +469,7 @@ impl State {
                 live.screen.scroll_to_bottom();
                 live.cache.clear();
             }
-            live.send(ShellInput::Data(bytes));
+            live.type_in(bytes);
         }
         Task::none()
     }

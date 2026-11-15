@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use iced::widget::{button, column, row, text};
+use iced::widget::{button, checkbox, column, row, text};
 use iced::{Element, Length};
 
 use crate::branding;
@@ -39,6 +39,9 @@ pub enum Message {
     TabLayoutPicked(TabLayoutOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
+    ConsoleRecordingToggled(bool),
+    KeystrokesToggled(bool),
+    EveryRecordingToggled(bool),
     ExportPressed,
     ImportPressed,
     ImportPuttyPressed,
@@ -98,6 +101,18 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::LanguagePicked(option) => {
             preferences.language = option.0;
+            Event::Changed
+        }
+        Message::ConsoleRecordingToggled(on) => {
+            preferences.features.console_recording = on;
+            Event::Changed
+        }
+        Message::KeystrokesToggled(on) => {
+            preferences.features.record_keystrokes = on;
+            Event::Changed
+        }
+        Message::EveryRecordingToggled(on) => {
+            preferences.features.record_every_session = on;
             Event::Changed
         }
         Message::ExportPressed => Event::Export,
@@ -177,9 +192,50 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(4);
 
-    column![header, theme, language, tabs, exchange, about()]
-        .spacing(16)
-        .into()
+    column![
+        header,
+        theme,
+        language,
+        tabs,
+        exchange,
+        features(preferences),
+        about()
+    ]
+    .spacing(16)
+    .into()
+}
+
+/// The switches of the optional features. The ones that only matter with another one are shown below it.
+fn features(preferences: &Preferences) -> Element<'_, Message> {
+    let features = preferences.features;
+    let mut switches = column![
+        text(fl!("settings-features"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        checkbox(features.console_recording)
+            .label(fl!("settings-feature-console"))
+            .on_toggle(Message::ConsoleRecordingToggled),
+    ]
+    .spacing(6);
+    if features.console_recording {
+        switches = switches
+            .push(
+                checkbox(features.record_every_session)
+                    .label(fl!("settings-feature-every"))
+                    .on_toggle(Message::EveryRecordingToggled),
+            )
+            .push(
+                checkbox(features.record_keystrokes)
+                    .label(fl!("settings-feature-keystrokes"))
+                    .on_toggle(Message::KeystrokesToggled),
+            )
+            .push(
+                text(fl!("settings-features-note"))
+                    .size(theme::TEXT_SMALL)
+                    .style(theme::secondary_text),
+            );
+    }
+    switches.into()
 }
 
 /// The logo, name and version. The name and version stay unformatted and

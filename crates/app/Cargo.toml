@@ -53,6 +53,7 @@ i18n-embed-fl = "0.10"
 iced = { version = "0.14", features = ["tokio", "canvas", "image-without-codecs"] }
 # The terminal's grid and escape-sequence handling.
 alacritty_terminal = "0.26"
+remotething-capture = { path = "../capture" }
 remotething-files = { path = "../files" }
 remotething-rdp = { path = "../rdp" }
 remotething-vnc = { path = "../vnc" }

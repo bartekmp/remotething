@@ -5,6 +5,7 @@
 mod app;
 mod branding;
 mod challenge;
+mod console_recording;
 mod credential_actions;
 mod credentials;
 mod desktop;
@@ -13,6 +14,7 @@ mod desktop_open;
 mod desktop_size;
 mod desktop_view;
 mod display;
+mod features;
 mod file_dialog;
 mod files_pane;
 mod files_view;

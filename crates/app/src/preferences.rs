@@ -17,6 +17,30 @@ pub struct Preferences {
     /// What the tab bar does when the tabs do not fit on one line.
     #[serde(default)]
     pub tab_layout: TabLayout,
+    /// The optional features, which are all off until switched on.
+    #[serde(default, skip_serializing_if = "Features::is_empty")]
+    pub features: Features,
+}
+
+/// The optional features of the app. Each one that is off leaves no trace in the window.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Features {
+    /// Recording of SSH terminals, in the asciicast format.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub console_recording: bool,
+    /// Whether recordings also keep what was typed. Passwords are typed, so this is off by default.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub record_keystrokes: bool,
+    /// Whether every SSH session is recorded from its start.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub record_every_session: bool,
+}
+
+impl Features {
+    /// True when nothing is switched on, so the table can be left out of the file.
+    pub fn is_empty(&self) -> bool {
+        *self == Features::default()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,6 +71,11 @@ pub fn path_beside(connections_file: &Path) -> PathBuf {
     connections_file.with_file_name("settings.toml")
 }
 
+/// Where recordings go: a folder beside the connections file.
+pub fn recordings_beside(connections_file: &Path) -> PathBuf {
+    connections_file.with_file_name("recordings")
+}
+
 /// A missing file means defaults. A broken one is an error, so it is not silently overwritten.
 pub fn load(path: &Path) -> Result<Preferences, String> {
     if !path.exists() {
@@ -69,6 +98,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn features_are_off_by_default_and_not_written_while_off() {
+        let preferences = Preferences::default();
+
+        assert!(preferences.features.is_empty());
+        let text = toml::to_string_pretty(&preferences).unwrap();
+        assert!(!text.contains("features"), "{text}");
+    }
+
+    #[test]
+    fn a_switched_on_feature_is_saved_and_loaded() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+        let mut preferences = Preferences::default();
+        preferences.features.console_recording = true;
+
+        save(&preferences, &path).unwrap();
+
+        assert!(load(&path).unwrap().features.console_recording);
+    }
+
+    #[test]
+    fn recordings_go_in_a_folder_beside_the_connections_file() {
+        let folder = recordings_beside(Path::new("/home/me/.config/remotething/connections.toml"));
+
+        assert_eq!(folder, Path::new("/home/me/.config/remotething/recordings"));
+    }
+
+    #[test]
     fn a_missing_file_gives_defaults() {
         let preferences = load(Path::new("/nonexistent/settings.toml")).unwrap();
 
@@ -86,6 +143,11 @@ mod tests {
             language: Some("en".to_string()),
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
+            features: Features {
+                console_recording: true,
+                record_keystrokes: false,
+                record_every_session: true,
+            },
         };
 
         save(&preferences, &path).unwrap();

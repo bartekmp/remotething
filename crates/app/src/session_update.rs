@@ -10,7 +10,9 @@ use remotething_secrets::Secret;
 use tokio::sync::mpsc;
 
 use crate::challenge;
+use crate::console_recording::Recording;
 use crate::credentials::Hidden;
+use crate::features;
 use crate::files_pane;
 use crate::forwards;
 use crate::i18n::fl;
@@ -41,14 +43,24 @@ pub(crate) struct Live {
     pub(crate) details: Details,
     pub(crate) details_open: bool,
     pub(crate) meter: Meter,
+    /// The recording of this terminal, while there is one.
+    pub(crate) recording: Option<Recording>,
+    /// Why recording stopped by itself, or could not start.
+    pub(crate) recording_problem: Option<String>,
+    /// The name recordings of this terminal are given.
+    name: String,
     /// Bytes of shell output received; input sent is counted in [`Live::send`].
     received: u64,
     sent: Cell<u64>,
 }
 
 impl Live {
-    pub(crate) fn new(input: mpsc::Sender<ShellInput>, connection: Option<Connection>) -> Self {
-        Self {
+    pub(crate) fn new(
+        input: mpsc::Sender<ShellInput>,
+        connection: Option<Connection>,
+        name: &str,
+    ) -> Self {
+        let mut live = Self {
             screen: Screen::new(
                 usize::from(INITIAL_SIZE.columns),
                 usize::from(INITIAL_SIZE.lines),
@@ -65,10 +77,61 @@ impl Live {
                 .unwrap_or_default(),
             details_open: false,
             meter: Meter::new(),
+            recording: None,
+            recording_problem: None,
+            name: name.to_string(),
             received: 0,
             sent: Cell::new(0),
             connection,
+        };
+        if features::record_every_session() {
+            live.start_recording();
         }
+        live
+    }
+
+    /// Starts recording this terminal, if the feature is on and it is not recording yet.
+    pub(crate) fn start_recording(&mut self) {
+        if !features::console_recording() || self.recording.is_some() {
+            return;
+        }
+        self.recording_problem = None;
+        let (columns, lines) = (self.screen.columns(), self.screen.lines());
+        let started = Recording::start(
+            &features::recordings_folder(),
+            &self.name,
+            u16::try_from(columns).unwrap_or(u16::MAX),
+            u16::try_from(lines).unwrap_or(u16::MAX),
+            features::record_keystrokes(),
+        );
+        match started {
+            Ok(recording) => self.recording = Some(recording),
+            Err(error) => {
+                self.recording_problem = Some(format!("{} {error}", fl!("recording-failed")));
+            }
+        }
+    }
+
+    /// Ends the recording. The file is complete as it is.
+    pub(crate) fn stop_recording(&mut self) {
+        self.recording = None;
+    }
+
+    /// Writes to the recording; a write that fails ends it and says why.
+    fn record(&mut self, write: impl FnOnce(&mut Recording) -> std::io::Result<()>) {
+        let Some(recording) = &mut self.recording else {
+            return;
+        };
+        if let Err(error) = write(recording) {
+            self.recording = None;
+            self.recording_problem = Some(format!("{} {error}", fl!("recording-stopped")));
+        }
+    }
+
+    /// What the user typed or pasted, on its way to the shell.
+    pub(crate) fn type_in(&mut self, bytes: Vec<u8>) {
+        self.record(|recording| recording.input(&bytes));
+        self.send(ShellInput::Data(bytes));
     }
 
     /// Takes a reading of the traffic so far.
@@ -110,7 +173,7 @@ impl Live {
             self.screen.scroll_to_bottom();
             self.cache.clear();
         }
-        self.send(ShellInput::Data(bytes));
+        self.type_in(bytes);
     }
 }
 
@@ -208,6 +271,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::Shell(ShellEvent::Output(bytes)) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.received += bytes.len() as u64;
+                live.record(|recording| recording.output(&bytes));
                 let replies = live.screen.feed(&bytes);
                 // New output moves the lines under the highlights.
                 live.screen.clear_found();
@@ -225,6 +289,16 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             };
             live.sample();
             next_tick()
+        }
+        Message::RecordPressed => {
+            if let Stage::Connected(live) = &mut state.stage {
+                if live.recording.is_some() {
+                    live.stop_recording();
+                } else {
+                    live.start_recording();
+                }
+            }
+            Task::none()
         }
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
@@ -277,6 +351,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 terminal_view::Event::Resized(size) => {
                     live.screen
                         .resize(usize::from(size.columns), usize::from(size.lines));
+                    live.record(|recording| recording.resize(size.columns, size.lines));
                     live.send(ShellInput::Resize(size));
                 }
                 terminal_view::Event::Scrolled(lines) => live.screen.scroll(lines),

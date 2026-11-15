@@ -97,6 +97,7 @@ fn with_status_bar<'a>(
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
+        recording: None,
         details: details(live, host, via, quality),
         details_open: live.details_open,
         actions: Vec::new(),

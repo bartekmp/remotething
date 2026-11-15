@@ -1,5 +1,6 @@
 //! The strip under an SSH terminal and the details behind its (i) button.
 
+use crate::features;
 use crate::i18n::fl;
 use crate::jump;
 use crate::meter;
@@ -22,12 +23,28 @@ pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
         ),
         None => String::new(),
     };
+    // A recording is always on show, in red.
+    let recording = live
+        .recording
+        .as_ref()
+        .map(|recording| meter::clock(recording.elapsed()));
+    let live_text = live.recording_problem.clone().unwrap_or(rate);
+    let mut actions = Vec::new();
+    if features::console_recording() {
+        let label = if live.recording.is_some() {
+            fl!("recording-stop")
+        } else {
+            fl!("recording-start")
+        };
+        actions.push((label, Message::RecordPressed));
+    }
     Bar {
         summary,
-        live: rate,
+        live: live_text,
+        recording,
         details: details(state, live),
         details_open: live.details_open,
-        actions: Vec::new(),
+        actions,
     }
 }
 
@@ -76,6 +93,12 @@ fn details(state: &State, live: &Live) -> Vec<(String, String)> {
     let forwards = live.forwards.open_forwards();
     if !forwards.is_empty() {
         lines.push((fl!("details-forwards"), forwards.join(", ")));
+    }
+    if let Some(recording) = &live.recording {
+        lines.push((
+            fl!("details-recording"),
+            recording.path().display().to_string(),
+        ));
     }
     if let Some(reading) = &live.meter.reading {
         lines.push((

@@ -273,3 +273,14 @@ vnc-refused = The server refused the password.
 details-encodings = Picture encodings
 details-security-tunnel = VNC password, inside an SSH tunnel
 details-colours = Colour depth
+
+recording-start = Record
+recording-stop = Stop recording
+recording-failed = Recording could not start:
+recording-stopped = Recording stopped:
+details-recording = Recording to
+settings-features = Optional features
+settings-feature-console = Record SSH terminals
+settings-feature-keystrokes = Also record what I type (passwords are typed too)
+settings-feature-every = Record every SSH session from its start
+settings-features-note = Recordings are asciicast files in the recordings folder beside the connections file, and play with asciinema. A recording is always shown in the status strip while it runs.
