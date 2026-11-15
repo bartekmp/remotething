@@ -24,6 +24,7 @@ mod launcher;
 mod menu;
 mod organise;
 mod paste;
+mod picture;
 mod preferences;
 mod properties;
 mod putty_import;

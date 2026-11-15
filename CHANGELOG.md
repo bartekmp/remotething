@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.15.1 - 2026-11-15
+
+- Remote Desktop: the picture is drawn through one GPU texture updated in place, to stop the blinking on some drivers.
+
 ## 0.15.0 - 2026-11-15
 
 - Remote Desktop: RDP connections open in a tab with NLA sign-in, certificate pinning, mouse and keyboard.

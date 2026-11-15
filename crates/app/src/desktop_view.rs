@@ -1,13 +1,13 @@
 //! Draws a Remote Desktop tab and turns the pointer over it into input.
 
-use iced::widget::image::Handle;
-use iced::widget::{button, column, container, image, mouse_area, responsive, row, text};
-use iced::{ContentFit, Element, Font, Length, Point, Size, Theme, mouse};
+use iced::widget::{button, column, container, mouse_area, responsive, row, shader, text};
+use iced::{Element, Font, Length, Point, Size, Theme, mouse};
 use remotething_rdp::Button;
 
 use crate::credentials::Hidden;
 use crate::desktop::{Form, Live, Message, Stage, State};
 use crate::i18n::fl;
+use crate::picture::Screen;
 use crate::theme;
 
 const FORM_WIDTH: f32 = 320.0;
@@ -120,14 +120,13 @@ fn certificate_question<'a>(
 
 /// The picture, scaled to fit. Pointer positions are mapped back to the remote desktop.
 fn desktop(live: &Live) -> Element<'_, Message> {
-    let handle: Handle = live.frame.clone();
+    let picture = live.picture.clone();
     let remote = live.size;
     responsive(move |area| {
-        let picture = image(handle.clone())
-            .content_fit(ContentFit::Contain)
+        let screen = shader(Screen(picture.clone()))
             .width(Length::Fill)
             .height(Length::Fill);
-        mouse_area(picture)
+        mouse_area(screen)
             .on_move(move |point| {
                 let (x, y) = remote_position(area, remote, point);
                 Message::Moved(x, y)

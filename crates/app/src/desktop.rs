@@ -5,7 +5,6 @@ use std::sync::{Arc, Mutex};
 
 use iced::Task;
 use iced::futures::stream;
-use iced::widget::image::Handle;
 use remotething_core::{CredentialKind, ResolvedConnection};
 use remotething_rdp::{Button, Certificate, Error, Event, Input, Session, Target};
 use remotething_secrets::Secret;
@@ -13,6 +12,7 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::i18n::fl;
+use crate::picture::Picture;
 use crate::scancodes::Scancode;
 use crate::session::{Context, Sealed};
 
@@ -55,7 +55,7 @@ pub(crate) struct Form {
 
 /// A running desktop.
 pub(crate) struct Live {
-    pub(crate) frame: Handle,
+    pub(crate) picture: Picture,
     /// The size of the remote desktop in pixels.
     pub(crate) size: (u32, u32),
     input: mpsc::Sender<Input>,
@@ -109,7 +109,7 @@ pub enum Message {
     Submitted,
     Opened(Result<Opened, Failure>),
     /// The desktop changed: a new picture and its size.
-    Frame(Handle, u32, u32),
+    Frame(Picture),
     /// The session ended, with the reason when it was not the user's doing.
     Closed(Option<String>),
     TrustPressed,
@@ -146,7 +146,7 @@ impl State {
     pub(crate) fn connect_for_test(&mut self) -> mpsc::Receiver<Input> {
         let (input, typed) = mpsc::channel(16);
         self.stage = Stage::Connected(Box::new(Live {
-            frame: Handle::from_rgba(1, 1, vec![0, 0, 0, 255]),
+            picture: Picture::black(),
             size: (1280, 800),
             input,
             pointer: (0, 0),
@@ -250,10 +250,9 @@ impl State {
             return Task::none();
         };
         let Session { events, input } = session;
-        // Black until the first picture arrives.
-        let blank = Handle::from_rgba(1, 1, vec![0, 0, 0, 255]);
         self.stage = Stage::Connected(Box::new(Live {
-            frame: blank,
+            // Black until the first picture arrives.
+            picture: Picture::black(),
             size: (u32::from(WIDTH), u32::from(HEIGHT)),
             input,
             pointer: (0, 0),
@@ -262,11 +261,9 @@ impl State {
         // The stream ends when the session thread stops, for example once this tab is closed.
         let messages = stream::unfold(events, |mut events| async move {
             let message = match events.recv().await? {
-                Event::Frame(frame) => Message::Frame(
-                    Handle::from_rgba(frame.width, frame.height, frame.rgba),
-                    frame.width,
-                    frame.height,
-                ),
+                Event::Frame(frame) => {
+                    Message::Frame(Picture::new(frame.width, frame.height, frame.rgba))
+                }
                 Event::Closed(reason) => Message::Closed(reason),
             };
             Some((message, events))
@@ -348,10 +345,10 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             state.stage = Stage::Ended(reason);
             Task::none()
         }
-        Message::Frame(frame, width, height) => {
+        Message::Frame(picture) => {
             if let Stage::Connected(live) = &mut state.stage {
-                live.frame = frame;
-                live.size = (width, height);
+                live.size = (picture.width, picture.height);
+                live.picture = picture;
             }
             Task::none()
         }
