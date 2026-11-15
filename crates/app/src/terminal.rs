@@ -56,7 +56,7 @@ impl Dimensions for GridSize {
 
 /// Collects what the terminal wants to tell the remote side, such as a cursor position report.
 #[derive(Clone, Default)]
-struct Replies(Arc<Mutex<Vec<u8>>>);
+pub(crate) struct Replies(Arc<Mutex<Vec<u8>>>);
 
 impl EventListener for Replies {
     fn send_event(&self, event: Event) {
@@ -77,13 +77,17 @@ pub struct SelectedSpan {
 }
 
 pub struct Screen {
-    term: Term<Replies>,
+    pub(crate) term: Term<Replies>,
     parser: Processor,
     replies: Replies,
     /// Where the mouse button went down for the selection being made.
     anchor: Option<Point>,
     /// Whether the selection grows by characters, words or lines.
     granularity: Granularity,
+    /// The matches of a search, to highlight.
+    pub(crate) found: Vec<crate::terminal_search::Found>,
+    /// Which of `found` the user is on.
+    pub(crate) current_found: Option<usize>,
 }
 
 /// The unit a selection grows by: a click selects characters, a double click
@@ -116,6 +120,8 @@ impl Screen {
             replies,
             anchor: None,
             granularity: Granularity::default(),
+            found: Vec::new(),
+            current_found: None,
         }
     }
 

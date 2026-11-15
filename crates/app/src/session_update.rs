@@ -13,6 +13,7 @@ use crate::files_pane;
 use crate::forwards;
 use crate::i18n::fl;
 use crate::paste;
+use crate::search;
 use crate::session::{
     Context, Failure, INITIAL_SIZE, Message, Method, Sealed, SealedJumps, Stage, State,
 };
@@ -31,6 +32,8 @@ pub(crate) struct Live {
     pub(crate) files: Option<files_pane::State>,
     /// The port forwards of this session.
     pub(crate) forwards: forwards::Active,
+    /// The search bar, while it is open.
+    pub(crate) search: Option<search::Search>,
 }
 
 impl Live {
@@ -46,6 +49,7 @@ impl Live {
             connection,
             files: None,
             forwards: forwards::Active::default(),
+            search: None,
         }
     }
 
@@ -174,6 +178,8 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::Shell(ShellEvent::Output(bytes)) => {
             if let Stage::Connected(live) = &mut state.stage {
                 let replies = live.screen.feed(&bytes);
+                // New output moves the lines under the highlights.
+                live.screen.clear_found();
                 live.cache.clear();
                 if !replies.is_empty() {
                     live.send(ShellInput::Data(replies));
@@ -282,6 +288,24 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 live.files = None;
             }
             task.map(Message::Files)
+        }
+        Message::SearchChanged(query) => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.search_for(query);
+            }
+            Task::none()
+        }
+        Message::SearchNext | Message::SearchPrevious => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.search_step(matches!(message, Message::SearchNext));
+            }
+            Task::none()
+        }
+        Message::SearchClosed => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.close_search();
+            }
+            Task::none()
         }
         Message::PasteConfirmed => {
             if let Stage::Connected(live) = &mut state.stage {

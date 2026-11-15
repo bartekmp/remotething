@@ -10,6 +10,7 @@ use crate::files_pane;
 use crate::files_view;
 use crate::i18n::fl;
 use crate::paste;
+use crate::search;
 use crate::session::{Form, Message, Stage, State};
 use crate::terminal_view;
 use crate::theme;
@@ -50,10 +51,14 @@ pub fn view(state: &State) -> Element<'_, Message> {
                     column![toolbar, terminal].spacing(6).into()
                 }
             };
-            match live.forwards.view() {
-                Some(bar) => column![bar, body].spacing(6).into(),
-                None => body,
+            let mut layers = column![].spacing(6);
+            if let Some(bar) = live.forwards.view() {
+                layers = layers.push(bar);
             }
+            if let Some(open) = &live.search {
+                layers = layers.push(search::view(open, live.screen.found.len()));
+            }
+            layers.push(body).into()
         }
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))

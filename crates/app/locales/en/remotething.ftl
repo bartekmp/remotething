@@ -227,3 +227,7 @@ preview-none = The file holds no connections.
 preview-import = Import { $count } connections
 preview-all = Tick all
 preview-none-button = Tick none
+
+search-hint = Find in terminal
+search-count = { $current } of { $total }
+search-none = No matches

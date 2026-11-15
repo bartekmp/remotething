@@ -21,6 +21,7 @@ use crate::forwards;
 use crate::i18n::fl;
 use crate::jump;
 use crate::keys;
+use crate::search;
 pub(crate) use crate::session_update::{Live, update};
 use crate::terminal_view;
 
@@ -188,6 +189,10 @@ pub enum Message {
     Files(files_pane::Message),
     PasteConfirmed,
     PasteCancelled,
+    SearchChanged(String),
+    SearchNext,
+    SearchPrevious,
+    SearchClosed,
 }
 
 impl State {
@@ -411,6 +416,17 @@ impl State {
             && matches!(key, Key::Character(character) if character.eq_ignore_ascii_case("v"));
         if is_paste {
             return iced::clipboard::read().map(Message::Pasted);
+        }
+        let is_find = modifiers.control()
+            && modifiers.shift()
+            && matches!(key, Key::Character(character) if character.eq_ignore_ascii_case("f"));
+        if is_find {
+            live.open_search();
+            return iced::widget::operation::focus(search::INPUT);
+        }
+        if live.search.is_some() && *key == Key::Named(Named::Escape) {
+            live.close_search();
+            return Task::none();
         }
         let is_copy = modifiers.control()
             && modifiers.shift()

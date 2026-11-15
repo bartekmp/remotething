@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.13.0 - 2026-11-15
+
+- Terminal search: **Ctrl+Shift+F** finds text on the screen and in the scrollback.
+
 ## 0.12.0 - 2026-11-15
 
 - Importing a Remotething file shows its connections first, so you can leave some out.

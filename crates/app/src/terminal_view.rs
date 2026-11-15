@@ -28,6 +28,9 @@ struct Palette {
     background: Color,
     /// Behind selected text.
     selection: Color,
+    /// Behind the matches of a search, and behind the one the user is on.
+    found: Color,
+    found_current: Color,
     ansi: [Color; 16],
 }
 
@@ -39,6 +42,8 @@ const DARK: Palette = Palette {
     foreground: rgb(0xD7DCE5),
     background: rgb(0x10141C),
     selection: rgb(0x2C4A7A),
+    found: rgb(0x5C4B16),
+    found_current: rgb(0xA87B14),
     ansi: [
         rgb(0x2B3240),
         rgb(0xF07178),
@@ -63,6 +68,8 @@ const LIGHT: Palette = Palette {
     foreground: rgb(0x1F2430),
     background: rgb(0xFFFFFF),
     selection: rgb(0xCFE0FF),
+    found: rgb(0xFFE9A6),
+    found_current: rgb(0xFFB84D),
     ansi: [
         rgb(0x1F2430),
         rgb(0xC0392B),
@@ -291,6 +298,17 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 let width = (span.end + 1 - span.start) as f32 * CELL_WIDTH;
                 let size = Size::new(width, CELL_HEIGHT);
                 frame.fill_rectangle(origin(span.start, span.line), size, palette.selection);
+            }
+            for found in self.screen.found_spans() {
+                let span = found.span;
+                let width = (span.end + 1 - span.start) as f32 * CELL_WIDTH;
+                let color = if found.current {
+                    palette.found_current
+                } else {
+                    palette.found
+                };
+                let size = Size::new(width, CELL_HEIGHT);
+                frame.fill_rectangle(origin(span.start, span.line), size, color);
             }
             for run in runs(&cells) {
                 draw_run(frame, palette, &run);

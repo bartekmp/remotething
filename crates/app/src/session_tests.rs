@@ -665,3 +665,67 @@ fn a_refused_interactive_sign_in_ends_with_a_reason() {
 
     assert!(matches!(state.stage, Stage::Ended(_)));
 }
+
+fn live_of(state: &State) -> &Live {
+    match &state.stage {
+        Stage::Connected(live) => live,
+        _ => panic!("expected a live terminal"),
+    }
+}
+
+fn ctrl_shift_f(state: &mut State) {
+    let key = Key::Character("F".into());
+    let _ = state.key(&key, Modifiers::CTRL | Modifiers::SHIFT, None);
+}
+
+#[test]
+fn ctrl_shift_f_opens_the_search_bar_and_types_nothing() {
+    let mut fixture = Fixture::new();
+    let (mut state, mut input) = live(&mut fixture);
+
+    ctrl_shift_f(&mut state);
+
+    assert!(live_of(&state).search.is_some());
+    assert!(input.try_recv().is_err());
+}
+
+#[test]
+fn searching_highlights_matches_and_next_walks_through_them() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+    let output = Message::Shell(ShellEvent::Output(b"cat\r\ndog\r\ncat".to_vec()));
+    fixture.send(&mut state, output);
+    ctrl_shift_f(&mut state);
+
+    fixture.send(&mut state, Message::SearchChanged("CAT".to_string()));
+    assert_eq!(live_of(&state).screen.found.len(), 2);
+    // The newest match comes first.
+    assert_eq!(live_of(&state).search.as_ref().unwrap().current, 1);
+
+    fixture.send(&mut state, Message::SearchNext);
+    assert_eq!(live_of(&state).search.as_ref().unwrap().current, 0);
+    fixture.send(&mut state, Message::SearchPrevious);
+    assert_eq!(live_of(&state).search.as_ref().unwrap().current, 1);
+}
+
+#[test]
+fn new_output_drops_the_highlights_and_escape_closes_the_bar() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+    fixture.send(
+        &mut state,
+        Message::Shell(ShellEvent::Output(b"cat".to_vec())),
+    );
+    ctrl_shift_f(&mut state);
+    fixture.send(&mut state, Message::SearchChanged("cat".to_string()));
+    assert_eq!(live_of(&state).screen.found.len(), 1);
+
+    fixture.send(
+        &mut state,
+        Message::Shell(ShellEvent::Output(b"more".to_vec())),
+    );
+    assert!(live_of(&state).screen.found.is_empty());
+
+    let _ = state.key(&Key::Named(Named::Escape), Modifiers::empty(), None);
+    assert!(live_of(&state).search.is_none());
+}
