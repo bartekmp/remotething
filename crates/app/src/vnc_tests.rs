@@ -2,6 +2,7 @@
 
 use iced::keyboard::key::{Code, Named, NativeCode};
 use remotething_core::{Credential, Protocol, Quality, Store};
+use remotething_remote::ssh::{Endpoint, HostKey};
 use remotething_secrets::{KnownHosts, MemoryStore, SecretStore};
 
 use super::*;
@@ -318,4 +319,104 @@ fn an_empty_pointer_from_the_server_hides_the_local_one() {
     fixture.send(&mut state, Message::Cursor(None));
 
     assert!(matches!(&state.stage, Stage::Connected(live) if live.cursor.hides_local()));
+}
+
+fn tunnelled(fixture: &mut Fixture) -> ResolvedConnection {
+    fixture.store = toml::from_str(
+        r#"
+        [[credential]]
+        id = "ops"
+        name = "Ops"
+        username = "ops"
+        kind = "password"
+
+        [[connection]]
+        id = "bastion"
+        name = "bastion"
+        protocol = "ssh"
+        host = "bastion.example.net"
+        credential = "ops"
+        "#,
+    )
+    .unwrap();
+    ResolvedConnection {
+        id: "tv".to_string(),
+        name: "tv".to_string(),
+        protocol: Protocol::Vnc,
+        host: "tv.internal".to_string(),
+        port: 5900,
+        credential: None,
+        jump: Some("bastion".to_string()),
+        forwards: Vec::new(),
+        rdp_quality: Quality::Balanced,
+    }
+}
+
+fn jump_key() -> HostKey {
+    HostKey {
+        endpoint: Endpoint {
+            host: "bastion.example.net".to_string(),
+            port: 22,
+        },
+        key: "ssh-ed25519 AAAATEST".to_string(),
+        fingerprint: "SHA256:test".to_string(),
+    }
+}
+
+#[test]
+fn a_tunnelled_connection_first_loads_the_secrets_of_the_ssh_servers() {
+    let mut fixture = Fixture::new();
+    let connection = tunnelled(&mut fixture);
+
+    let (state, _) = State::start(connection, &fixture.context());
+
+    assert!(matches!(state.stage, Stage::LoadingSecret));
+}
+
+#[test]
+fn once_the_ssh_servers_are_ready_the_connection_is_made() {
+    let mut fixture = Fixture::new();
+    let connection = tunnelled(&mut fixture);
+    let (mut state, _) = State::start(connection, &fixture.context());
+
+    fixture.send(
+        &mut state,
+        Message::JumpsLoaded(Ok(SealedJumps(Vec::new()))),
+    );
+
+    assert!(matches!(state.stage, Stage::Connecting));
+}
+
+#[test]
+fn an_ssh_server_without_a_usable_credential_ends_the_session_naming_it() {
+    let mut fixture = Fixture::new();
+    let mut connection = tunnelled(&mut fixture);
+    fixture.store.credentials.clear();
+    fixture.store.connections[0].settings.credential = None;
+    connection.jump = Some("bastion".to_string());
+
+    let (state, _) = State::start(connection, &fixture.context());
+
+    assert!(matches!(&state.stage, Stage::Ended(reason) if reason.contains("bastion")));
+}
+
+#[test]
+fn an_unknown_key_on_the_way_is_asked_about_and_saved_for_that_server() {
+    let mut fixture = Fixture::new();
+    let connection = tunnelled(&mut fixture);
+    let (mut state, _) = State::start(connection, &fixture.context());
+    let failure = Failure::HostKey {
+        key: jump_key(),
+        changed: false,
+    };
+
+    fixture.send(&mut state, Message::Opened(Err(failure)));
+    assert!(matches!(state.stage, Stage::HostKey { changed: false, .. }));
+    fixture.send(&mut state, Message::TrustPressed);
+
+    assert!(matches!(state.stage, Stage::Connecting));
+    let verdict = fixture
+        .known_hosts
+        .check("bastion.example.net", 22, "ssh-ed25519 AAAATEST");
+    assert_eq!(verdict, remotething_secrets::HostKeyVerdict::Trusted);
 }

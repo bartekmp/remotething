@@ -18,6 +18,7 @@ mod files_pane;
 mod files_view;
 mod folder_removal;
 mod forwards;
+mod host_key_view;
 mod i18n;
 mod icons;
 mod import_preview;

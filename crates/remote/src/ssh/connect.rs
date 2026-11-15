@@ -67,26 +67,7 @@ async fn connect(
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
-    // The connections to the jump hosts, first one first.
-    let mut tunnel: Vec<client::Handle<Handler>> = Vec::new();
-    for (index, hop) in jumps.iter().enumerate() {
-        let through = tunnel.last();
-        let session = establish(
-            through,
-            &hop.endpoint,
-            &hop.auth,
-            known.clone(),
-            Learned::default(),
-        )
-        .await
-        .map_err(|error| {
-            // A refused relay is the doing of the host before this one.
-            let relay = index.checked_sub(1).map(|before| &jumps[before].endpoint);
-            on_jump(&hop.endpoint, relay, error)
-        })?;
-        debug_assert_eq!(tunnel.len(), index);
-        tunnel.push(session);
-    }
+    let tunnel = connect_hops(jumps, &known).await?;
     let details = Learned::default();
     let session = establish(tunnel.last(), endpoint, auth, known, Arc::clone(&details))
         .await
@@ -105,6 +86,34 @@ async fn connect(
     channel.request_shell(false).await?;
 
     Ok(shell::start(session, tunnel, channel, details))
+}
+
+/// Connects to each of `hops` in turn, the first directly and every next one
+/// through the one before it. The returned connections must be kept open for
+/// as long as the last one is used.
+pub(super) async fn connect_hops(
+    hops: &[Hop],
+    known: &KnownHosts,
+) -> Result<Vec<client::Handle<Handler>>> {
+    let mut connected: Vec<client::Handle<Handler>> = Vec::new();
+    for (index, hop) in hops.iter().enumerate() {
+        let session = establish(
+            connected.last(),
+            &hop.endpoint,
+            &hop.auth,
+            known.clone(),
+            Learned::default(),
+        )
+        .await
+        .map_err(|error| {
+            // A refused relay is the doing of the host before this one.
+            let relay = index.checked_sub(1).map(|before| &hops[before].endpoint);
+            on_jump(&hop.endpoint, relay, error)
+        })?;
+        debug_assert_eq!(connected.len(), index);
+        connected.push(session);
+    }
+    Ok(connected)
 }
 
 /// Says which jump host a failure belongs to. A host-key question already
@@ -126,7 +135,7 @@ fn on_jump(endpoint: &Endpoint, relay: Option<&Endpoint>, error: Error) -> Error
 
 /// Reaches `endpoint` (directly, or from the server `through`), checks its
 /// key and signs in.
-async fn establish(
+pub(super) async fn establish(
     through: Option<&client::Handle<Handler>>,
     endpoint: &Endpoint,
     auth: &Auth,

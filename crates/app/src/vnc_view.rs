@@ -7,6 +7,7 @@ use remotething_vnc::Button;
 use crate::credentials::Hidden;
 use crate::desktop_cursor;
 use crate::desktop_view::{remote_position, wheel_units};
+use crate::host_key_view;
 use crate::i18n::fl;
 use crate::meter;
 use crate::picture;
@@ -26,7 +27,12 @@ pub fn view(state: &State) -> Element<'_, Message> {
             .style(theme::secondary_text),
         ),
         Stage::Asking(form) => centred(password_form(&state.connection.name, form)),
-        Stage::Connected(live) => with_status_bar(live, &state.connection.host),
+        Stage::HostKey { key, changed } => centred(host_key_view::question(
+            key,
+            *changed,
+            Message::TrustPressed,
+        )),
+        Stage::Connected(live) => with_status_bar(live, &state.connection.host, route(state)),
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)
@@ -66,11 +72,21 @@ fn password_form<'a>(name: &str, form: &'a Form) -> Element<'a, Message> {
         .into()
 }
 
-fn with_status_bar<'a>(live: &'a Live, host: &str) -> Element<'a, Message> {
+/// How the connection reaches the server: its address, or the SSH servers it goes through.
+fn route(state: &State) -> Option<String> {
+    let hops: Vec<String> = state
+        .jumps()
+        .filter_map(|hop| hop.hop())
+        .map(|hop| format!("{}:{}", hop.endpoint.host, hop.endpoint.port))
+        .collect();
+    (!hops.is_empty()).then(|| fl!("details-via", hosts = hops.join(" → ")))
+}
+
+fn with_status_bar<'a>(live: &'a Live, host: &str, via: Option<String>) -> Element<'a, Message> {
     let bar = Bar {
         summary: format!("{host} · {} × {}", live.size.0, live.size.1),
         live: live_rate(live),
-        details: details(live, host),
+        details: details(live, host, via),
         details_open: live.details_open,
         actions: Vec::new(),
     };
@@ -89,17 +105,19 @@ fn live_rate(live: &Live) -> String {
     }
 }
 
-fn details(live: &Live, host: &str) -> Vec<(String, String)> {
-    let address = live
-        .info
-        .peer
-        .map(|peer| peer.to_string())
+fn details(live: &Live, host: &str, via: Option<String>) -> Vec<(String, String)> {
+    let security = match via {
+        Some(_) => fl!("details-security-tunnel"),
+        None => live.info.security.to_string(),
+    };
+    let address = via
+        .or_else(|| live.info.peer.map(|peer| peer.to_string()))
         .unwrap_or_default();
     let mut lines = vec![
         (fl!("details-protocol"), "VNC".to_string()),
         (fl!("details-host"), host.to_string()),
         (fl!("details-address"), address),
-        (fl!("details-security"), live.info.security.to_string()),
+        (fl!("details-security"), security),
         (fl!("details-encodings"), live.info.encodings.to_string()),
         (
             fl!("details-size"),

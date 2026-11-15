@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use remotething_remote::ssh::{
     Auth, Challenge, Endpoint, Error, Hop, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
-    open_shell_through,
+    open_shell_through, open_tunnel,
 };
 use remotething_secrets::{KnownHosts, Secret};
 use russh::keys::PublicKey;
@@ -766,6 +766,60 @@ async fn a_local_forward_reaches_a_host_behind_the_server() {
     client.read_exact(&mut answer).await.unwrap();
 
     assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_tunnel_reaches_a_host_behind_the_server() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let behind = start_shouting_server().await;
+    let server = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&server, &directory).await;
+    let target = Endpoint {
+        host: "127.0.0.1".to_string(),
+        port: behind,
+    };
+
+    let mut tunnel = open_tunnel(&[hop(&server, PASSWORD)], &target, known)
+        .await
+        .unwrap();
+    tunnel.write_all(b"hello").await.unwrap();
+    let mut answer = [0u8; 5];
+    tunnel.read_exact(&mut answer).await.unwrap();
+
+    assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_tunnel_through_a_server_that_forbids_forwarding_names_it() {
+    let (server, _) = start_configured_server(true).await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&server, &directory).await;
+    let target = Endpoint {
+        host: "127.0.0.1".to_string(),
+        port: 9,
+    };
+
+    let result = open_tunnel(&[hop(&server, PASSWORD)], &target, known).await;
+
+    match result {
+        Err(Error::ForwardingRefused { host }) => assert_eq!(host, server.host),
+        _ => panic!("expected the server to be named as refusing"),
+    }
+}
+
+#[tokio::test]
+async fn a_tunnel_needs_a_server_to_go_through() {
+    let directory = tempfile::tempdir().unwrap();
+    let known = empty_known_hosts(&directory);
+    let target = Endpoint {
+        host: "127.0.0.1".to_string(),
+        port: 9,
+    };
+
+    let result = open_tunnel(&[], &target, known).await;
+
+    assert!(matches!(result, Err(Error::Protocol(_))));
 }
 
 #[tokio::test]

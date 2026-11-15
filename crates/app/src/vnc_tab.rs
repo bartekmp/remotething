@@ -9,6 +9,7 @@ use iced::futures::stream;
 use iced::keyboard::Key;
 use iced::keyboard::key::Physical;
 use remotething_core::{CredentialKind, ResolvedConnection};
+use remotething_remote::ssh::{self, Endpoint, HostKey};
 use remotething_secrets::Secret;
 use remotething_vnc::{Button, Error, Event, Info, Input, Session, Stats, Target};
 use tokio::sync::mpsc;
@@ -16,14 +17,17 @@ use tokio::sync::mpsc;
 use crate::credentials::Hidden;
 use crate::desktop_cursor::Look;
 use crate::i18n::fl;
+use crate::jump;
 use crate::keysym;
 use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
-use crate::session::{Context, Sealed};
+use crate::session::{Context, Sealed, SealedJumps};
 
 pub struct State {
     pub(crate) connection: ResolvedConnection,
     password: Option<Secret>,
+    /// The SSH servers the connection is tunnelled through, in the order they are connected to.
+    jumps: Vec<jump::Ready>,
     pub(crate) stage: Stage,
 }
 
@@ -33,6 +37,11 @@ pub(crate) enum Stage {
     /// The server wants a password and none is known (or it was refused).
     Asking(Form),
     Connecting,
+    /// A server on the way has a key that is new or has changed; the user decides.
+    HostKey {
+        key: HostKey,
+        changed: bool,
+    },
     Connected(Box<Live>),
     /// Closed or failed, with the reason shown.
     Ended(String),
@@ -76,9 +85,23 @@ impl std::fmt::Debug for Opened {
 /// Why opening the session did not work, in the shape the window acts on.
 #[derive(Debug, Clone)]
 pub enum Failure {
+    HostKey { key: HostKey, changed: bool },
     PasswordNeeded,
     WrongPassword,
     Other(String),
+}
+
+impl From<ssh::Error> for Failure {
+    fn from(error: ssh::Error) -> Self {
+        match error {
+            ssh::Error::UnknownHostKey(key) => Failure::HostKey {
+                key,
+                changed: false,
+            },
+            ssh::Error::HostKeyChanged(key) => Failure::HostKey { key, changed: true },
+            other => Failure::Other(other.to_string()),
+        }
+    }
 }
 
 impl From<Error> for Failure {
@@ -93,7 +116,10 @@ impl From<Error> for Failure {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// The stored secrets of the SSH servers on the way were read, or one is missing.
+    JumpsLoaded(Result<SealedJumps, String>),
     SecretLoaded(Result<Sealed, String>),
+    TrustPressed,
     PasswordChanged(Hidden),
     Submitted,
     Opened(Result<Opened, Failure>),
@@ -119,6 +145,7 @@ impl State {
         let mut state = State {
             connection,
             password: None,
+            jumps: Vec::new(),
             stage: Stage::Connecting,
         };
         let task = state.begin(context);
@@ -133,12 +160,40 @@ impl State {
         typed
     }
 
+    /// The SSH servers the connection goes through.
+    pub(crate) fn jumps(&self) -> impl Iterator<Item = &jump::Ready> {
+        self.jumps.iter()
+    }
+
     /// Whether a desktop is showing, so closing the tab would cut it.
     pub(crate) fn is_connected(&self) -> bool {
         matches!(self.stage, Stage::Connected(_))
     }
 
+    /// Starts over: works out the SSH servers to tunnel through first, then how to sign in.
     fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
+        self.jumps = Vec::new();
+        let Some(jump) = &self.connection.jump else {
+            return self.begin_target(context);
+        };
+        let planned = match jump::plan(context.store, jump) {
+            Ok(planned) => planned,
+            Err(reason) => {
+                self.stage = Stage::Ended(reason);
+                return Task::none();
+            }
+        };
+        // The stored secrets may sit behind a keyring prompt.
+        self.stage = Stage::LoadingSecret;
+        let secrets = Arc::clone(context.secrets);
+        Task::perform(
+            async move { jump::load(planned, secrets).map(SealedJumps) },
+            Message::JumpsLoaded,
+        )
+    }
+
+    /// Works out how to sign in to the VNC server and starts as far as it can without the user.
+    fn begin_target(&mut self, context: &Context<'_>) -> Task<Message> {
         let credential = self.connection.credential.as_ref().and_then(|id| {
             context
                 .store
@@ -149,7 +204,7 @@ impl State {
         // Without a credential the server may need no password at all.
         let Some(credential) = credential else {
             self.password = None;
-            return self.connect();
+            return self.connect(context);
         };
         match credential.kind {
             CredentialKind::Password => {
@@ -184,18 +239,31 @@ impl State {
         Task::none()
     }
 
-    /// Connects with what is known.
-    fn connect(&mut self) -> Task<Message> {
+    /// Connects with what is known, directly or through the SSH servers on the way.
+    fn connect(&mut self, context: &Context<'_>) -> Task<Message> {
         let target = Target {
             host: self.connection.host.clone(),
             port: self.connection.port,
             password: self.password.clone(),
         };
+        let hops: Vec<ssh::Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
+        let known = context.known_hosts.clone();
         self.stage = Stage::Connecting;
         Task::perform(
             async move {
-                remotething_vnc::connect(target)
-                    .await
+                let opened = if hops.is_empty() {
+                    remotething_vnc::connect(target).await
+                } else {
+                    let endpoint = Endpoint {
+                        host: target.host,
+                        port: target.port,
+                    };
+                    let tunnel = ssh::open_tunnel(&hops, &endpoint, known)
+                        .await
+                        .map_err(Failure::from)?;
+                    remotething_vnc::connect_over(tunnel, target.password, None).await
+                };
+                opened
                     .map(|session| Opened(Arc::new(Mutex::new(Some(session)))))
                     .map_err(Failure::from)
             },
@@ -293,9 +361,17 @@ impl Live {
 
 pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) -> Task<Message> {
     match message {
+        Message::JumpsLoaded(Ok(SealedJumps(jumps))) => {
+            state.jumps = jumps;
+            state.begin_target(context)
+        }
+        Message::JumpsLoaded(Err(reason)) => {
+            state.stage = Stage::Ended(reason);
+            Task::none()
+        }
         Message::SecretLoaded(Ok(Sealed(Some(secret)))) => {
             state.password = Some(secret);
-            state.connect()
+            state.connect(context)
         }
         // A password credential with nothing stored: it has to be typed.
         Message::SecretLoaded(Ok(Sealed(None))) => state.ask(None),
@@ -314,9 +390,28 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 return Task::none();
             };
             state.password = Some(Secret::new(form.password.clone()));
-            state.connect()
+            state.connect(context)
         }
         Message::Opened(Ok(opened)) => state.go_live(opened),
+        Message::Opened(Err(Failure::HostKey { key, changed })) => {
+            state.stage = Stage::HostKey { key, changed };
+            Task::none()
+        }
+        Message::TrustPressed => {
+            let Stage::HostKey { key, .. } = &state.stage else {
+                return Task::none();
+            };
+            // The key belongs to an SSH server on the way, not to the VNC server.
+            let (host, port) = (&key.endpoint.host, key.endpoint.port);
+            match context.known_hosts.trust(host, port, &key.key) {
+                Ok(()) => state.connect(context),
+                Err(error) => {
+                    let reason = format!("{} {error}", fl!("session-trust-failed"));
+                    state.stage = Stage::Ended(reason);
+                    Task::none()
+                }
+            }
+        }
         Message::Opened(Err(Failure::PasswordNeeded)) => state.ask(Some(fl!("vnc-needs-password"))),
         Message::Opened(Err(Failure::WrongPassword)) => {
             state.password = None;

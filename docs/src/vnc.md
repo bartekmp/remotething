@@ -12,9 +12,11 @@ Double-click a VNC connection to open its desktop in a tab.
 
 The user name is not used: VNC has passwords only. A key or ssh-agent credential cannot be used with VNC.
 
-## Not encrypted
+## Not encrypted, unless tunnelled
 
 The base VNC protocol sends the picture and your typing in the clear, and its password check is weak. Use it on a network you trust, or through an SSH tunnel.
+
+To tunnel, choose an SSH connection as the **Jump host** in the properties panel of the VNC connection (or of its folder). The app signs in to that SSH server, as for [jump hosts](ssh.md#jump-hosts), and the VNC connection runs inside it. The host and port of the VNC connection are then as the SSH server sees them, so `localhost` means the SSH server itself. The server's key is asked about on first use, and the details panel shows the route.
 
 ## Using the desktop
 
@@ -33,7 +35,6 @@ A strip under the desktop shows the host, the desktop size, the download and upl
 
 | Feature | State |
 | --- | --- |
-| Tunnel through an SSH connection | Planned |
 | Quality presets, the Tight encoding | Planned |
 | Resizing the desktop with the tab | Planned (servers that allow it) |
 | View-only mode, Apple Remote Desktop sign-in | Not planned for now |

@@ -271,3 +271,4 @@ vnc-credential-kind = This connection uses a credential that is for SSH. For VNC
 vnc-needs-password = The server asks for a password.
 vnc-refused = The server refused the password.
 details-encodings = Picture encodings
+details-security-tunnel = VNC password, inside an SSH tunnel

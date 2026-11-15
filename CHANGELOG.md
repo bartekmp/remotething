@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.27.0 - 2026-11-15
+
+- VNC: tunnel through an SSH connection by choosing it as the jump host.
+
 ## 0.26.0 - 2026-11-15
 
 - VNC: connections open a desktop tab with password sign-in, mouse, keyboard, text clipboard, pointer shapes and a connection details panel.

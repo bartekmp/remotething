@@ -1,13 +1,13 @@
 //! How an SSH session looks in each of its stages.
 
 use iced::widget::{button, column, container, opaque, row, stack, text};
-use iced::{Element, Font, Length, Theme};
-use remotething_remote::ssh::HostKey;
+use iced::{Element, Font, Length};
 
 use crate::challenge;
 use crate::credentials::Hidden;
 use crate::files_pane;
 use crate::files_view;
+use crate::host_key_view;
 use crate::i18n::fl;
 use crate::paste;
 use crate::search;
@@ -28,7 +28,11 @@ pub fn view(state: &State) -> Element<'_, Message> {
         Stage::Asking(form) => centred(sign_in_form(state, form)),
         Stage::Questions(form) => centred(challenge::view(&state.connection.name, form)),
         // The key may belong to a jump host on the way, so its own host is shown.
-        Stage::HostKey { key, changed } => centred(host_key_question(key, *changed)),
+        Stage::HostKey { key, changed } => centred(host_key_view::question(
+            key,
+            *changed,
+            Message::TrustPressed,
+        )),
         Stage::Connected(live) => {
             let terminal = terminal_view::view(&live.screen, &live.cache, Message::Terminal);
             let terminal = match &live.pending_paste {
@@ -157,47 +161,5 @@ fn sign_in_form<'a>(state: &State, form: &'a Form) -> Element<'a, Message> {
                 .style(theme::primary)
                 .on_press(Message::Submitted),
         )
-        .into()
-}
-
-fn host_key_question(key: &HostKey, changed: bool) -> Element<'_, Message> {
-    let host = key.endpoint.host.as_str();
-    let (explanation, trust_label) = if changed {
-        (
-            text(fl!("session-host-key-changed", host = host)).style(text::danger),
-            fl!("session-trust-changed"),
-        )
-    } else {
-        (
-            text(fl!("session-host-key-new", host = host)),
-            fl!("session-trust"),
-        )
-    };
-    let fingerprint = column![
-        text(fl!("session-fingerprint"))
-            .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text),
-        // A fingerprint has no spaces to break at.
-        text(key.fingerprint.as_str())
-            .font(Font::MONOSPACE)
-            .wrapping(text::Wrapping::Glyph),
-    ]
-    .spacing(2);
-    // A changed key is the dangerous case, so trusting it is not the highlighted action.
-    let trust_style: fn(&Theme, button::Status) -> button::Style = if changed {
-        theme::danger
-    } else {
-        theme::primary
-    };
-    let buttons = row![
-        button(text(trust_label))
-            .style(trust_style)
-            .on_press(Message::TrustPressed),
-    ]
-    .spacing(8);
-
-    column![explanation, fingerprint, buttons]
-        .spacing(theme::GAP)
-        .max_width(FORM_WIDTH + 120.0)
         .into()
 }
