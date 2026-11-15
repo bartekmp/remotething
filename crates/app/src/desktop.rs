@@ -16,6 +16,7 @@ use crate::desktop_open::{Failure, Opened};
 use crate::desktop_size;
 use crate::display;
 use crate::i18n::fl;
+use crate::image_clipboard;
 use crate::meter::{Meter, Totals};
 use crate::picture::Picture;
 use crate::quality_choice;
@@ -76,6 +77,8 @@ pub(crate) struct Live {
     area: Size,
     /// The clipboard text last seen locally or received from the server.
     clipboard: Option<String>,
+    /// The picture last seen locally or received from the server, as a fingerprint.
+    clipboard_picture: Option<u64>,
     /// Where the pointer is on the remote desktop, for button presses.
     pub(crate) pointer: (u16, u16),
     /// How the pointer looks over the desktop, and whether it is over it.
@@ -96,6 +99,10 @@ pub enum Message {
     Stats(Stats),
     /// Text was copied on the server.
     Clipboard(String),
+    /// A picture was copied on the server.
+    ClipboardPicture(remotething_rdp::Picture),
+    /// The picture was put on the local clipboard.
+    ClipboardWritten,
     /// The server changed what the pointer looks like.
     Cursor(remotething_rdp::Cursor),
     /// The pointer came over the picture or left it.
@@ -158,6 +165,7 @@ impl State {
             details_open: false,
             area: Size::ZERO,
             clipboard: None,
+            clipboard_picture: None,
             pointer: (0, 0),
             cursor: Look::default(),
             over: false,
@@ -277,6 +285,7 @@ impl State {
             details_open: false,
             area: Size::ZERO,
             clipboard: None,
+            clipboard_picture: None,
             pointer: (0, 0),
             cursor: Look::default(),
             over: false,
@@ -290,6 +299,7 @@ impl State {
                 }
                 Event::Stats(stats) => Message::Stats(stats),
                 Event::Clipboard(text) => Message::Clipboard(text),
+                Event::ClipboardPicture(picture) => Message::ClipboardPicture(picture),
                 Event::Cursor(cursor) => Message::Cursor(cursor),
                 Event::Closed(reason) => Message::Closed(reason),
             };
@@ -322,7 +332,23 @@ impl State {
             return;
         }
         live.clipboard = Some(text.clone());
+        // Copying the same picture again later must count as a change.
+        live.clipboard_picture = None;
         self.send(Input::Clipboard(text));
+    }
+
+    /// The local clipboard holds `picture`. A new picture is offered to the server.
+    pub(crate) fn local_picture(&mut self, picture: remotething_rdp::Picture) {
+        let Stage::Connected(live) = &mut self.stage else {
+            return;
+        };
+        let fingerprint = image_clipboard::fingerprint(&picture);
+        if live.clipboard_picture == Some(fingerprint) {
+            return;
+        }
+        live.clipboard_picture = Some(fingerprint);
+        live.clipboard = None;
+        self.send(Input::ClipboardPicture(picture));
     }
 
     /// A key went down or up while this desktop was in front.
@@ -424,6 +450,21 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             live.clipboard = Some(text.clone());
             iced::clipboard::write(text)
         }
+        Message::ClipboardPicture(picture) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            // Remembered, so the next look at the local clipboard does not send it back.
+            live.clipboard_picture = Some(image_clipboard::fingerprint(&picture));
+            Task::perform(
+                async move {
+                    let _ =
+                        tokio::task::spawn_blocking(move || image_clipboard::write(&picture)).await;
+                },
+                |()| Message::ClipboardWritten,
+            )
+        }
+        Message::ClipboardWritten => Task::none(),
         Message::Cursor(cursor) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.cursor = Look::from_server(&cursor);

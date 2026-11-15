@@ -434,3 +434,61 @@ fn the_pointer_is_drawn_only_while_it_is_over_the_picture() {
     fixture.send(&mut state, Message::PointerOver(false));
     assert!(!over(&state));
 }
+
+fn small_picture(pixel: u8) -> remotething_rdp::Picture {
+    remotething_rdp::Picture {
+        width: 1,
+        height: 1,
+        rgba: vec![pixel, 0, 0, 255],
+    }
+}
+
+#[test]
+fn a_new_local_picture_is_offered_once() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    state.local_picture(small_picture(1));
+    state.local_picture(small_picture(1));
+    state.local_picture(small_picture(2));
+
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::ClipboardPicture(small_picture(1))
+    );
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::ClipboardPicture(small_picture(2))
+    );
+    assert!(input.try_recv().is_err());
+}
+
+#[test]
+fn a_picture_copied_on_the_server_is_not_sent_back() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    fixture.send(&mut state, Message::ClipboardPicture(small_picture(7)));
+    state.local_picture(small_picture(7));
+
+    assert!(input.try_recv().is_err());
+}
+
+#[test]
+fn text_in_between_lets_the_same_picture_be_copied_again() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    state.local_picture(small_picture(1));
+    state.local_clipboard("words".to_string());
+    state.local_picture(small_picture(1));
+
+    let mut sent = Vec::new();
+    while let Ok(one) = input.try_recv() {
+        sent.push(one);
+    }
+    assert_eq!(sent.len(), 3);
+}

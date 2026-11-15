@@ -65,6 +65,7 @@ remotething-secrets = { path = "../secrets" }
 rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 toml = "1"
+arboard = { version = "3", default-features = false, features = ["image-data", "wayland-data-control"] }
 
 [dev-dependencies]
 tempfile = "3"

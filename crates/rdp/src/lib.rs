@@ -6,6 +6,7 @@
 
 mod clipboard;
 mod cursor;
+mod dib;
 mod error;
 mod input;
 mod quality;
@@ -17,6 +18,7 @@ mod tls;
 mod worker;
 
 pub use cursor::{Cursor, CursorShape};
+pub use dib::Picture;
 pub use error::{Certificate, Error, Result};
 pub use input::{Button, Input, ctrl_alt_delete};
 pub use quality::Quality;

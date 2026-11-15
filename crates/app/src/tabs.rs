@@ -190,6 +190,16 @@ impl State {
         }
     }
 
+    /// Offers a picture from the local clipboard to the remote desktop in front.
+    /// Only RDP shares pictures.
+    pub fn desktop_clipboard_picture(&mut self, picture: remotething_rdp::Picture) {
+        if let Some(Content::Desktop(desktop)) =
+            self.tabs.get_mut(self.active).map(|tab| &mut tab.content)
+        {
+            desktop.local_picture(picture);
+        }
+    }
+
     /// Closes the tab in front, after a question when it holds a live session.
     pub fn close_front(&mut self) {
         self.request_close(self.active);

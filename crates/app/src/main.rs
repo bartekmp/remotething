@@ -21,6 +21,7 @@ mod forwards;
 mod host_key_view;
 mod i18n;
 mod icons;
+mod image_clipboard;
 mod import_preview;
 mod input;
 mod items;

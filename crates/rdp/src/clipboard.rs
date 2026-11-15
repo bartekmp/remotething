@@ -1,4 +1,4 @@
-//! Text clipboard sharing over the CLIPRDR channel.
+//! Text and picture clipboard sharing over the CLIPRDR channel.
 //!
 //! The channel's callbacks run while the session processes server data, so the
 //! backend only writes down what happened. The session thread reads the notes
@@ -6,36 +6,52 @@
 
 use ironrdp_cliprdr::backend::CliprdrBackend;
 use ironrdp_cliprdr::pdu::{
-    ClipboardFormatId, ClipboardGeneralCapabilityFlags, FileContentsRequest, FileContentsResponse,
-    FormatDataRequest, FormatDataResponse, LockDataId,
+    ClipboardFormat, ClipboardFormatId, ClipboardGeneralCapabilityFlags, FileContentsRequest,
+    FileContentsResponse, FormatDataRequest, FormatDataResponse, LockDataId,
 };
 use ironrdp_cliprdr::{Client, Cliprdr};
-use ironrdp_core::impl_as_any;
+use ironrdp_core::{IntoOwned, impl_as_any};
+use ironrdp_session::ActiveStage;
+
+/// What a pasted piece of clipboard data was asked for, so the answer can be read right.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Kind {
+    Text,
+    Picture,
+}
 
 /// What happened since the notes were last taken.
 #[derive(Debug, Default)]
 pub(crate) struct Notes {
     /// The server copied text, which can now be asked for.
     pub(crate) remote_has_text: bool,
+    /// The server copied a picture, which can now be asked for.
+    pub(crate) remote_has_picture: bool,
     /// Text the server sent after being asked.
     pub(crate) received: Vec<String>,
+    /// Pictures (as DIB data) the server sent after being asked.
+    pub(crate) received_pictures: Vec<Vec<u8>>,
     /// The server wants our text.
     pub(crate) text_requested: bool,
+    /// The server wants our picture.
+    pub(crate) picture_requested: bool,
     /// The server wants something else, which is answered with a refusal.
     pub(crate) other_requested: bool,
     /// The channel is ready, so our clipboard can be announced.
     pub(crate) ready: bool,
 }
 
-/// The channel's side of the clipboard: collects notes, shares only text.
+/// The channel's side of the clipboard: collects notes, shares text and pictures.
 #[derive(Debug, Default)]
-pub(crate) struct TextBackend {
+pub(crate) struct ClipboardBackend {
     notes: Notes,
+    /// What each unanswered paste asked for, oldest first.
+    awaiting: std::collections::VecDeque<Kind>,
 }
 
-impl_as_any!(TextBackend);
+impl_as_any!(ClipboardBackend);
 
-impl TextBackend {
+impl ClipboardBackend {
     pub(crate) fn take_notes(&mut self) -> Notes {
         std::mem::take(&mut self.notes)
     }
@@ -44,17 +60,124 @@ impl TextBackend {
 /// The notes of the clipboard channel in `channel`, if it has any.
 pub(crate) fn take_notes(channel: &mut Cliprdr<Client>) -> Notes {
     channel
-        .downcast_backend_mut::<TextBackend>()
-        .map(TextBackend::take_notes)
+        .downcast_backend_mut::<ClipboardBackend>()
+        .map(ClipboardBackend::take_notes)
         .unwrap_or_default()
 }
 
-/// The channel with a text backend, ready to be attached to a connection.
-pub(crate) fn channel() -> Cliprdr<Client> {
-    Cliprdr::new(Box::new(TextBackend::default()))
+/// Remembers that a paste of `kind` was sent, so its answer is read as that kind.
+pub(crate) fn expect(channel: &mut Cliprdr<Client>, kind: Kind) {
+    if let Some(backend) = channel.downcast_backend_mut::<ClipboardBackend>() {
+        backend.awaiting.push_back(kind);
+    }
 }
 
-impl CliprdrBackend for TextBackend {
+/// What the local clipboard holds, and what the channel has to do about it.
+#[derive(Debug, Default)]
+pub(crate) struct Shared {
+    text: Option<String>,
+    /// A picture as DIB data, ready to be sent.
+    picture: Option<Vec<u8>>,
+    /// The local clipboard changed and the server has not been told.
+    announce: bool,
+}
+
+/// What came out of one round with the channel.
+#[derive(Debug, Default)]
+pub(crate) struct Served {
+    /// Bytes to send to the server.
+    pub(crate) outgoing: Vec<Vec<u8>>,
+    /// Texts the server copied.
+    pub(crate) texts: Vec<String>,
+    /// Pictures the server copied, as DIB data.
+    pub(crate) pictures: Vec<Vec<u8>>,
+}
+
+type BoxedError = Box<dyn std::error::Error>;
+
+impl Shared {
+    /// The local clipboard now holds `text` and nothing else.
+    pub(crate) fn set_text(&mut self, text: String) {
+        self.text = Some(text);
+        self.picture = None;
+        self.announce = true;
+    }
+
+    /// The local clipboard now holds this picture (as DIB data) and nothing else.
+    pub(crate) fn set_picture(&mut self, dib: Vec<u8>) {
+        self.picture = Some(dib);
+        self.text = None;
+        self.announce = true;
+    }
+
+    /// The formats the local clipboard can give.
+    fn formats(&self) -> Vec<ClipboardFormat> {
+        let mut formats = Vec::new();
+        if self.text.is_some() {
+            formats.push(ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT));
+        }
+        if self.picture.is_some() {
+            formats.push(ClipboardFormat::new(ClipboardFormatId::CF_DIB));
+        }
+        formats
+    }
+
+    /// Does what the channel's notes ask for, as far as the channel allows.
+    pub(crate) fn serve(&mut self, stage: &mut ActiveStage) -> Result<Served, BoxedError> {
+        let Some(channel) = stage.get_svc_processor_mut::<Cliprdr<Client>>() else {
+            return Ok(Served::default());
+        };
+        let notes = take_notes(channel);
+        let mut messages = Vec::new();
+        // The channel starts by answering with what is on the clipboard, even if that is nothing.
+        if notes.ready || (self.announce && channel.is_ready()) {
+            messages.push(channel.initiate_copy(&self.formats())?);
+            self.announce = false;
+        }
+        // Text wins when the server copied both, so a document does not turn into a picture.
+        if notes.remote_has_text {
+            expect(channel, Kind::Text);
+            messages.push(channel.initiate_paste(ClipboardFormatId::CF_UNICODETEXT)?);
+        } else if notes.remote_has_picture {
+            expect(channel, Kind::Picture);
+            messages.push(channel.initiate_paste(ClipboardFormatId::CF_DIB)?);
+        }
+        if notes.text_requested {
+            let ours = self.text.clone().unwrap_or_default();
+            let reply = FormatDataResponse::new_unicode_string(&ours).into_owned();
+            messages.push(channel.submit_format_data(reply)?);
+        }
+        if notes.picture_requested {
+            let reply = match &self.picture {
+                Some(dib) => FormatDataResponse::new_data(dib.clone()).into_owned(),
+                None => FormatDataResponse::new_error().into_owned(),
+            };
+            messages.push(channel.submit_format_data(reply)?);
+        }
+        if notes.other_requested {
+            let refusal = FormatDataResponse::new_error().into_owned();
+            messages.push(channel.submit_format_data(refusal)?);
+        }
+        let mut served = Served {
+            texts: notes.received,
+            pictures: notes.received_pictures,
+            ..Served::default()
+        };
+        for one in messages {
+            served
+                .outgoing
+                .push(stage.process_svc_processor_messages(one)?);
+        }
+        Ok(served)
+    }
+}
+
+/// The channel with a clipboard backend, ready to be attached to a connection.
+pub(crate) fn channel() -> Cliprdr<Client> {
+    Cliprdr::new(Box::new(ClipboardBackend::default()))
+}
+
+impl CliprdrBackend for ClipboardBackend {
     fn temporary_directory(&self) -> &str {
         // Only used for file transfers, which are not offered.
         ""
@@ -79,28 +202,39 @@ impl CliprdrBackend for TextBackend {
     }
 
     fn on_remote_copy(&mut self, available_formats: &[ironrdp_cliprdr::pdu::ClipboardFormat]) {
-        if available_formats
-            .iter()
-            .any(|format| format.id == ClipboardFormatId::CF_UNICODETEXT)
-        {
+        let has =
+            |wanted: ClipboardFormatId| available_formats.iter().any(|format| format.id == wanted);
+        if has(ClipboardFormatId::CF_UNICODETEXT) {
             self.notes.remote_has_text = true;
+        }
+        if has(ClipboardFormatId::CF_DIB) {
+            self.notes.remote_has_picture = true;
         }
     }
 
     fn on_format_data_request(&mut self, request: FormatDataRequest) {
         if request.format == ClipboardFormatId::CF_UNICODETEXT {
             self.notes.text_requested = true;
+        } else if request.format == ClipboardFormatId::CF_DIB {
+            self.notes.picture_requested = true;
         } else {
             self.notes.other_requested = true;
         }
     }
 
     fn on_format_data_response(&mut self, response: FormatDataResponse<'_>) {
+        // Answers come in the order the pastes were sent.
+        let kind = self.awaiting.pop_front().unwrap_or(Kind::Text);
         if response.is_error() {
             return;
         }
-        if let Ok(text) = response.to_unicode_string() {
-            self.notes.received.push(text);
+        match kind {
+            Kind::Text => {
+                if let Ok(text) = response.to_unicode_string() {
+                    self.notes.received.push(text);
+                }
+            }
+            Kind::Picture => self.notes.received_pictures.push(response.data().to_vec()),
         }
     }
 
@@ -120,7 +254,7 @@ mod tests {
 
     #[test]
     fn copied_text_on_the_server_is_noted() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
 
         backend.on_remote_copy(&[ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT)]);
 
@@ -129,22 +263,22 @@ mod tests {
 
     #[test]
     fn other_formats_on_the_server_are_ignored() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
 
-        backend.on_remote_copy(&[ClipboardFormat::new(ClipboardFormatId::CF_DIB)]);
+        backend.on_remote_copy(&[ClipboardFormat::new(ClipboardFormatId::CF_TIFF)]);
 
         assert!(!backend.take_notes().remote_has_text);
     }
 
     #[test]
     fn a_request_for_text_is_told_apart_from_other_requests() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
 
         backend.on_format_data_request(FormatDataRequest {
             format: ClipboardFormatId::CF_UNICODETEXT,
         });
         backend.on_format_data_request(FormatDataRequest {
-            format: ClipboardFormatId::CF_DIB,
+            format: ClipboardFormatId::CF_TIFF,
         });
 
         let notes = backend.take_notes();
@@ -152,8 +286,44 @@ mod tests {
     }
 
     #[test]
+    fn a_picture_on_the_server_is_noted_apart_from_text() {
+        let mut backend = ClipboardBackend::default();
+
+        backend.on_remote_copy(&[ClipboardFormat::new(ClipboardFormatId::CF_DIB)]);
+
+        let notes = backend.take_notes();
+        assert!(notes.remote_has_picture && !notes.remote_has_text);
+    }
+
+    #[test]
+    fn a_request_for_a_picture_is_told_apart() {
+        let mut backend = ClipboardBackend::default();
+
+        backend.on_format_data_request(FormatDataRequest {
+            format: ClipboardFormatId::CF_DIB,
+        });
+
+        let notes = backend.take_notes();
+        assert!(notes.picture_requested && !notes.other_requested);
+    }
+
+    #[test]
+    fn an_answer_is_read_as_what_the_paste_asked_for() {
+        let mut backend = ClipboardBackend::default();
+        backend.awaiting.push_back(Kind::Picture);
+        backend.awaiting.push_back(Kind::Text);
+
+        backend.on_format_data_response(FormatDataResponse::new_data(vec![1, 2, 3]));
+        backend.on_format_data_response(FormatDataResponse::new_unicode_string("zażółć"));
+
+        let notes = backend.take_notes();
+        assert_eq!(notes.received_pictures, [vec![1, 2, 3]]);
+        assert_eq!(notes.received, ["zażółć"]);
+    }
+
+    #[test]
     fn received_text_is_decoded() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
         let response = FormatDataResponse::new_unicode_string("zażółć");
 
         backend.on_format_data_response(response);
@@ -163,7 +333,7 @@ mod tests {
 
     #[test]
     fn an_error_response_adds_nothing() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
 
         backend.on_format_data_response(FormatDataResponse::new_error());
 
@@ -172,7 +342,7 @@ mod tests {
 
     #[test]
     fn taking_the_notes_clears_them() {
-        let mut backend = TextBackend::default();
+        let mut backend = ClipboardBackend::default();
         backend.on_ready();
 
         assert!(backend.take_notes().ready);

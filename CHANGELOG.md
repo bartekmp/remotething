@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.29.0 - 2026-11-15
+
+- Remote Desktop: pictures are shared between your clipboard and the remote one, as text already was.
+
 ## 0.28.0 - 2026-11-15
 
 - VNC: quality presets; low bandwidth uses 16-bit colour. The quality setting now applies to both RDP and VNC (`desktop.quality` in the connections file; `rdp.quality` still loads).

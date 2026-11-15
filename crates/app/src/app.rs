@@ -14,6 +14,7 @@ use crate::display;
 use crate::file_dialog;
 use crate::folder_removal;
 use crate::i18n::fl;
+use crate::image_clipboard;
 use crate::import_preview;
 use crate::input;
 use crate::menu;
@@ -139,6 +140,8 @@ pub enum Message {
     ClipboardTick,
     /// The local clipboard text, if it holds any.
     ClipboardRead(Option<String>),
+    /// The local clipboard picture, if it holds one and no text.
+    ClipboardPictureRead(Option<remotething_rdp::Picture>),
     WindowResized(Size),
     /// The window's scale factor, when it opens or moves to another screen.
     ScaleChanged(f32),
@@ -290,9 +293,24 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::ClipboardTick => return iced::clipboard::read().map(Message::ClipboardRead),
-        Message::ClipboardRead(text) => {
-            if let Some(text) = text.filter(|text| !text.is_empty()) {
-                state.tabs.desktop_clipboard(text);
+        Message::ClipboardRead(text) => match text.filter(|text| !text.is_empty()) {
+            Some(text) => state.tabs.desktop_clipboard(text),
+            // No text: there may be a picture.
+            None => {
+                return Task::perform(
+                    async {
+                        tokio::task::spawn_blocking(image_clipboard::read)
+                            .await
+                            .ok()
+                            .flatten()
+                    },
+                    Message::ClipboardPictureRead,
+                );
+            }
+        },
+        Message::ClipboardPictureRead(picture) => {
+            if let Some(picture) = picture {
+                state.tabs.desktop_clipboard_picture(picture);
             }
         }
         Message::WindowResized(size) => state.window = size,
