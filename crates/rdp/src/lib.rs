@@ -4,6 +4,7 @@
 //! any credential leaves the machine, then runs the session on its own thread.
 //! Frames come out of [`Session::events`], input goes into [`Session::input`].
 
+mod clipboard;
 mod error;
 mod input;
 mod reactivate;

@@ -164,6 +164,17 @@ impl State {
         }
     }
 
+    /// Offers the local clipboard text to the remote desktop in front, if there is one.
+    pub fn desktop_clipboard(&mut self, text: String) {
+        if let Some(Tab {
+            content: Content::Desktop(desktop),
+            ..
+        }) = self.tabs.get_mut(self.active)
+        {
+            desktop.local_clipboard(text);
+        }
+    }
+
     /// Closes the tab in front, after a question when it holds a live session.
     pub fn close_front(&mut self) {
         self.request_close(self.active);

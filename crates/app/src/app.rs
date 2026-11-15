@@ -133,6 +133,10 @@ pub enum Message {
     KeyReleased {
         physical: keyboard::key::Physical,
     },
+    /// Time to look at the local clipboard, because a remote desktop is in front.
+    ClipboardTick,
+    /// The local clipboard text, if it holds any.
+    ClipboardRead(Option<String>),
     WindowResized(Size),
     /// The file chosen for an export, or `None` when the dialog was cancelled.
     ExportFilePicked(Option<PathBuf>),
@@ -281,6 +285,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Menu(message) => return tree_actions::on_menu(state, message),
         Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
+        Message::ClipboardTick => return iced::clipboard::read().map(Message::ClipboardRead),
+        Message::ClipboardRead(text) => {
+            if let Some(text) = text.filter(|text| !text.is_empty()) {
+                state.tabs.desktop_clipboard(text);
+            }
+        }
         Message::WindowResized(size) => state.window = size,
         Message::KeyReleased { physical } => {
             if state.desktop_has_keys() {
@@ -472,12 +482,22 @@ pub fn theme(state: &State) -> Theme {
 }
 
 /// Keeps the theme in step when the desktop switches between light and dark.
-pub fn subscription(_state: &State) -> Subscription<Message> {
+pub fn subscription(state: &State) -> Subscription<Message> {
+    // The clipboard is only looked at while a remote desktop is in front.
+    let clipboard = if state.desktop_has_keys() {
+        iced::time::every(CLIPBOARD_EVERY).map(|_| Message::ClipboardTick)
+    } else {
+        Subscription::none()
+    };
     Subscription::batch([
         iced::system::theme_changes().map(Message::SystemModeChanged),
         iced::event::listen_with(input::window_event),
+        clipboard,
     ])
 }
+
+/// How often the local clipboard is looked at while a remote desktop is in front.
+const CLIPBOARD_EVERY: std::time::Duration = std::time::Duration::from_secs(1);
 
 #[cfg(test)]
 #[path = "app_tests.rs"]

@@ -11,6 +11,7 @@ use ironrdp_dvc::DrdynvcClient;
 use remotething_secrets::{KnownHosts, Secret};
 use tokio::sync::mpsc;
 
+use crate::clipboard;
 use crate::error::{Error, Result};
 use crate::input::Input;
 use crate::stats::Stats;
@@ -67,6 +68,8 @@ pub struct Info {
 pub enum Event {
     /// Running totals, about once per second.
     Stats(Stats),
+    /// Text was copied on the server; it belongs on the local clipboard.
+    Clipboard(String),
     /// The screen changed. Only the newest frame matters.
     Frame(Frame),
     /// The session ended, with the reason when it was not the user's doing.
@@ -149,6 +152,8 @@ fn open(target: &Target, known: &KnownHosts) -> Result<Opened> {
     connector.attach_static_channel(
         DrdynvcClient::new().with_dynamic_channel(DisplayControlClient::new(|_| Ok(Vec::new()))),
     );
+    // The channel text is copied over.
+    connector.attach_static_channel(clipboard::channel());
     let should_upgrade =
         ironrdp_blocking::connect_begin(&mut framed, &mut connector).map_err(protocol)?;
     let tcp = framed.into_inner_no_leftover();

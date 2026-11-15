@@ -71,6 +71,8 @@ pub(crate) struct Live {
     pub(crate) details_open: bool,
     /// The latest room for the picture.
     area: Size,
+    /// The clipboard text last seen locally or received from the server.
+    clipboard: Option<String>,
     /// Where the pointer is on the remote desktop, for button presses.
     pointer: (u16, u16),
 }
@@ -86,6 +88,8 @@ pub enum Message {
     Frame(Picture),
     /// Running totals of the traffic.
     Stats(Stats),
+    /// Text was copied on the server.
+    Clipboard(String),
     /// The (i) button was pressed.
     DetailsToggled,
     /// The Ctrl+Alt+Del button was pressed.
@@ -143,6 +147,7 @@ impl State {
             meter: Meter::new(),
             details_open: false,
             area: Size::ZERO,
+            clipboard: None,
             pointer: (0, 0),
         }));
         typed
@@ -257,6 +262,7 @@ impl State {
             meter: Meter::new(),
             details_open: false,
             area: Size::ZERO,
+            clipboard: None,
             pointer: (0, 0),
         }));
 
@@ -267,11 +273,24 @@ impl State {
                     Message::Frame(Picture::new(frame.width, frame.height, frame.rgba))
                 }
                 Event::Stats(stats) => Message::Stats(stats),
+                Event::Clipboard(text) => Message::Clipboard(text),
                 Event::Closed(reason) => Message::Closed(reason),
             };
             Some((message, events))
         });
         Task::run(messages, |message| message)
+    }
+
+    /// The local clipboard holds `text`. A new text is offered to the server.
+    pub(crate) fn local_clipboard(&mut self, text: String) {
+        let Stage::Connected(live) = &mut self.stage else {
+            return;
+        };
+        if live.clipboard.as_deref() == Some(text.as_str()) {
+            return;
+        }
+        live.clipboard = Some(text.clone());
+        self.send(Input::Clipboard(text));
     }
 
     /// A key went down or up while this desktop was in front.
@@ -364,6 +383,14 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 });
             }
             Task::none()
+        }
+        Message::Clipboard(text) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            // Remembered, so the next look at the local clipboard does not send it back.
+            live.clipboard = Some(text.clone());
+            iced::clipboard::write(text)
         }
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {

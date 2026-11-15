@@ -26,6 +26,7 @@ If the certificate later changes, the tab warns before sending anything. Trust t
 - Screens with display scaling show the desktop at one remote pixel per logical pixel, so text is as small as on a 100 % screen.
 - The mouse works as on the remote machine: move, the three buttons and the wheel.
 - Keys are sent by their position on the keyboard, so the remote keyboard layout decides which character appears. Everything is sent except **Ctrl+Shift+T** and **Ctrl+Shift+W**, which stay with the app for opening and closing tabs. **Ctrl+W** goes to the remote machine.
+- **Clipboard:** text is shared both ways. Text you copy on the remote machine appears on your clipboard, and text on your clipboard can be pasted there. Your clipboard is looked at once per second, and only while this tab is in front and connected; then its text is offered to the server. Images and files are not shared yet.
 - **Ctrl+Alt+Del** cannot be typed, because your own system takes it. The **Ctrl+Alt+Del** button in the strip under the desktop sends it to the remote machine and opens Windows' security screen. Press Escape or choose Cancel there to leave it.
 - Closing the tab ends the session and asks first.
 - A closed or lost session shows why, with a **Reconnect** button.
@@ -52,6 +53,6 @@ The rates appear after the first second and update once per second. The same str
 | --- | --- |
 | Scaling for HiDPI screens | Planned |
 | Quality presets | Planned (the setting exists, it is not used yet) |
-| Clipboard | Planned |
+| Clipboard images and files | Planned (text works) |
 | Cursor shape from the remote machine | Planned: the local pointer is shown |
 | Kerberos sign-in, RD Gateway, audio, drive redirection | Not planned for now |

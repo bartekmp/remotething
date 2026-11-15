@@ -3,14 +3,18 @@
 use std::io::ErrorKind;
 use std::time::{Duration, Instant};
 
+use ironrdp_cliprdr::pdu::{ClipboardFormat, ClipboardFormatId, FormatDataResponse};
+use ironrdp_cliprdr::{Client, Cliprdr};
 use ironrdp_connector::Config;
 use ironrdp_connector::ConnectionResult;
+use ironrdp_core::IntoOwned;
 use ironrdp_displaycontrol::pdu::MonitorLayoutEntry;
 use ironrdp_graphics::image_processing::PixelFormat;
 use ironrdp_session::image::DecodedImage;
 use ironrdp_session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput};
 use tokio::sync::mpsc;
 
+use crate::clipboard;
 use crate::input::{self, Input};
 use crate::reactivate;
 use crate::session::{Event, Frame, TlsFramed};
@@ -46,6 +50,10 @@ pub(crate) struct Worker {
     /// A size the window wants, kept until the server can be asked.
     resize: Option<(u16, u16)>,
     started: Instant,
+    /// The text on the local clipboard, for when the server pastes.
+    local_text: Option<String>,
+    /// The local clipboard changed and the server has not been told.
+    announce: bool,
 }
 
 impl Worker {
@@ -77,6 +85,8 @@ impl Worker {
             last_sent: Instant::now(),
             resize: None,
             started: Instant::now(),
+            local_text: None,
+            announce: false,
         }
     }
 
@@ -97,6 +107,7 @@ impl Worker {
                 return Ok(());
             }
             self.ask_for_resize()?;
+            self.share_clipboard(events)?;
             if !self.send_frame(events) {
                 return Ok(());
             }
@@ -156,6 +167,10 @@ impl Worker {
         loop {
             match input.try_recv() {
                 Ok(Input::Resize { width, height }) => self.resize = Some((width, height)),
+                Ok(Input::Clipboard(text)) => {
+                    self.local_text = Some(text);
+                    self.announce = true;
+                }
                 Ok(one) => events.extend(input::to_events(one)),
                 Err(mpsc::error::TryRecvError::Empty) => break,
                 Err(mpsc::error::TryRecvError::Disconnected) => return Ok(false),
@@ -184,6 +199,45 @@ impl Worker {
         if let Some(request) = self.stage.encode_resize(width, height, None, None) {
             self.framed.write_all(&request?)?;
             self.resize = None;
+        }
+        Ok(())
+    }
+
+    /// Carries text between the two clipboards, as far as the channel allows.
+    fn share_clipboard(&mut self, events: &mpsc::Sender<Event>) -> Result<(), BoxedError> {
+        let Some(channel) = self.stage.get_svc_processor_mut::<Cliprdr<Client>>() else {
+            return Ok(());
+        };
+        let notes = clipboard::take_notes(channel);
+        let mut outgoing = Vec::new();
+        // The channel starts by answering with what is on the clipboard, even if that is nothing.
+        if notes.ready || (self.announce && channel.is_ready()) {
+            let formats = match self.local_text {
+                Some(_) => vec![ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT)],
+                None => Vec::new(),
+            };
+            outgoing.push(channel.initiate_copy(&formats)?);
+            self.announce = false;
+        }
+        if notes.remote_has_text {
+            outgoing.push(channel.initiate_paste(ClipboardFormatId::CF_UNICODETEXT)?);
+        }
+        if notes.text_requested {
+            let ours = self.local_text.clone().unwrap_or_default();
+            let reply = FormatDataResponse::new_unicode_string(&ours).into_owned();
+            outgoing.push(channel.submit_format_data(reply)?);
+        }
+        if notes.other_requested {
+            let refusal = FormatDataResponse::new_error().into_owned();
+            outgoing.push(channel.submit_format_data(refusal)?);
+        }
+        for messages in outgoing {
+            let bytes = self.stage.process_svc_processor_messages(messages)?;
+            self.framed.write_all(&bytes)?;
+        }
+        for copied in notes.received {
+            // A full queue only delays the text.
+            let _ = events.try_send(Event::Clipboard(copied));
         }
         Ok(())
     }

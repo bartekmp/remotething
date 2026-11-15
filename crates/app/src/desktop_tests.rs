@@ -345,3 +345,50 @@ fn the_button_holds_ctrl_alt_delete_and_the_release_lets_go() {
     assert_eq!(down, remotething_rdp::ctrl_alt_delete(true));
     assert_eq!(up, remotething_rdp::ctrl_alt_delete(false));
 }
+
+#[test]
+fn a_new_local_clipboard_text_is_offered_once() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    state.local_clipboard("hello".to_string());
+    state.local_clipboard("hello".to_string());
+
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::Clipboard("hello".to_string())
+    );
+    assert!(input.try_recv().is_err());
+}
+
+#[test]
+fn text_copied_on_the_server_is_not_sent_back() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    fixture.send(&mut state, Message::Clipboard("from afar".to_string()));
+    state.local_clipboard("from afar".to_string());
+
+    assert!(input.try_recv().is_err());
+}
+
+#[test]
+fn a_changed_local_text_is_offered_again() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test();
+
+    state.local_clipboard("one".to_string());
+    state.local_clipboard("two".to_string());
+
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::Clipboard("one".to_string())
+    );
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::Clipboard("two".to_string())
+    );
+}
