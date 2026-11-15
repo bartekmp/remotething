@@ -3,6 +3,7 @@
 //! Usage: remotething [--config <connections file>] | --version
 
 mod app;
+mod branding;
 mod challenge;
 mod credential_actions;
 mod credentials;
@@ -70,6 +71,19 @@ const KEYRING_OPEN_TIMEOUT: Duration = Duration::from_secs(5);
 /// A single call may wait for the user to type the keyring password.
 const KEYRING_CALL_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// The main window: the logo as its icon, and the name desktops match with the launcher entry.
+fn window_settings() -> iced::window::Settings {
+    let mut settings = iced::window::Settings {
+        icon: branding::window_icon(),
+        ..iced::window::Settings::default()
+    };
+    #[cfg(target_os = "linux")]
+    {
+        settings.platform_specific.application_id = "remotething".to_string();
+    }
+    settings
+}
+
 fn main() -> Result<()> {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     if arguments == ["--version"] {
@@ -118,6 +132,7 @@ fn main() -> Result<()> {
         .title(app::title)
         .theme(app::theme)
         .subscription(app::subscription)
+        .window(window_settings())
         .settings(iced::Settings {
             default_text_size: theme::TEXT_BODY.into(),
             default_font: theme::FONT,

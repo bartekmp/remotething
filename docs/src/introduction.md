@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.svg" alt="Remotething logo" width="96"></p>
+
 # Introduction
 
 Remotething is a desktop app for remote connections: RDP and VNC desktops, SSH terminals and file transfers, organised in one tree.

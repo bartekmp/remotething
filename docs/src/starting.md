@@ -116,6 +116,8 @@ Press **Settings** at the bottom of the connection tree; with the tree folded it
 
 A theme change applies at once. A language change applies the next time you start the app. Only English is shipped so far.
 
+The bottom of the screen shows the logo, the version and the copyright line.
+
 Settings are kept in `settings.toml`, in the same directory as the connections file.
 
 ### Importing PuTTY sessions

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.21.0 - 2026-11-15
+
+- A logo: the window and taskbar icon, and an About block with the version at the bottom of **Settings**.
+
 ## 0.20.0 - 2026-11-15
 
 - Remote Desktop: text is shared between your clipboard and the remote one.

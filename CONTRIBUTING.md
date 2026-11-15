@@ -43,6 +43,19 @@ Every pull request that changes anything under `crates/` raises it once:
 
 Changes to docs, CI or the build helper alone need no bump. If `main` moved on and took your number, merge `main` and bump again.
 
+## The logo
+
+`assets/logo/remotething.svg` is the source. The PNGs, the favicon and the pixels embedded in the app are made from it with [resvg](https://github.com/linebender/resvg) (`cargo install resvg`):
+
+```sh
+resvg -w 256 -h 256 assets/logo/remotething.svg assets/logo/remotething-256.png
+resvg -w 128 -h 128 assets/logo/remotething.svg /tmp/icon-128.png
+magick /tmp/icon-128.png -depth 8 rgba:crates/app/assets/icon-128.rgba
+resvg -w 32 -h 32 assets/logo/remotething.svg docs/theme/favicon.png
+cp assets/logo/remotething.svg docs/theme/favicon.svg
+cp assets/logo/remotething.svg docs/src/logo.svg
+```
+
 ## Rules
 
 1. One obvious place for each thing: flat modules, no framework layers.

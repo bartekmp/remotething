@@ -5,6 +5,7 @@ use std::fmt;
 use iced::widget::{button, column, row, text};
 use iced::{Element, Length};
 
+use crate::branding;
 use crate::i18n::{self, fl};
 use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
@@ -176,13 +177,27 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(4);
 
-    // Stays unformatted and untranslated, like `--version`: bug reports quote it.
-    let version = text(concat!("Remotething ", env!("CARGO_PKG_VERSION")))
-        .size(theme::TEXT_SMALL)
-        .style(theme::secondary_text);
-
-    column![header, theme, language, tabs, exchange, version]
+    column![header, theme, language, tabs, exchange, about()]
         .spacing(16)
+        .into()
+}
+
+/// The logo, name and version. The name and version stay unformatted and
+/// untranslated, like `--version`: bug reports quote them.
+fn about<'a>() -> Element<'a, Message> {
+    let name = column![
+        text("Remotething").size(theme::TEXT_TITLE),
+        text(env!("CARGO_PKG_VERSION"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        text(fl!("about-rights"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+    ]
+    .spacing(2);
+    row![branding::logo(56.0), name]
+        .spacing(12)
+        .align_y(iced::Alignment::Center)
         .into()
 }
 

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1A2B57"/>
+      <stop offset="1" stop-color="#0A1226"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="150" cy="110" r="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F86E8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#4F86E8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="frame" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9CCBFF"/>
+      <stop offset="1" stop-color="#4F86E8"/>
+    </linearGradient>
+    <filter id="lift" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- the tile -->
+  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- the screen -->
+  <rect x="120" y="136" width="272" height="188" fill="#6AA8FF" fill-opacity="0.12"/>
+
+  <!-- monitor: the frame is open at the top right, where the link leaves it; neck and foot below -->
+  <g fill="none" stroke="url(#frame)" stroke-width="30" stroke-linecap="butt" stroke-linejoin="round" filter="url(#lift)">
+    <path d="M300 136 H120 V324 H392 V212"/>
+    <path d="M256 324 V372"/>
+    <path d="M196 372 H316" stroke-linecap="round"/>
+  </g>
+
+  <!-- the shell prompt -->
+  <path d="M176 200 L226 238 L176 276" fill="none" stroke="#F4F7FB" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M252 276 H316" fill="none" stroke="#DCEBFF" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- the link: a dot and two arcs reaching out of the corner -->
+  <circle cx="344" cy="184" r="9" fill="#F4F7FB"/>
+  <path d="M344 148 A36 36 0 0 1 380 184" fill="none" stroke="#FFB454" stroke-width="10" stroke-linecap="round"/>
+  <path d="M344 116 A68 68 0 0 1 412 184" fill="none" stroke="#FFB454" stroke-width="10" stroke-linecap="round"/>
+</svg>

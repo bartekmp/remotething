@@ -263,3 +263,5 @@ details-forwards = Port forwards
 details-received = Received
 details-sent = Sent
 details-via = Through { $hosts }
+
+about-rights = © 2026 Bartosz Pollok. All rights reserved.
