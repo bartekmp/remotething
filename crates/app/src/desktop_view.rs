@@ -154,6 +154,7 @@ fn with_status_bar<'a>(
         recording: live.video.elapsed().map(meter::clock),
         details: details(live, host, quality),
         details_open: live.details_open,
+        progress: live.files.progress_share(),
         actions,
     };
     // The desktop follows the room it gets: its size is reported as the tab changes.

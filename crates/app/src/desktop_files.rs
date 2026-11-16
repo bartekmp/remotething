@@ -40,6 +40,17 @@ impl Files {
         })
     }
 
+    /// How much of the files being received has arrived, from 0 to 1. Sending shows no bar:
+    /// the server asks for the bytes as it pastes, and Windows shows its own progress for that.
+    pub(crate) fn progress_share(&self) -> Option<f32> {
+        match self.progress {
+            Some((Direction::Received, done, total)) if total > 0 => {
+                Some(done as f32 / total as f32)
+            }
+            _ => None,
+        }
+    }
+
     /// The buttons for files, in the order they are shown.
     pub(crate) fn actions(&self) -> Vec<(String, DesktopMessage)> {
         let mut actions = Vec::new();

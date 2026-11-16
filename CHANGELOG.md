@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.40.1 - 2026-11-16
+
+- Remote Desktop: a progress bar over the status strip while files are received. Sending has none; Windows shows its own while it pastes.
+
 ## 0.40.0 - 2026-11-16
 
 - Remote Desktop: copy files both ways. Send files with a button or by dropping them on the window and paste them on the remote desktop; copy files there and receive them into a folder. Nothing is ever replaced.

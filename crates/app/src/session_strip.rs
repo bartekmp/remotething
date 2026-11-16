@@ -54,6 +54,7 @@ pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
         recording,
         details: details(state, live),
         details_open: live.details_open,
+        progress: None,
         actions,
     }
 }

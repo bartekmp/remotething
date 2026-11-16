@@ -1,7 +1,7 @@
 //! The strip under a remote desktop: a short summary, and an (i) button that
 //! opens a panel of connection details. Shared by RDP and, later, VNC.
 
-use iced::widget::{button, column, container, row, space, stack, text};
+use iced::widget::{button, column, container, progress_bar, row, space, stack, text};
 use iced::{Element, Length};
 
 use crate::icons;
@@ -12,6 +12,9 @@ const PANEL_WIDTH: f32 = 360.0;
 
 /// The most room the live text takes, so the buttons next to it keep theirs.
 const LIVE_MAX: f32 = 260.0;
+
+/// How thick the progress bar is.
+const PROGRESS_GIRTH: f32 = 3.0;
 
 /// What the bar shows.
 pub(crate) struct Bar<Message> {
@@ -24,6 +27,8 @@ pub(crate) struct Bar<Message> {
     /// Label and value of every line in the details panel.
     pub(crate) details: Vec<(String, String)>,
     pub(crate) details_open: bool,
+    /// How far a transfer has come, from 0 to 1, while one is going.
+    pub(crate) progress: Option<f32>,
     /// Buttons left of the (i): their label and what pressing them does.
     pub(crate) actions: Vec<(String, Message)>,
 }
@@ -80,9 +85,11 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
     .align_y(iced::Alignment::Center)
     .height(Length::Fixed(HEIGHT));
 
-    let page = column![body, strip]
-        .width(Length::Fill)
-        .height(Length::Fill);
+    let mut page = column![body].width(Length::Fill).height(Length::Fill);
+    if let Some(share) = bar.progress {
+        page = page.push(progress_bar(0.0..=1.0, share.clamp(0.0, 1.0)).girth(PROGRESS_GIRTH));
+    }
+    let page = page.push(strip);
     if !bar.details_open {
         return page.into();
     }

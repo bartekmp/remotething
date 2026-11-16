@@ -114,6 +114,7 @@ fn with_status_bar<'a>(
         recording: live.video.elapsed().map(meter::clock),
         details: details(live, host, via, quality),
         details_open: live.details_open,
+        progress: None,
         actions,
     };
     status_bar::view(desktop(live), bar, Message::DetailsToggled)

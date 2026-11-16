@@ -233,3 +233,38 @@ async fn files_dropped_one_after_another_are_offered_together() {
     assert_eq!(input.try_recv().unwrap(), offered);
     assert!(input.try_recv().is_err());
 }
+
+#[test]
+fn receiving_shows_a_bar_that_fills_and_sending_shows_none() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+    assert_eq!(live(&state).files.progress_share(), None);
+
+    let progress = |direction, done| FilesEvent::Progress {
+        direction,
+        done,
+        total: 400,
+    };
+    on_event(&mut state, progress(Direction::Received, 100));
+    assert_eq!(live(&state).files.progress_share(), Some(0.25));
+
+    on_event(&mut state, progress(Direction::Sent, 100));
+    assert_eq!(live(&state).files.progress_share(), None);
+}
+
+#[test]
+fn a_transfer_of_unknown_size_shows_no_bar() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+
+    on_event(
+        &mut state,
+        FilesEvent::Progress {
+            direction: Direction::Received,
+            done: 10,
+            total: 0,
+        },
+    );
+
+    assert_eq!(live(&state).files.progress_share(), None);
+}
