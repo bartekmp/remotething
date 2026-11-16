@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.34.1 - 2026-11-16
+
+- File pane: a folder download is refused when the server lists a file name that would write outside the chosen folder.
+
 ## 0.34.0 - 2026-11-16
 
 - File pane: upload and download whole folders. Each file goes through the transfer list.

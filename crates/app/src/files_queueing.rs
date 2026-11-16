@@ -71,7 +71,7 @@ pub(crate) fn download_folder(state: &mut State, destination: PathBuf) -> Task<M
             .files_under(&remote)
             .await
             .map_err(|error| error.to_string())?;
-        Ok(files_folders::downloads(&remote, &local_folder, &found))
+        files_folders::downloads(&remote, &local_folder, &found)
     })
 }
 

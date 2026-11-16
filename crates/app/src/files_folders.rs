@@ -1,7 +1,9 @@
 //! Turning a folder into the list of file transfers it stands for.
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
+
+use crate::i18n::fl;
 
 /// Every file under a local folder, as paths relative to it. Links and
 /// special files are left out, so a loop cannot trap the walk.
@@ -45,20 +47,36 @@ pub(crate) fn uploads(
 
 /// The downloads of a remote folder into `local_folder`: local file and remote path.
 /// `relative_files` are the paths under the remote folder, such as `a/b.txt`.
+///
+/// The names come from the server, so each part must be a plain name. One that
+/// is `..`, empty or a path of its own would write outside `local_folder`, and the
+/// whole folder is refused.
 pub(crate) fn downloads(
     remote_folder: &str,
     local_folder: &Path,
     relative_files: &[(String, u64)],
-) -> Vec<(PathBuf, String)> {
-    relative_files
-        .iter()
-        .map(|(relative, _size)| {
-            let local = relative
-                .split('/')
-                .fold(local_folder.to_path_buf(), |path, part| path.join(part));
-            (local, remotething_files::join(remote_folder, relative))
-        })
-        .collect()
+) -> Result<Vec<(PathBuf, String)>, String> {
+    let mut found = Vec::new();
+    for (relative, _size) in relative_files {
+        let mut local = local_folder.to_path_buf();
+        for part in relative.split('/') {
+            if !is_plain_name(part) {
+                return Err(fl!("files-unsafe-name", name = relative.as_str()));
+            }
+            local.push(part);
+        }
+        found.push((local, remotething_files::join(remote_folder, relative)));
+    }
+    Ok(found)
+}
+
+/// A single name, with no way up and no separator of this system in it.
+fn is_plain_name(part: &str) -> bool {
+    let mut components = Path::new(part).components();
+    matches!(
+        (components.next(), components.next()),
+        (Some(Component::Normal(name)), None) if name == part
+    )
 }
 
 #[cfg(test)]
@@ -110,7 +128,7 @@ mod tests {
     fn a_remote_folder_becomes_one_download_per_file() {
         let files = vec![("a/b.txt".to_string(), 3), ("c.txt".to_string(), 4)];
 
-        let found = downloads("/srv/site", Path::new("/tmp/site"), &files);
+        let found = downloads("/srv/site", Path::new("/tmp/site"), &files).unwrap();
 
         assert_eq!(
             found,
@@ -125,5 +143,24 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[test]
+    fn a_name_that_leads_out_of_the_folder_refuses_the_whole_download() {
+        for bad in ["../x", "a/../../x", "/etc/passwd", "a//b", "./a", ""] {
+            let files = vec![("fine.txt".to_string(), 1), (bad.to_string(), 1)];
+
+            let refused = downloads("/srv", Path::new("/tmp/site"), &files);
+
+            assert!(refused.is_err(), "{bad:?} was accepted");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_path_inside_a_name_is_refused() {
+        let files = vec![("..\\x".to_string(), 1), ("C:\\x".to_string(), 1)];
+
+        assert!(downloads("/srv", Path::new("C:\\site"), &files).is_err());
     }
 }

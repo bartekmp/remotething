@@ -175,6 +175,7 @@ files-upload = Upload
 files-download = Download
 files-upload-folder = Upload folder
 files-download-folder = Save the folder into
+files-unsafe-name = The server listed a file with an unsafe name ({ $name }). Nothing was downloaded.
 files-empty = This folder is empty.
 files-loading = Loading…
 files-transfers = Transfers
