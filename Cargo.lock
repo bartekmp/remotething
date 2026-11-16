@@ -792,6 +792,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ccm"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0be9b34d99d395af800e996c5784f810f8400ccd64202f91859dc677825b5378"
+dependencies = [
+ "aead",
+ "cipher 0.5.2",
+ "ctr",
+ "ctutils",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -907,6 +919,17 @@ checksum = "bd63e33452ffdafd39924c4f05a5dd1e94db646c779c6bd59148a3d95fff5ad4"
 dependencies = [
  "thiserror 2.0.21",
  "x11rb",
+]
+
+[[package]]
+name = "cmac"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac78aa94ce13e432b332a4d1bf2eff167d3a2520188ee05b337180a42fd2e62e"
+dependencies = [
+ "cipher 0.5.2",
+ "dbl",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -1291,6 +1314,15 @@ name = "data-encoding"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
+
+[[package]]
+name = "dbl"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0d7a944e61df464668c5f51f56cc667396a8821434273112948ea0b66e405d7"
+dependencies = [
+ "hybrid-array",
+]
 
 [[package]]
 name = "delegate"
@@ -3365,6 +3397,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lz4_flex"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f56455fff36934a9500d69062aec1c77037179b6f0669e4d5d6b72b84722d6a3"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5008,7 +5049,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -5035,7 +5076,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-capture"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "jpeg-encoder",
  "png",
@@ -5045,7 +5086,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-core"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5056,13 +5097,14 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "async-trait",
  "remotething-remote",
  "remotething-secrets",
  "russh-sftp",
  "sha2 0.10.9",
+ "smb2",
  "suppaftp",
  "tempfile",
  "thiserror 2.0.21",
@@ -5071,7 +5113,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-cliprdr",
@@ -5093,7 +5135,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "portable-pty",
  "remotething-secrets",
@@ -5105,7 +5147,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -5121,7 +5163,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-vnc"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "remotething-secrets",
  "tempfile",
@@ -5880,6 +5922,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 
 [[package]]
+name = "smb2"
+version = "0.43.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80f2cf9dad3855f65b5e1541eca795c2446296cec2ced18148fa8cf14397aecd"
+dependencies = [
+ "aes 0.9.4",
+ "aes-gcm",
+ "async-trait",
+ "ccm",
+ "cmac",
+ "ctutils",
+ "digest 0.11.3",
+ "futures-util",
+ "getrandom 0.4.3",
+ "hmac 0.13.0",
+ "log",
+ "lz4_flex",
+ "md-5 0.11.0",
+ "md4",
+ "num_enum",
+ "pbkdf2",
+ "sha1",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "smithay-client-toolkit"
 version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6624,6 +6694,12 @@ checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86a801b3cea342a06d468c8710662aa29e5e05e4f5c0d62f00bbb7f2ad7941c2"
 
 [[package]]
 name = "type-map"
@@ -7814,7 +7890,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.45.0"
+version = "0.46.0"
 
 [[package]]
 name = "yazi"

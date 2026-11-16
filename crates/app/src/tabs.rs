@@ -416,7 +416,7 @@ fn start_connection(
             let task = task.map(move |message| Message::Desktop(id, message));
             (title, Content::Desktop(Box::new(desktop)), task)
         }
-        Protocol::Ftp | Protocol::Ftps => {
+        Protocol::Ftp | Protocol::Ftps | Protocol::Smb => {
             let (ftp, task) = ftp_tab::State::start(connection, typed_username, context);
             let task = task.map(move |message| Message::Ftp(id, message));
             (title, Content::Ftp(Box::new(ftp)), task)

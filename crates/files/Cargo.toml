@@ -15,6 +15,8 @@ remotething-secrets = { path = "../secrets" }
 async-trait = "0.1"
 # Fingerprints of FTPS certificates, which are pinned like SSH host keys.
 sha2 = "0.10"
+# The SMB protocol, version 2 and 3, in pure Rust.
+smb2 = "0.43"
 # The SFTP protocol, spoken over a channel of an SSH connection.
 russh-sftp = "3"
 # The FTP protocol, with explicit TLS (FTPS) through rustls.

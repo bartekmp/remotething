@@ -2,6 +2,7 @@
 
 use iced::widget::{button, column, container, row, text};
 use iced::{Element, Font, Length, Theme};
+use remotething_core::Protocol;
 
 use crate::credentials::Hidden;
 use crate::files_view;
@@ -54,14 +55,17 @@ pub fn view(state: &State) -> Element<'_, Message> {
 fn strip(state: &State) -> Element<'_, Message> {
     let connection = &state.connection;
     let summary = format!("{}@{}:{}", state.username, connection.host, connection.port);
-    let protection = if state.is_encrypted() {
-        text(fl!("ftp-encrypted"))
+    let protection = match connection.protocol {
+        Protocol::Ftps => text(fl!("ftp-encrypted"))
             .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text)
-    } else {
-        text(fl!("ftp-not-encrypted"))
+            .style(theme::secondary_text),
+        // SMB 2 and 3 sign their messages, and encrypt them when the server asks.
+        Protocol::Smb => text(fl!("smb-label"))
             .size(theme::TEXT_SMALL)
-            .style(text::danger)
+            .style(theme::secondary_text),
+        _ => text(fl!("ftp-not-encrypted"))
+            .size(theme::TEXT_SMALL)
+            .style(text::danger),
     };
     row![
         text(summary)

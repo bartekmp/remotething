@@ -1,11 +1,12 @@
-//! An FTP or FTPS tab: signing in, the certificate question for FTPS, then the
+//! An FTP, FTPS or SMB tab: signing in, the certificate question for FTPS, then the
 //! files filling the tab. Drawing is in `ftp_view.rs`.
 
 use std::sync::Arc;
 
 use iced::Task;
+use iced::futures::FutureExt;
 use remotething_core::{CredentialKind, Protocol, ResolvedConnection};
-use remotething_files::{Certificate, Error, FtpFs, FtpSettings, RemoteFs};
+use remotething_files::{Certificate, Error, FtpFs, FtpSettings, RemoteFs, SmbFs, SmbSettings};
 use remotething_secrets::Secret;
 
 use crate::credentials::Hidden;
@@ -18,6 +19,8 @@ pub struct State {
     /// The user typed in a connection string, for a connection without a credential.
     typed_username: Option<String>,
     pub(crate) username: String,
+    /// The domain of the account, for SMB.
+    domain: Option<String>,
     password: Option<Secret>,
     pub(crate) stage: Stage,
 }
@@ -107,6 +110,7 @@ impl State {
             connection,
             typed_username,
             username: String::new(),
+            domain: None,
             password: None,
             stage: Stage::Connecting,
         };
@@ -146,6 +150,10 @@ impl State {
             return self.ask(None);
         };
         self.username = credential.username.clone().unwrap_or_default();
+        self.domain = credential
+            .domain
+            .clone()
+            .filter(|domain| !domain.is_empty());
         match credential.kind {
             CredentialKind::Password => {
                 self.stage = Stage::LoadingSecret;
@@ -186,16 +194,31 @@ impl State {
         let Some(password) = self.password.clone().filter(|_| !self.username.is_empty()) else {
             return self.ask(None);
         };
-        let secure = self.is_encrypted().then(|| context.known_hosts.clone());
-        let settings = FtpSettings {
-            host: self.connection.host.clone(),
-            port: self.connection.port,
-            username: self.username.clone(),
-            password,
-            secure,
+        let host = self.connection.host.clone();
+        let port = self.connection.port;
+        let username = self.username.clone();
+        let opening = if self.connection.protocol == Protocol::Smb {
+            let settings = SmbSettings {
+                host,
+                port,
+                username,
+                password,
+                domain: self.domain.clone(),
+            };
+            open_smb(settings).boxed()
+        } else {
+            let secure = self.is_encrypted().then(|| context.known_hosts.clone());
+            let settings = FtpSettings {
+                host,
+                port,
+                username,
+                password,
+                secure,
+            };
+            open(settings).boxed()
         };
         self.stage = Stage::Connecting;
-        Task::perform(open(settings), Message::Opened)
+        Task::perform(opening, Message::Opened)
     }
 
     fn go_live(&mut self, opened: Opened) -> Task<Message> {
@@ -205,6 +228,12 @@ impl State {
         self.stage = Stage::Browsing(Box::new(pane));
         task.map(Message::Files)
     }
+}
+
+async fn open_smb(settings: SmbSettings) -> Result<Opened, Failure> {
+    let files = SmbFs::connect(settings).await.map_err(Failure::from)?;
+    let files: Arc<dyn RemoteFs> = Arc::new(files);
+    Ok(Opened(files))
 }
 
 async fn open(settings: FtpSettings) -> Result<Opened, Failure> {

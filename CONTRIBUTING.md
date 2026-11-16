@@ -94,3 +94,18 @@ A nightly run on Jenkins needs the three variables as credentials bound to the j
 - Work on a short-lived `wp-<id>-<name>` branch and merge by pull request with squash.
 - `main` is protected; Jenkins must be green before a merge.
 - Commit messages are one short line.
+
+## SMB, FTP and SFTP against a real server
+
+The tests that need a server are ignored until it is given in the environment. For SMB, any Samba works; this runs one as yourself on port 4450 (the socket path must stay short, so use a short directory such as `/tmp/rts`):
+
+```sh
+mkdir -p /tmp/rts/{share,priv,lock,cache,state,pid,ncalrpc,logs}
+printf '[global]\n workgroup = WORKGROUP\n server role = standalone server\n smb ports = 4450\n interfaces = 127.0.0.1\n bind interfaces only = yes\n private dir = /tmp/rts/priv\n lock directory = /tmp/rts/lock\n state directory = /tmp/rts/state\n cache directory = /tmp/rts/cache\n pid directory = /tmp/rts/pid\n ncalrpc dir = /tmp/rts/ncalrpc\n passdb backend = tdbsam:/tmp/rts/priv/passdb.tdb\n map to guest = never\n load printers = no\n disable spoolss = yes\n\n[files]\n path = /tmp/rts/share\n read only = no\n valid users = %s\n force user = %s\n' "$USER" "$USER" > /tmp/rts/smb.conf
+pdbedit -s /tmp/rts/smb.conf -a -t -u "$USER"   # reads the password twice from standard input
+smbd -s /tmp/rts/smb.conf -l /tmp/rts/logs --foreground --no-process-group &
+RT_SMB_HOST=127.0.0.1 RT_SMB_PORT=4450 RT_SMB_USER=$USER RT_SMB_PASSWORD=... RT_SMB_SHARE=files \
+  cargo test -p remotething-files --test smb_server -- --ignored
+```
+
+Do not run it with `-i`: that serves one connection at a time and the tests open several. The FTP and SFTP tests are described at the top of `crates/files/tests/ftp_server.rs` and `sftp_server.rs`.

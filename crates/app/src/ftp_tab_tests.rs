@@ -186,3 +186,34 @@ fn errors_from_the_files_crate_become_the_matching_failure() {
         Failure::Certificate { changed: false, .. }
     ));
 }
+
+#[test]
+fn an_smb_tab_takes_the_domain_of_its_credential() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    fixture.store.credentials[0].domain = Some("CORP".to_string());
+
+    let state = fixture.start(Protocol::Smb, Some("cred"));
+
+    assert_eq!(state.domain.as_deref(), Some("CORP"));
+    assert_eq!(state.username, "ops");
+}
+
+#[test]
+fn an_empty_domain_is_no_domain() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    fixture.store.credentials[0].domain = Some(String::new());
+
+    let state = fixture.start(Protocol::Smb, Some("cred"));
+
+    assert_eq!(state.domain, None);
+}
+
+#[test]
+fn an_smb_tab_signs_in_like_the_others_and_is_not_marked_encrypted_by_ftps_rules() {
+    let mut fixture = Fixture::new();
+
+    let state = fixture.start(Protocol::Smb, None);
+
+    assert!(matches!(&state.stage, Stage::Asking(form) if form.ask_username));
+    assert!(!state.is_encrypted());
+}

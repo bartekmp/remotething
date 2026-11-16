@@ -155,6 +155,8 @@ pub enum Protocol {
     Ftp,
     /// Files over FTP with explicit TLS.
     Ftps,
+    /// Files on a Windows or Samba share, over SMB 2 or 3. The shares of the server are the top folders.
+    Smb,
     /// A WSL distribution on this Windows machine, in a local terminal. The host is its name.
     Wsl,
     /// Windows Remote Desktop.
@@ -171,7 +173,10 @@ impl Protocol {
 
     /// Whether the connection only shows files, with no terminal or picture.
     pub fn is_files_only(self) -> bool {
-        matches!(self, Protocol::Sftp | Protocol::Ftp | Protocol::Ftps)
+        matches!(
+            self,
+            Protocol::Sftp | Protocol::Ftp | Protocol::Ftps | Protocol::Smb
+        )
     }
 
     /// Whether the connection is made with SSH, so jump hosts and the SSH sign-in apply.
@@ -184,6 +189,7 @@ impl Protocol {
         match self {
             Protocol::Ssh | Protocol::Sftp => 22,
             Protocol::Ftp | Protocol::Ftps => 21,
+            Protocol::Smb => 445,
             // A distribution is reached through wsl.exe, not over the network.
             Protocol::Wsl => 0,
             Protocol::Rdp => 3389,

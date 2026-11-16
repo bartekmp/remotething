@@ -9,6 +9,7 @@ protocol-ssh = SSH
 protocol-sftp = SFTP
 protocol-ftp = FTP
 protocol-ftps = FTPS
+protocol-smb = SMB
 protocol-rdp = RDP
 protocol-vnc = VNC
 
@@ -369,3 +370,4 @@ wsl-running = running
 wsl-stopped = stopped
 protocol-wsl = WSL
 wsl-details-distribution = Distribution
+smb-label = SMB
