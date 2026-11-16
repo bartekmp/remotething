@@ -32,6 +32,7 @@ use crate::tree::{self, Selection};
 use crate::tree_actions;
 use crate::vault;
 use crate::video_recording;
+use crate::wsl_import;
 
 /// The name offered when exporting.
 const EXPORT_FILE_NAME: &str = "remotething-connections.json";
@@ -55,6 +56,7 @@ pub struct State {
     pub(crate) properties_open: bool,
     pub(crate) credentials: credentials::State,
     pub(crate) putty: putty_import::State,
+    pub(crate) wsl: wsl_import::State,
     /// The preview of a Remotething import, while it is shown.
     pub(crate) import: Option<import_preview::State>,
     pub(crate) centre: Centre,
@@ -97,6 +99,8 @@ pub(crate) enum Centre {
     Settings,
     /// The preview of a PuTTY import.
     Putty,
+    /// The preview of an import of the running WSL distributions.
+    Wsl,
     /// The preview of an import of a Remotething file.
     Import,
 }
@@ -110,6 +114,7 @@ pub enum Message {
     /// The secret store finished a save or delete.
     SecretStored(Result<(), String>),
     Putty(putty_import::Message),
+    Wsl(wsl_import::Message),
     Preview(import_preview::Message),
     Settings(settings::Message),
     /// The folder chosen for a feature, or `None` when the dialog was cancelled.
@@ -199,6 +204,7 @@ impl State {
             properties_open: false,
             credentials: credentials::State::default(),
             putty: putty_import::State::default(),
+            wsl: wsl_import::State::default(),
             import: None,
             centre: Centre::Sessions,
             secrets,
@@ -500,6 +506,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 state.centre = Centre::Putty;
                 return task.map(Message::Putty);
             }
+            settings::Event::ImportWsl => {
+                let (screen, task) = wsl_import::State::open();
+                state.wsl = screen;
+                state.centre = Centre::Wsl;
+                return task.map(Message::Wsl);
+            }
             settings::Event::Import => {
                 let dialog = file_dialog::open(fl!("settings-import"));
                 return Task::perform(dialog, Message::ImportFilePicked);
@@ -534,6 +546,15 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 None => {}
             }
             return task.map(Message::Putty);
+        }
+        Message::Wsl(message) => {
+            let (task, event) = wsl_import::update(&mut state.wsl, message);
+            match event {
+                Some(wsl_import::Event::Close) => state.centre = Centre::Settings,
+                Some(wsl_import::Event::Apply(plan, names)) => state.apply_wsl(&plan, &names),
+                None => {}
+            }
+            return task.map(Message::Wsl);
         }
         Message::SecretStored(Ok(())) => {}
         Message::SecretStored(Err(reason)) => {

@@ -82,6 +82,14 @@ A strip under the terminal shows `user@host:port` and the current download and u
 
 Rates update once per second. The same strip is used by [Remote Desktop](rdp.md).
 
+## WSL distributions (Windows)
+
+On Windows, **Settings → Import and export → Import from WSL** lists the WSL distributions that are running, with their address and user, and adds the ticked ones as SSH connections in a folder called **WSL**. Docker Desktop's own distributions are left out.
+
+- A distribution needs an SSH server. If nothing answers on port 22, the list says so and shows what to run inside it: `sudo apt install openssh-server && sudo service ssh start`.
+- A distribution gets a **new address each time it starts**. Import again to update the saved ones: connections with the same name in the WSL folder only get the new address, nothing else of them is touched.
+- The user a shell starts as becomes a credential that asks for the password. Root is not offered; passwords are never read or imported.
+
 ## Files only (SFTP)
 
 Choose the protocol **SFTP** for a connection to get just the files: no terminal, no shell is started. The tab is the file browser, filling the whole area, and it signs in exactly like SSH (passwords, keys, agent, one-time codes, jump hosts, host-key check). The actions below work the same. Typing `sftp://user@host` in the new-tab box opens one too.

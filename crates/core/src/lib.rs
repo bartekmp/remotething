@@ -16,6 +16,7 @@ mod putty;
 mod quick;
 mod remove;
 mod validate;
+mod wsl;
 
 pub use error::Error;
 pub use exchange::ImportSummary;
@@ -31,6 +32,10 @@ pub use putty::{
     parse_session_file, plan as plan_putty_import, unreadable,
 };
 pub use quick::{QuickTarget, parse_quick};
+pub use wsl::{
+    PlannedWsl, WslDistro, WslImported, WslPlan, WslRunner, WslSkipped, decode_wsl_output,
+    discover as discover_wsl, first_ipv4, parse_running, parse_user, plan_wsl,
+};
 
 /// The result type used across this crate.
 pub type Result<T> = std::result::Result<T, Error>;

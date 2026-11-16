@@ -83,6 +83,8 @@ mod video_recording;
 mod vnc_tab;
 mod vnc_view;
 mod window;
+mod wsl_import;
+mod wsl_source;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};

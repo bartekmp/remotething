@@ -82,6 +82,7 @@ pub enum Message {
     ExportPressed,
     ImportPressed,
     ImportPuttyPressed,
+    ImportWslPressed,
     ClosePressed,
 }
 
@@ -117,6 +118,8 @@ pub enum Event {
     Import,
     /// Open the screen that previews importing PuTTY sessions.
     ImportPutty,
+    /// Open the screen that previews importing the running WSL distributions.
+    ImportWsl,
     Close,
 }
 
@@ -191,6 +194,7 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         Message::ExportPressed => Event::Export,
         Message::ImportPressed => Event::Import,
         Message::ImportPuttyPressed => Event::ImportPutty,
+        Message::ImportWslPressed => Event::ImportWsl,
         Message::ClosePressed => Event::Close,
     }
 }
@@ -271,23 +275,31 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
 
 /// Exporting and importing the connections.
 fn import_export<'a>() -> Element<'a, Message> {
+    let mut buttons = row![
+        button(text(fl!("settings-export")))
+            .style(theme::pill)
+            .on_press(Message::ExportPressed),
+        button(text(fl!("settings-import")))
+            .style(theme::pill)
+            .on_press(Message::ImportPressed),
+        button(text(fl!("settings-import-putty")))
+            .style(theme::pill)
+            .on_press(Message::ImportPuttyPressed),
+    ]
+    .spacing(8);
+    // Only Windows has WSL.
+    if cfg!(windows) {
+        buttons = buttons.push(
+            button(text(fl!("settings-import-wsl")))
+                .style(theme::pill)
+                .on_press(Message::ImportWslPressed),
+        );
+    }
     column![
         text(fl!("settings-exchange"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
-        row![
-            button(text(fl!("settings-export")))
-                .style(theme::pill)
-                .on_press(Message::ExportPressed),
-            button(text(fl!("settings-import")))
-                .style(theme::pill)
-                .on_press(Message::ImportPressed),
-            button(text(fl!("settings-import-putty")))
-                .style(theme::pill)
-                .on_press(Message::ImportPuttyPressed),
-        ]
-        .spacing(8)
-        .wrap(),
+        buttons.wrap(),
         text(fl!("settings-exchange-note"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),

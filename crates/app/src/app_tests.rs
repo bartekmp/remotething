@@ -554,3 +554,39 @@ fn the_chosen_settings_page_is_kept_while_the_screen_is_open() {
 
     assert_eq!(state.settings_page, settings::Tab::Features);
 }
+
+#[test]
+fn importing_wsl_distributions_adds_them_to_a_wsl_folder_and_saves() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let plan = remotething_core::plan_wsl(&[remotething_core::WslDistro {
+        name: "Ubuntu".to_string(),
+        address: Some("172.28.0.5".to_string()),
+        user: Some("bartek".to_string()),
+        ssh_answers: Some(true),
+    }]);
+
+    state.apply_wsl(&plan, &["Ubuntu".to_string()]);
+
+    let saved = on_disk(&state);
+    let added = saved
+        .connections
+        .iter()
+        .find(|c| c.name == "Ubuntu")
+        .unwrap();
+    assert_eq!(added.host, "172.28.0.5");
+    assert!(saved.folders.iter().any(|folder| folder.name == "WSL"));
+    assert_eq!(state.centre, Centre::Sessions);
+    assert!(state.notice.is_some());
+}
+
+#[test]
+fn the_wsl_screen_closes_back_to_the_settings() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.centre = Centre::Wsl;
+
+    let _ = update(&mut state, Message::Wsl(wsl_import::Message::BackPressed));
+
+    assert_eq!(state.centre, Centre::Settings);
+}

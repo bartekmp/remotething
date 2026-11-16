@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.44.0 - 2026-11-16
+
+- Windows: Settings → Import and export → Import from WSL finds the running WSL distributions and adds them as SSH connections in a WSL folder. Importing again updates their addresses.
+
 ## 0.43.0 - 2026-11-16
 
 - Settings are grouped into pages: General, Import and export, Optional features and About.

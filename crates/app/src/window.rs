@@ -20,6 +20,7 @@ use crate::tabs_view;
 use crate::theme as look;
 use crate::tree;
 use crate::vault;
+use crate::wsl_import;
 
 /// The room the message bar takes above the panels: one line of text and its padding.
 const BANNER_HEIGHT: f32 = 44.0;
@@ -79,6 +80,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
             settings::view(&state.preferences, state.settings_page).map(Message::Settings)
         }
         (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
+        (_, Centre::Wsl) => wsl_import::view(&state.wsl).map(Message::Wsl),
         (_, Centre::Import) => match &state.import {
             Some(screen) => import_preview::view(screen).map(Message::Preview),
             None => settings::view(&state.preferences, state.settings_page).map(Message::Settings),

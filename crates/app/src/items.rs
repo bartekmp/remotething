@@ -246,6 +246,21 @@ impl State {
         }
     }
 
+    /// Adds the ticked WSL distributions to the `WSL` folder, or gives the ones already there
+    /// their new address.
+    pub(crate) fn apply_wsl(&mut self, plan: &remotething_core::WslPlan, names: &[String]) {
+        let mut updated = self.store.clone();
+        match updated.import_wsl(plan, names) {
+            Ok(done) => {
+                if self.commit(updated) {
+                    self.notice = Some(fl!("wsl-done", added = done.added, updated = done.updated));
+                    self.centre = crate::app::Centre::Sessions;
+                }
+            }
+            Err(error) => self.error = Some(format!("{} {error}", fl!("import-failed"))),
+        }
+    }
+
     /// Writes the whole tree to an export file. Secrets are not part of it.
     pub(crate) fn export_to(&mut self, file: &std::path::Path) {
         let written = self
