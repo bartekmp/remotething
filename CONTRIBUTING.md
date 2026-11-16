@@ -74,6 +74,8 @@ RT_RDP_SOAK_MINUTES=60 RT_RDP_HOST=... RT_RDP_USER=... RT_RDP_PASSWORD=... \
   cargo test --release -p remotething-rdp --test windows_host -- --ignored --nocapture a_long_session
 ```
 
+The soak test reconnects when the connection breaks, as the app does, and fails if that happens more than once per five minutes. Under a resize every few seconds it breaks about once per 30 resizes: Windows 11 skips one TLS record on its side (found by decrypting a dump of the stream offline: the failing record decrypted with the next sequence number), so this is not something the client can prevent.
+
 A nightly run on Jenkins needs the three variables as credentials bound to the job.
 
 ## Rules

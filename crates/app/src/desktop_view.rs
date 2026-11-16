@@ -20,13 +20,15 @@ const FORM_WIDTH: f32 = 320.0;
 
 pub fn view(state: &State) -> Element<'_, Message> {
     match &state.stage {
-        Stage::LoadingSecret | Stage::Connecting => centred(
-            text(fl!(
-                "session-connecting",
-                host = state.connection.host.as_str()
-            ))
-            .style(theme::secondary_text),
-        ),
+        Stage::LoadingSecret | Stage::Connecting => {
+            let host = state.connection.host.as_str();
+            let message = if state.reconnects > 0 {
+                fl!("desktop-reconnecting", host = host)
+            } else {
+                fl!("session-connecting", host = host)
+            };
+            centred(text(message).style(theme::secondary_text))
+        }
         Stage::Asking(form) => centred(sign_in_form(&state.connection.name, form)),
         Stage::Certificate {
             certificate,

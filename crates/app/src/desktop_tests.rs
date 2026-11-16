@@ -510,3 +510,50 @@ fn a_saved_screenshot_is_announced_in_a_note() {
     let note = live.note.as_ref().and_then(Note::current).unwrap();
     assert!(note.contains("win-20260101-000000.png"), "{note}");
 }
+
+fn connected_with_password(fixture: &mut Fixture) -> State {
+    let mut fixture_state = fixture.start(Some("cred"));
+    let sealed = Sealed(Some(Secret::new("pw".to_string())));
+    fixture.send(&mut fixture_state, Message::SecretLoaded(Ok(sealed)));
+    let _input = fixture_state.connect_for_test();
+    fixture_state
+}
+
+#[test]
+fn a_lost_connection_is_made_again_by_itself() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    let mut state = connected_with_password(&mut fixture);
+
+    fixture.send(&mut state, Message::ConnectionLost("gone".to_string()));
+
+    assert!(matches!(state.stage, Stage::Connecting));
+    assert_eq!(state.reconnects, 1);
+}
+
+#[test]
+fn after_three_tries_in_a_row_the_user_is_told() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    let mut state = connected_with_password(&mut fixture);
+    for _ in 0..3 {
+        fixture.send(&mut state, Message::ConnectionLost("gone".to_string()));
+        let _input = state.connect_for_test();
+    }
+
+    fixture.send(
+        &mut state,
+        Message::ConnectionLost("gone again".to_string()),
+    );
+
+    assert!(matches!(&state.stage, Stage::Ended(reason) if reason == "gone again"));
+}
+
+#[test]
+fn a_session_without_a_known_password_is_not_re_made() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test();
+
+    fixture.send(&mut state, Message::ConnectionLost("gone".to_string()));
+
+    assert!(matches!(state.stage, Stage::Ended(_)));
+}

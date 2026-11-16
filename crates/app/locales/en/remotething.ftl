@@ -290,3 +290,4 @@ screenshot-saved = Saved { $name }
 screenshot-failed = Screenshot failed:
 settings-feature-screenshots = Take screenshots (a picture of a remote desktop, the text of a terminal)
 settings-feature-desktop = Record remote desktops (RDP and VNC)
+desktop-reconnecting = The connection to { $host } was lost. Connecting again…

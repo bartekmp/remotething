@@ -164,16 +164,31 @@ fn a_long_session_stays_up_and_does_not_grow() {
         .ok()
         .and_then(|text| text.parse().ok())
         .unwrap_or(3);
+    // How often the desktop is resized, in seconds; shorter to stress the handshake.
+    let resize_every: u64 = std::env::var("RT_RDP_SOAK_RESIZE_SECONDS")
+        .ok()
+        .and_then(|text| text.parse().ok())
+        .unwrap_or(60);
+    // 0 turns resizing off; the pointer then moves this many milliseconds apart.
+    let input_every: u64 = std::env::var("RT_RDP_SOAK_INPUT_MS")
+        .ok()
+        .and_then(|text| text.parse().ok())
+        .unwrap_or(5000);
     let (_directory, known) = trusting();
-    // A server that has only just let go of the last session may drop the first attempt.
-    let mut session = (0..3)
-        .find_map(|attempt| {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_secs(5));
-            }
-            connect(target(&env("RT_RDP_PASSWORD")), &known).ok()
-        })
-        .expect("the server took none of three attempts");
+    let open_session = || {
+        // A server that has only just let go of the last session may drop the first attempt.
+        (0..3)
+            .find_map(|attempt| {
+                if attempt > 0 {
+                    std::thread::sleep(Duration::from_secs(5));
+                }
+                connect(target(&env("RT_RDP_PASSWORD")), &known).ok()
+            })
+            .expect("the server took none of three attempts")
+    };
+    let mut session = open_session();
+    // How often the connection broke and was made again, as the app does by itself.
+    let mut lost = 0u32;
 
     let started = Instant::now();
     let end = started + Duration::from_secs(minutes * 60);
@@ -192,10 +207,17 @@ fn a_long_session_stays_up_and_does_not_grow() {
                 Event::Closed(reason) => {
                     panic!("closed after {:?}: {reason:?}", started.elapsed())
                 }
+                Event::ConnectionLost(reason) => {
+                    lost += 1;
+                    eprintln!("SOAK connection lost at {:?}: {reason}", started.elapsed());
+                    std::thread::sleep(Duration::from_secs(3));
+                    session = open_session();
+                    break;
+                }
                 _ => {}
             }
         }
-        if last_input.elapsed() >= Duration::from_secs(5) {
+        if last_input.elapsed() >= Duration::from_millis(input_every) {
             last_input = Instant::now();
             let x = if wide { 300 } else { 500 };
             wide = !wide;
@@ -204,7 +226,7 @@ fn a_long_session_stays_up_and_does_not_grow() {
                 .blocking_send(Input::MouseMoved { x, y: 300 })
                 .unwrap();
         }
-        if last_resize.elapsed() >= Duration::from_secs(60) {
+        if resize_every > 0 && last_resize.elapsed() >= Duration::from_secs(resize_every) {
             last_resize = Instant::now();
             resize_wide = !resize_wide;
             let (width, height) = if resize_wide {
@@ -236,6 +258,11 @@ fn a_long_session_stays_up_and_does_not_grow() {
         std::thread::sleep(Duration::from_millis(50));
     }
 
+    eprintln!("SOAK done: {lost} lost connections in {minutes} minutes");
+    assert!(
+        u64::from(lost) <= minutes / 5 + 2,
+        "the connection broke {lost} times in {minutes} minutes"
+    );
     assert!(frames > 0, "no frame in the whole session");
     if let (Some(before), Some(after)) = (baseline, resident_kilobytes()) {
         let grown = after.saturating_sub(before);

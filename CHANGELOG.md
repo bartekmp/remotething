@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.32.1 - 2026-11-16
+
+- Remote Desktop: a connection that breaks on the way, which Windows 11 sometimes causes when the desktop changes size, is made again by itself up to three times.
+
 ## 0.32.0 - 2026-11-15
 
 - Recording of remote desktops (RDP and VNC) as a Motion JPEG video, an optional feature in Settings.

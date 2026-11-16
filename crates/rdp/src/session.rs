@@ -84,6 +84,29 @@ pub enum Event {
     Frame(Frame),
     /// The session ended, with the reason when it was not the user's doing.
     Closed(Option<String>),
+    /// The connection broke on the way: a reset, a timeout, or data that no
+    /// longer decrypts. Connecting again usually brings the desktop back, as
+    /// the server keeps the session.
+    ConnectionLost(String),
+}
+
+/// Whether `error` is the network or the secure channel failing, not the server ending the session.
+///
+/// Windows 11 sometimes skips one TLS record while it changes the desktop size,
+/// after which every later record fails to decrypt. That arrives here as invalid data.
+fn connection_was_lost(error: &(dyn std::error::Error + 'static)) -> bool {
+    use std::io::ErrorKind;
+    error.downcast_ref::<std::io::Error>().is_some_and(|error| {
+        matches!(
+            error.kind(),
+            ErrorKind::InvalidData
+                | ErrorKind::ConnectionReset
+                | ErrorKind::ConnectionAborted
+                | ErrorKind::BrokenPipe
+                | ErrorKind::UnexpectedEof
+                | ErrorKind::TimedOut
+        )
+    })
 }
 
 /// A running session. It ends when this is dropped.
@@ -111,13 +134,16 @@ pub fn connect(target: Target, known: &KnownHosts) -> Result<Session> {
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(INPUT_QUEUE);
     std::thread::spawn(move || {
-        let reason = match Worker::new(opened.connection, opened.framed, opened.config)
-            .run(&events_tx, input_rx)
-        {
-            Ok(()) => None,
-            Err(error) => Some(error.to_string()),
+        let ended =
+            Worker::new(opened.connection, opened.framed, opened.config).run(&events_tx, input_rx);
+        let event = match ended {
+            Ok(()) => Event::Closed(None),
+            Err(error) if connection_was_lost(error.as_ref()) => {
+                Event::ConnectionLost(error.to_string())
+            }
+            Err(error) => Event::Closed(Some(error.to_string())),
         };
-        let _ = events_tx.blocking_send(Event::Closed(reason));
+        let _ = events_tx.blocking_send(event);
     });
     Ok(Session {
         info,
@@ -217,5 +243,37 @@ impl NetworkClient for NoKerberos {
             ironrdp_connector::sspi::ErrorKind::NoAuthenticatingAuthority,
             "Kerberos is not supported",
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Error as IoError, ErrorKind};
+
+    #[test]
+    fn data_that_no_longer_decrypts_counts_as_a_lost_connection() {
+        let error = IoError::new(ErrorKind::InvalidData, "cannot decrypt peer's message");
+
+        assert!(connection_was_lost(&error));
+    }
+
+    #[test]
+    fn a_reset_and_a_cut_connection_count_as_lost() {
+        assert!(connection_was_lost(&IoError::from(
+            ErrorKind::ConnectionReset
+        )));
+        assert!(connection_was_lost(&IoError::from(
+            ErrorKind::UnexpectedEof
+        )));
+    }
+
+    #[test]
+    fn other_errors_do_not() {
+        assert!(!connection_was_lost(&IoError::from(
+            ErrorKind::PermissionDenied
+        )));
+        let not_io = std::fmt::Error;
+        assert!(!connection_was_lost(&not_io));
     }
 }

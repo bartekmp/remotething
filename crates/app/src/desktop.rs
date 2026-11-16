@@ -30,6 +30,10 @@ use crate::video_recording::Video;
 /// The size of the remote desktop until resizing is supported.
 const WIDTH: u16 = 1280;
 const HEIGHT: u16 = 800;
+/// How many times in a row a lost connection is re-made without asking the user.
+const MAX_RECONNECTS: u8 = 3;
+/// A connection that lasted this long was a good one, so the count of reconnects starts over.
+const STABLE_FOR: std::time::Duration = std::time::Duration::from_secs(30);
 /// How long Ctrl+Alt+Del is held; Windows ignores a shorter press.
 const CTRL_ALT_DEL_HOLD: std::time::Duration = std::time::Duration::from_millis(300);
 /// How long the room for the picture must stay the same before the server is asked to match it.
@@ -42,6 +46,8 @@ pub struct State {
     username: String,
     domain: Option<String>,
     password: Option<Secret>,
+    /// How many times in a row the connection was re-made by itself.
+    pub(crate) reconnects: u8,
     pub(crate) stage: Stage,
 }
 
@@ -107,6 +113,8 @@ pub enum Message {
     Stats(Stats),
     /// Text was copied on the server.
     Clipboard(String),
+    /// The connection broke on the way; it is made again by itself a few times.
+    ConnectionLost(String),
     /// A picture was copied on the server.
     ClipboardPicture(remotething_rdp::Picture),
     /// The picture was put on the local clipboard.
@@ -156,6 +164,7 @@ impl State {
             username: String::new(),
             domain: None,
             password: None,
+            reconnects: 0,
             stage: Stage::Connecting,
         };
         let task = state.begin(context);
@@ -319,6 +328,7 @@ impl State {
                 Event::ClipboardPicture(picture) => Message::ClipboardPicture(picture),
                 Event::Cursor(cursor) => Message::Cursor(cursor),
                 Event::Closed(reason) => Message::Closed(reason),
+                Event::ConnectionLost(reason) => Message::ConnectionLost(reason),
             };
             Some((message, events))
         });
@@ -569,6 +579,25 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 });
             }
             Task::none()
+        }
+        Message::ConnectionLost(reason) => {
+            let Stage::Connected(live) = &state.stage else {
+                return Task::none();
+            };
+            // A connection that had been good for a while starts the count over.
+            if live
+                .meter
+                .reading
+                .is_some_and(|reading| reading.uptime >= STABLE_FOR)
+            {
+                state.reconnects = 0;
+            }
+            if state.reconnects >= MAX_RECONNECTS || state.password.is_none() {
+                state.stage = Stage::Ended(reason);
+                return Task::none();
+            }
+            state.reconnects += 1;
+            state.connect(context)
         }
         Message::Closed(reason) => {
             state.stage = Stage::Ended(reason.unwrap_or_else(|| fl!("session-closed")));
