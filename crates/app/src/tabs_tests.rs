@@ -328,14 +328,18 @@ fn a_tab_from_the_overflow_list_comes_to_the_front_and_the_list_closes() {
     assert!(!fixture.state.overflow_open);
 }
 
+fn dropped() -> std::path::PathBuf {
+    std::path::PathBuf::from("/tmp/report.pdf")
+}
+
 #[test]
 fn a_session_without_its_file_pane_open_takes_no_dropped_files() {
     let mut fixture = Fixture::with_tabs(&["a"]);
-    assert_eq!(fixture.state.front_with_files(), None);
+    assert!(fixture.state.file_dropped(dropped()).is_none());
 
     fixture.make_front_live();
 
-    assert_eq!(fixture.state.front_with_files(), None);
+    assert!(fixture.state.file_dropped(dropped()).is_none());
 }
 
 #[test]
@@ -349,7 +353,9 @@ fn a_session_with_its_file_pane_open_takes_dropped_files() {
     };
     session.open_files_for_test();
 
-    assert_eq!(fixture.state.front_with_files(), Some(id));
+    let message = fixture.state.file_dropped(dropped());
+
+    assert!(matches!(message, Some(Message::Session(tab, _)) if tab == id));
 }
 
 #[test]
@@ -363,8 +369,36 @@ fn a_file_browser_tab_takes_dropped_files_and_asks_before_it_is_closed() {
     };
     session.browse_for_test();
 
-    assert_eq!(fixture.state.front_with_files(), Some(id));
+    let message = fixture.state.file_dropped(dropped());
 
+    assert!(matches!(message, Some(Message::Session(tab, _)) if tab == id));
+    fixture.state.close_front();
+    assert!(fixture.state.confirming_close.is_some());
+}
+
+#[test]
+fn an_ftp_tab_takes_dropped_files_once_it_shows_files_and_asks_before_it_is_closed() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+    let (mut ftp, _task) = ftp_tab::State::start(
+        connection("files", Protocol::Ftp),
+        None,
+        &Context {
+            store: &fixture.store,
+            secrets: &fixture.secrets,
+            known_hosts: &mut fixture.known_hosts,
+        },
+    );
+    let front = fixture.state.active;
+    let id = fixture.state.tabs[front].id;
+    fixture.state.tabs[front].content = Content::Ftp(Box::new({
+        assert!(!ftp.is_connected());
+        ftp.browse_for_test();
+        ftp
+    }));
+
+    let message = fixture.state.file_dropped(dropped());
+
+    assert!(matches!(message, Some(Message::Ftp(tab, _)) if tab == id));
     fixture.state.close_front();
     assert!(fixture.state.confirming_close.is_some());
 }

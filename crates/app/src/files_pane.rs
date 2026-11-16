@@ -141,19 +141,32 @@ pub enum Event {
 impl State {
     /// Starts the file service on the session's connection.
     pub fn open(connection: Connection) -> (Self, Task<Message>) {
-        let state = Self::empty();
+        Self::open_with(async move {
+            let files = SftpFs::open(&connection)
+                .await
+                .map_err(|error| error.to_string())?;
+            let files: Arc<dyn RemoteFs> = Arc::new(files);
+            Ok(files)
+        })
+    }
+
+    /// Shows the files of an already connected file system.
+    pub fn browse(files: Arc<dyn RemoteFs>) -> (Self, Task<Message>) {
+        Self::open_with(async move { Ok(files) })
+    }
+
+    fn open_with(
+        connect: impl Future<Output = Result<Arc<dyn RemoteFs>, String>> + Send + 'static,
+    ) -> (Self, Task<Message>) {
         let task = Task::perform(
             async move {
-                let files = SftpFs::open(&connection)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                let files = connect.await?;
                 let home = files.home().await.map_err(|error| error.to_string())?;
-                let files: Arc<dyn RemoteFs> = Arc::new(files);
                 Ok(Ready { files, home })
             },
             Message::Opened,
         );
-        (state, task)
+        (Self::empty(), task)
     }
 
     pub(crate) fn empty() -> Self {

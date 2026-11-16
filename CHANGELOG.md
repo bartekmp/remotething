@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.39.0 - 2026-11-16
+
+- New protocols FTP and FTPS: the tab is a file browser. FTPS pins the server's certificate and asks before the password is sent. Uploads and downloads resume.
+
 ## 0.38.0 - 2026-11-16
 
 - New protocol SFTP: a connection that opens only the file browser, with no shell. It signs in like SSH, jump hosts included.

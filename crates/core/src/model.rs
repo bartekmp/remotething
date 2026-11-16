@@ -151,6 +151,10 @@ pub enum Protocol {
     Ssh,
     /// Files over SSH, with no shell.
     Sftp,
+    /// Files over FTP, with the password and the files sent unprotected.
+    Ftp,
+    /// Files over FTP with explicit TLS.
+    Ftps,
     /// Windows Remote Desktop.
     Rdp,
     /// VNC remote framebuffer.
@@ -163,6 +167,11 @@ impl Protocol {
         matches!(self, Protocol::Rdp | Protocol::Vnc)
     }
 
+    /// Whether the connection only shows files, with no terminal or picture.
+    pub fn is_files_only(self) -> bool {
+        matches!(self, Protocol::Sftp | Protocol::Ftp | Protocol::Ftps)
+    }
+
     /// Whether the connection is made with SSH, so jump hosts and the SSH sign-in apply.
     pub fn uses_ssh(self) -> bool {
         matches!(self, Protocol::Ssh | Protocol::Sftp)
@@ -172,6 +181,7 @@ impl Protocol {
     pub fn default_port(self) -> u16 {
         match self {
             Protocol::Ssh | Protocol::Sftp => 22,
+            Protocol::Ftp | Protocol::Ftps => 21,
             Protocol::Rdp => 3389,
             Protocol::Vnc => 5900,
         }

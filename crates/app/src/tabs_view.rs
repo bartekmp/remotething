@@ -10,6 +10,7 @@ use iced::{Element, Length, Point};
 use remotething_core::Store;
 
 use crate::desktop_view;
+use crate::ftp_view;
 use crate::i18n::fl;
 use crate::icons;
 use crate::launcher;
@@ -185,6 +186,7 @@ fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Eleme
             desktop_view::view(desktop).map(move |message| Message::Desktop(id, message))
         }
         Content::Vnc(vnc) => vnc_view::view(vnc).map(move |message| Message::Vnc(id, message)),
+        Content::Ftp(ftp) => ftp_view::view(ftp).map(move |message| Message::Ftp(id, message)),
     }
 }
 

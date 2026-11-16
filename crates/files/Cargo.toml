@@ -10,14 +10,18 @@ workspace = true
 
 [dependencies]
 remotething-remote = { path = "../remote" }
+remotething-secrets = { path = "../secrets" }
 # Lets the file systems be used as trait objects.
 async-trait = "0.1"
+# Fingerprints of FTPS certificates, which are pinned like SSH host keys.
+sha2 = "0.10"
 # The SFTP protocol, spoken over a channel of an SSH connection.
 russh-sftp = "3"
+# The FTP protocol, with explicit TLS (FTPS) through rustls.
+suppaftp = { version = "12", default-features = false, features = ["tokio-rustls-ring"] }
 thiserror = "2"
-tokio = { version = "1", features = ["fs", "io-util"] }
+tokio = { version = "1", features = ["fs", "io-util", "net", "sync", "time"] }
 
 [dev-dependencies]
-remotething-secrets = { path = "../secrets" }
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

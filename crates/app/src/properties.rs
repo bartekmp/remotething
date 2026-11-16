@@ -14,9 +14,11 @@ use crate::quality_choice::{self, QualityChoice};
 use crate::theme;
 use crate::tree::{Selection, protocol_label};
 
-const PROTOCOLS: [ProtocolChoice; 4] = [
+const PROTOCOLS: [ProtocolChoice; 6] = [
     ProtocolChoice(Protocol::Ssh),
     ProtocolChoice(Protocol::Sftp),
+    ProtocolChoice(Protocol::Ftp),
+    ProtocolChoice(Protocol::Ftps),
     ProtocolChoice(Protocol::Rdp),
     ProtocolChoice(Protocol::Vnc),
 ];

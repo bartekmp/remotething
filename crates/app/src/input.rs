@@ -4,9 +4,6 @@
 use iced::{Event, Task, keyboard, mouse, window};
 
 use crate::app::{Centre, Message, State};
-use crate::files_pane;
-use crate::session;
-use crate::tabs;
 
 /// The window's own key combinations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,12 +68,10 @@ pub(crate) fn on_file_dropped(state: &State, path: std::path::PathBuf) -> Task<M
     if state.centre != Centre::Sessions {
         return Task::none();
     }
-    let Some(tab) = state.tabs.front_with_files() else {
-        return Task::none();
-    };
-    let upload = files_pane::Message::UploadPicked(Some(path));
-    let message = tabs::Message::Session(tab, session::Message::Files(upload));
-    Task::done(Message::Tabs(message))
+    match state.tabs.file_dropped(path) {
+        Some(message) => Task::done(Message::Tabs(message)),
+        None => Task::none(),
+    }
 }
 
 /// The window-wide events behind the context menu, dragging and Escape.

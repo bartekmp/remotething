@@ -35,7 +35,7 @@ impl QuickTarget {
 /// Understood forms:
 /// - `ssh user@host`, `ssh host`, with `-p 2222` anywhere after `ssh`
 /// - `rdp host`, `vnc host`
-/// - `ssh://user@host:2222`, `sftp://user@host`, `rdp://host`, `vnc://host:5901`
+/// - `ssh://user@host:2222`, `sftp://user@host`, `ftp://host`, `ftps://host`, `rdp://host`, `vnc://host:5901`
 /// - `user@host` and `user@host:2222`, taken as SSH
 /// - an IPv6 address goes in brackets when a port follows: `ssh://[::1]:2222`
 pub fn parse_quick(text: &str) -> Option<QuickTarget> {
@@ -74,6 +74,8 @@ fn protocol_named(word: &str) -> Option<Protocol> {
     match word.to_ascii_lowercase().as_str() {
         "ssh" => Some(Protocol::Ssh),
         "sftp" => Some(Protocol::Sftp),
+        "ftp" => Some(Protocol::Ftp),
+        "ftps" => Some(Protocol::Ftps),
         "rdp" => Some(Protocol::Rdp),
         "vnc" => Some(Protocol::Vnc),
         _ => None,
@@ -154,6 +156,16 @@ mod tests {
     }
 
     #[test]
+    fn ftp_and_ftps_schemes_use_port_21() {
+        for (text, protocol) in [("ftp://nas", Protocol::Ftp), ("ftps://nas", Protocol::Ftps)] {
+            let target = parse_quick(text).unwrap();
+
+            assert_eq!(target.protocol, protocol);
+            assert_eq!(target.port_or_default(), 21);
+        }
+    }
+
+    #[test]
     fn the_port_flag_works_before_and_after_the_address() {
         assert_eq!(parsed("ssh -p 2222 ops@web-01").3, Some(2222));
         assert_eq!(parsed("ssh ops@web-01 -p 2222").3, Some(2222));
@@ -210,7 +222,7 @@ mod tests {
             "ssh -p",
             "ssh -X host",
             "ssh host extra",
-            "ftp://host",
+            "gopher://host",
             "ssh://",
         ] {
             assert_eq!(parse_quick(text), None, "{text:?}");

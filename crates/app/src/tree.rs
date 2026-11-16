@@ -351,6 +351,8 @@ pub fn protocol_label(protocol: Protocol) -> String {
     match protocol {
         Protocol::Ssh => fl!("protocol-ssh"),
         Protocol::Sftp => fl!("protocol-sftp"),
+        Protocol::Ftp => fl!("protocol-ftp"),
+        Protocol::Ftps => fl!("protocol-ftps"),
         Protocol::Rdp => fl!("protocol-rdp"),
         Protocol::Vnc => fl!("protocol-vnc"),
     }

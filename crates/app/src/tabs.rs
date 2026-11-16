@@ -8,6 +8,8 @@ use iced::keyboard::{Key, Modifiers};
 use remotething_core::{Protocol, Quality, QuickTarget, ResolvedConnection, parse_quick};
 
 use crate::desktop;
+use crate::files_pane;
+use crate::ftp_tab;
 use crate::i18n::fl;
 use crate::launcher;
 use crate::recent::Recent;
@@ -48,6 +50,7 @@ pub(crate) enum Content {
     Session(Box<session::State>),
     Desktop(Box<desktop::State>),
     Vnc(Box<vnc_tab::State>),
+    Ftp(Box<ftp_tab::State>),
 }
 
 #[derive(Debug, Clone)]
@@ -75,6 +78,7 @@ pub enum Message {
     Session(u64, session::Message),
     Desktop(u64, desktop::Message),
     Vnc(u64, vnc_tab::Message),
+    Ftp(u64, ftp_tab::Message),
 }
 
 impl State {
@@ -132,6 +136,7 @@ impl State {
             Content::Session(session) => &mut session.connection,
             Content::Desktop(desktop) => &mut desktop.connection,
             Content::Vnc(vnc) => &mut vnc.connection,
+            Content::Ftp(ftp) => &mut ftp.connection,
             Content::Launcher(_) => return,
         };
         connection.id = connection_id.to_string();
@@ -143,11 +148,18 @@ impl State {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
     }
 
-    /// The id of the tab in front when it is a session with its file pane open.
-    pub fn front_with_files(&self) -> Option<u64> {
+    /// The message that uploads a dropped file, when the tab in front shows files:
+    /// a session with its file pane open, or a file-only tab.
+    pub fn file_dropped(&self, path: std::path::PathBuf) -> Option<Message> {
         let tab = self.tabs.get(self.active)?;
+        let upload = files_pane::Message::UploadPicked(Some(path));
         match &tab.content {
-            Content::Session(session) if session.has_files_open() => Some(tab.id),
+            Content::Session(session) if session.has_files_open() => {
+                Some(Message::Session(tab.id, session::Message::Files(upload)))
+            }
+            Content::Ftp(ftp) if ftp.is_connected() => {
+                Some(Message::Ftp(tab.id, ftp_tab::Message::Files(upload)))
+            }
             _ => None,
         }
     }
@@ -330,6 +342,7 @@ impl State {
                 Content::Session(session) => Some(session.connection.id.as_str()),
                 Content::Desktop(desktop) => Some(desktop.connection.id.as_str()),
                 Content::Vnc(vnc) => Some(vnc.connection.id.as_str()),
+                Content::Ftp(ftp) => Some(ftp.connection.id.as_str()),
                 Content::Launcher(_) => None,
             })
             .collect()
@@ -343,6 +356,7 @@ impl Tab {
             Content::Session(session) => session.is_connected(),
             Content::Desktop(desktop) => desktop.is_connected(),
             Content::Vnc(vnc) => vnc.is_connected(),
+            Content::Ftp(ftp) => ftp.is_connected(),
             _ => false,
         }
     }
@@ -378,6 +392,11 @@ fn start_connection(
             let (desktop, task) = desktop::State::start(connection, typed_username, context);
             let task = task.map(move |message| Message::Desktop(id, message));
             (title, Content::Desktop(Box::new(desktop)), task)
+        }
+        Protocol::Ftp | Protocol::Ftps => {
+            let (ftp, task) = ftp_tab::State::start(connection, typed_username, context);
+            let task = task.map(move |message| Message::Ftp(id, message));
+            (title, Content::Ftp(Box::new(ftp)), task)
         }
         Protocol::Vnc => {
             let (vnc, task) = vnc_tab::State::start(connection, context);
@@ -472,6 +491,17 @@ pub fn update(
             {
                 return desktop::update(desktop, message, context)
                     .map(move |message| Message::Desktop(id, message));
+            }
+        }
+        Message::Ftp(id, message) => {
+            let ftp = state.tabs.iter_mut().find(|tab| tab.id == id);
+            if let Some(Tab {
+                content: Content::Ftp(ftp),
+                ..
+            }) = ftp
+            {
+                return ftp_tab::update(ftp, message, context)
+                    .map(move |message| Message::Ftp(id, message));
             }
         }
         Message::Vnc(id, message) => {

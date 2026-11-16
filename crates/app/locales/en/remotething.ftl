@@ -7,6 +7,8 @@ tabs-empty = Double-click a connection to open it, or press Ctrl+Shift+T for rec
 
 protocol-ssh = SSH
 protocol-sftp = SFTP
+protocol-ftp = FTP
+protocol-ftps = FTPS
 protocol-rdp = RDP
 protocol-vnc = VNC
 
@@ -316,3 +318,6 @@ settings-feature-screenshots = Take screenshots (a picture of a remote desktop, 
 settings-feature-desktop = Record remote desktops (RDP and VNC)
 desktop-reconnecting = The connection to { $host } was lost. Connecting again…
 desktop-reconnecting-short = Connection lost, connecting again…
+ftp-credential-kind = This connection uses a credential that is for SSH. For FTP use a password credential, or ask every time.
+ftp-not-encrypted = Not encrypted
+ftp-encrypted = Encrypted (TLS)

@@ -5,6 +5,7 @@
 - [Installing](installing.md)
 - [Starting the app](starting.md)
 - [SSH](ssh.md)
+- [FTP and FTPS](ftp.md)
 - [Remote Desktop](rdp.md)
 - [VNC](vnc.md)
 - [Recording](recording.md)

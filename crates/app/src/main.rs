@@ -31,6 +31,8 @@ mod files_transfers_view;
 mod files_view;
 mod folder_removal;
 mod forwards;
+mod ftp_tab;
+mod ftp_view;
 mod host_key_view;
 mod i18n;
 mod icons;
