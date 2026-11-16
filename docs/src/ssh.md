@@ -82,7 +82,11 @@ A strip under the terminal shows `user@host:port` and the current download and u
 
 Rates update once per second. The same strip is used by [Remote Desktop](rdp.md).
 
-## Files
+## Files only (SFTP)
+
+Choose the protocol **SFTP** for a connection to get just the files: no terminal, no shell is started. The tab is the file browser, filling the whole area, and it signs in exactly like SSH (passwords, keys, agent, one-time codes, jump hosts, host-key check). The actions below work the same. Typing `sftp://user@host` in the new-tab box opens one too.
+
+## Files beside a terminal
 
 A connected session has a **Browse files** button above the terminal. It opens a file pane on the right, beside the terminal, using the same SSH connection (SFTP), so there is no second sign-in.
 

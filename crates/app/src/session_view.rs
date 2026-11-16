@@ -71,6 +71,29 @@ pub fn view(state: &State) -> Element<'_, Message> {
                 Message::DetailsToggled,
             )
         }
+        Stage::Browsing(browser) => {
+            let summary = if state.username.is_empty() {
+                format!("{}:{}", state.connection.host, state.connection.port)
+            } else {
+                format!(
+                    "{}@{}:{}",
+                    state.username, state.connection.host, state.connection.port
+                )
+            };
+            let pane = container(files_view::view(&browser.files).map(Message::Files))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(theme::GAP)
+                .style(theme::chip);
+            column![
+                pane,
+                text(summary)
+                    .size(theme::TEXT_SMALL)
+                    .style(theme::secondary_text)
+            ]
+            .spacing(6)
+            .into()
+        }
         Stage::Ended(reason) => {
             let reconnect = button(text(fl!("session-reconnect")))
                 .style(theme::primary)

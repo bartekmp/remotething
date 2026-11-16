@@ -448,3 +448,8 @@ fn only_a_selected_file_can_be_previewed() {
     let _ = update(&mut state, Message::PreviewPressed);
     assert!(state.preview.is_none());
 }
+
+#[test]
+fn the_pane_has_a_close_button_unless_it_is_the_whole_tab() {
+    assert!(State::empty().closable);
+}

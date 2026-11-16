@@ -14,8 +14,9 @@ use crate::quality_choice::{self, QualityChoice};
 use crate::theme;
 use crate::tree::{Selection, protocol_label};
 
-const PROTOCOLS: [ProtocolChoice; 3] = [
+const PROTOCOLS: [ProtocolChoice; 4] = [
     ProtocolChoice(Protocol::Ssh),
+    ProtocolChoice(Protocol::Sftp),
     ProtocolChoice(Protocol::Rdp),
     ProtocolChoice(Protocol::Vnc),
 ];
@@ -300,7 +301,7 @@ pub fn view<'a>(
             .on_input(Message::ForwardsChanged),
     ));
     // Folders can set it for the connections inside; a connection only if it is a remote desktop.
-    if !is_connection || draft.protocol != Protocol::Ssh {
+    if !is_connection || draft.protocol.is_desktop() {
         fields = fields.push(labelled(
             fl!("properties-quality"),
             theme::pick(

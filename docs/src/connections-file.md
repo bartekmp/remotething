@@ -64,7 +64,7 @@ With `ask`, nothing is stored and you are prompted on every connect.
 | `id` | yes | Unique among connections |
 | `name` | yes | Label shown in the tree |
 | `parent` | no | Id of the enclosing folder |
-| `protocol` | yes | `ssh`, `rdp` or `vnc` |
+| `protocol` | yes | `ssh`, `sftp`, `rdp` or `vnc` |
 | `host` | yes | Host name or IP address |
 | `icon` | no | Icon shown in the tree; see [Icons](#icons) |
 

@@ -106,6 +106,25 @@ jump = "bastion"               # another connection's id
     }
 
     #[test]
+    fn an_sftp_connection_loads_and_gets_the_ssh_port() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("connections.toml");
+        fs::write(
+            &path,
+            "[[connection]]\nid = \"files\"\nname = \"files\"\nprotocol = \"sftp\"\nhost = \"nas\"\n",
+        )
+        .unwrap();
+
+        let store = Store::load(&path).unwrap();
+        let resolved = store.resolve("files").unwrap();
+
+        assert_eq!(resolved.protocol, Protocol::Sftp);
+        assert_eq!(resolved.port, 22);
+        assert!(resolved.protocol.uses_ssh());
+        assert!(!resolved.protocol.is_desktop());
+    }
+
+    #[test]
     fn the_quality_loads_under_its_new_name_and_is_saved_under_it() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("connections.toml");

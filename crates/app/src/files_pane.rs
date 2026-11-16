@@ -55,6 +55,8 @@ pub struct State {
     pub(crate) preview: Option<Preview>,
     /// The context menu under a row, while it is open.
     pub(crate) menu: Option<Menu>,
+    /// Whether the pane has a close button: not when it is the whole tab.
+    pub(crate) closable: bool,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -165,6 +167,7 @@ impl State {
             uploaded: false,
             preview: None,
             menu: None,
+            closable: true,
             pending_replace: None,
             status: None,
         }

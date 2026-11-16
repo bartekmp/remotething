@@ -58,17 +58,26 @@ pub(super) fn start(
 ) -> Shell {
     let (events_tx, events) = mpsc::channel(QUEUE);
     let (input, input_rx) = mpsc::channel(QUEUE);
-    let connection = Connection(Arc::new(Links {
-        target: session,
-        _tunnel: tunnel,
-        details,
-    }));
+    let connection = connection(session, tunnel, details);
     tokio::spawn(run(connection.clone(), channel, events_tx, input_rx));
     Shell {
         events,
         input,
         connection,
     }
+}
+
+/// A connection with no shell on it.
+pub(super) fn connection(
+    session: client::Handle<Handler>,
+    tunnel: Vec<client::Handle<Handler>>,
+    details: Learned,
+) -> Connection {
+    Connection(Arc::new(Links {
+        target: session,
+        _tunnel: tunnel,
+        details,
+    }))
 }
 
 async fn run(

@@ -350,6 +350,7 @@ fn row_container<'a>(
 pub fn protocol_label(protocol: Protocol) -> String {
     match protocol {
         Protocol::Ssh => fl!("protocol-ssh"),
+        Protocol::Sftp => fl!("protocol-sftp"),
         Protocol::Rdp => fl!("protocol-rdp"),
         Protocol::Vnc => fl!("protocol-vnc"),
     }

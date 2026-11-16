@@ -351,3 +351,20 @@ fn a_session_with_its_file_pane_open_takes_dropped_files() {
 
     assert_eq!(fixture.state.front_with_files(), Some(id));
 }
+
+#[test]
+fn a_file_browser_tab_takes_dropped_files_and_asks_before_it_is_closed() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+    fixture.make_front_live();
+    let front = fixture.state.active;
+    let id = fixture.state.tabs[front].id;
+    let Content::Session(session) = &mut fixture.state.tabs[front].content else {
+        panic!("not a session");
+    };
+    session.browse_for_test();
+
+    assert_eq!(fixture.state.front_with_files(), Some(id));
+
+    fixture.state.close_front();
+    assert!(fixture.state.confirming_close.is_some());
+}

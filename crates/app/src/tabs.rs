@@ -369,7 +369,7 @@ fn start_connection(
 ) -> (String, Content, Task<Message>) {
     let title = connection.name.clone();
     match connection.protocol {
-        Protocol::Ssh => {
+        Protocol::Ssh | Protocol::Sftp => {
             let (session, task) = session::State::start_as(connection, typed_username, context);
             let task = task.map(move |message| Message::Session(id, message));
             (title, Content::Session(Box::new(session)), task)

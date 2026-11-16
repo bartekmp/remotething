@@ -149,6 +149,8 @@ impl DesktopSettings {
 pub enum Protocol {
     /// Terminal over SSH.
     Ssh,
+    /// Files over SSH, with no shell.
+    Sftp,
     /// Windows Remote Desktop.
     Rdp,
     /// VNC remote framebuffer.
@@ -156,10 +158,20 @@ pub enum Protocol {
 }
 
 impl Protocol {
+    /// Whether this is a remote desktop, which has a picture quality setting.
+    pub fn is_desktop(self) -> bool {
+        matches!(self, Protocol::Rdp | Protocol::Vnc)
+    }
+
+    /// Whether the connection is made with SSH, so jump hosts and the SSH sign-in apply.
+    pub fn uses_ssh(self) -> bool {
+        matches!(self, Protocol::Ssh | Protocol::Sftp)
+    }
+
     /// The port used when neither the connection nor its folders set one.
     pub fn default_port(self) -> u16 {
         match self {
-            Protocol::Ssh => 22,
+            Protocol::Ssh | Protocol::Sftp => 22,
             Protocol::Rdp => 3389,
             Protocol::Vnc => 5900,
         }

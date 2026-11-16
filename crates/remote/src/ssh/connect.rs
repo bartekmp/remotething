@@ -12,7 +12,9 @@ use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
 use super::host_key::{Handler, Learned, Refusal};
-use super::{Auth, Challenge, Endpoint, Error, Hop, Prompt, Result, Shell, TerminalSize, shell};
+use super::{
+    Auth, Challenge, Connection, Endpoint, Error, Hop, Prompt, Result, Shell, TerminalSize, shell,
+};
 
 /// For reaching the server, the handshake and the sign-in together.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -49,7 +51,27 @@ pub async fn open_shell_through(
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
-    let attempt = connect(jumps, endpoint, auth, known, size);
+    within_limit(auth, connect(jumps, endpoint, auth, known, size)).await
+}
+
+/// Connects and signs in like [`open_shell_through`], but starts no shell:
+/// the connection is for other channels, such as SFTP. It stays open for as
+/// long as the returned handle, or a copy of it, does.
+pub async fn open_connection_through(
+    jumps: &[Hop],
+    endpoint: &Endpoint,
+    auth: &Auth,
+    known: KnownHosts,
+) -> Result<Connection> {
+    let attempt = async {
+        let (session, tunnel, details) = reach(jumps, endpoint, auth, known).await?;
+        Ok(shell::connection(session, tunnel, details))
+    };
+    within_limit(auth, attempt).await
+}
+
+/// Waits for an attempt, up to the connect time limit.
+async fn within_limit<T>(auth: &Auth, attempt: impl Future<Output = Result<T>>) -> Result<T> {
     // Typing a one-time code takes the user longer than any fixed limit.
     if matches!(auth, Auth::Interactive { .. }) {
         return attempt.await;
@@ -67,6 +89,31 @@ async fn connect(
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
+    let (session, tunnel, details) = reach(jumps, endpoint, auth, known).await?;
+    let channel = session.channel_open_session().await?;
+    let (columns, lines) = (u32::from(size.columns), u32::from(size.lines));
+    channel
+        .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
+        .await?;
+    channel.request_shell(false).await?;
+
+    Ok(shell::start(session, tunnel, channel, details))
+}
+
+/// The signed-in connection to the target, with those to the jump hosts under it
+/// and what was learned about the server.
+type SignedIn = (
+    client::Handle<Handler>,
+    Vec<client::Handle<Handler>>,
+    Learned,
+);
+
+async fn reach(
+    jumps: &[Hop],
+    endpoint: &Endpoint,
+    auth: &Auth,
+    known: KnownHosts,
+) -> Result<SignedIn> {
     let tunnel = connect_hops(jumps, &known).await?;
     let details = Learned::default();
     let session = establish(tunnel.last(), endpoint, auth, known, Arc::clone(&details))
@@ -77,15 +124,7 @@ async fn connect(
             },
             (_, error) => error,
         })?;
-
-    let channel = session.channel_open_session().await?;
-    let (columns, lines) = (u32::from(size.columns), u32::from(size.lines));
-    channel
-        .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
-        .await?;
-    channel.request_shell(false).await?;
-
-    Ok(shell::start(session, tunnel, channel, details))
+    Ok((session, tunnel, details))
 }
 
 /// Connects to each of `hops` in turn, the first directly and every next one

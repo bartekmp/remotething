@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.38.0 - 2026-11-16
+
+- New protocol SFTP: a connection that opens only the file browser, with no shell. It signs in like SSH, jump hosts included.
+
 ## 0.37.1 - 2026-11-16
 
 - Internal: the file pane works through a backend interface, ready for FTP.

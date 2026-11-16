@@ -421,6 +421,11 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             task.map(Message::Files)
         }
         Message::Files(message) => {
+            if let Stage::Browsing(browser) = &mut state.stage {
+                return files_pane::update(&mut browser.files, message)
+                    .0
+                    .map(Message::Files);
+            }
             let Stage::Connected(live) = &mut state.stage else {
                 return Task::none();
             };

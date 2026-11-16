@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use remotething_files::{EntryKind, RemoteFs, SftpFs, join};
-use remotething_remote::ssh::{Auth, Endpoint, Error, TerminalSize, open_shell};
+use remotething_remote::ssh::{Auth, Endpoint, Error, open_connection_through};
 use remotething_secrets::KnownHosts;
 
 fn setting(name: &str) -> String {
@@ -26,22 +26,22 @@ async fn connect(directory: &std::path::Path) -> SftpFs {
         path: PathBuf::from(setting("RT_SFTP_KEY")),
         passphrase: None,
     };
-    let size = TerminalSize {
-        columns: 80,
-        lines: 24,
-    };
     // Trust the test server's key the way the app does after the user agrees.
     let mut known = KnownHosts::load(&directory.join("known_hosts.toml")).unwrap();
-    let Err(Error::UnknownHostKey(key)) = open_shell(&endpoint, &auth, known.clone(), size).await
+    let Err(Error::UnknownHostKey(key)) =
+        open_connection_through(&[], &endpoint, &auth, known.clone()).await
     else {
         panic!("the first contact should stop at the host key");
     };
     known
         .trust(&endpoint.host, endpoint.port, &key.key)
         .unwrap();
-    let shell = open_shell(&endpoint, &auth, known, size).await.unwrap();
+    // No shell is started: the connection only carries the file service.
+    let connection = open_connection_through(&[], &endpoint, &auth, known)
+        .await
+        .unwrap();
 
-    SftpFs::open(&shell.connection).await.unwrap()
+    SftpFs::open(&connection).await.unwrap()
 }
 
 #[tokio::test]

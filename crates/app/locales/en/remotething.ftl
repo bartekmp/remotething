@@ -6,6 +6,7 @@ tabs-empty = Double-click a connection to open it, or press Ctrl+Shift+T for rec
 
 
 protocol-ssh = SSH
+protocol-sftp = SFTP
 protocol-rdp = RDP
 protocol-vnc = VNC
 

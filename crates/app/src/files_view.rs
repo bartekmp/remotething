@@ -17,16 +17,20 @@ const INDENT: f32 = 14.0;
 const ARROW_WIDTH: f32 = 14.0;
 
 pub fn view(state: &State) -> Element<'_, Message> {
-    let header = row![
+    let mut header = row![
         text(fl!("files-title"))
             .size(theme::TEXT_TITLE)
             .width(Length::Fill),
-        button(icons::view(icons::CLOSE, theme::TEXT_BODY))
-            .padding(6)
-            .style(theme::entry(false))
-            .on_press(Message::ClosePressed),
     ]
     .align_y(Vertical::Center);
+    if state.closable {
+        header = header.push(
+            button(icons::view(icons::CLOSE, theme::TEXT_BODY))
+                .padding(6)
+                .style(theme::entry(false))
+                .on_press(Message::ClosePressed),
+        );
+    }
     let path = text(state.root.as_str())
         .font(Font::MONOSPACE)
         .size(theme::TEXT_SMALL)

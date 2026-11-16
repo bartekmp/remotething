@@ -8,11 +8,11 @@ use iced::Task;
 use iced::futures::stream;
 use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
-use remotething_core::{CredentialKind, ResolvedConnection, Store};
+use remotething_core::{CredentialKind, Protocol, ResolvedConnection, Store};
 #[cfg(test)]
 use remotething_remote::ssh::ShellInput;
 use remotething_remote::ssh::{
-    self, Auth, Endpoint, Hop, HostKey, Shell, ShellEvent, TerminalSize,
+    self, Auth, Connection, Endpoint, Hop, HostKey, Shell, ShellEvent, TerminalSize,
 };
 use remotething_secrets::{KnownHosts, Secret, SecretStore};
 
@@ -78,20 +78,33 @@ pub(crate) enum Stage {
         changed: bool,
     },
     Connected(Box<Live>),
+    /// Signed in on a files-only connection: the file browser fills the tab.
+    Browsing(Box<Browser>),
     /// Closed or failed, with the reason shown.
     Ended(String),
 }
 
+/// A files-only connection that is signed in.
+pub(crate) struct Browser {
+    pub(crate) files: files_pane::State,
+    /// Keeps the SSH connection open for as long as the tab is. `None` only in tests.
+    _connection: Option<Connection>,
+}
+
 /// The sign-in form of the asking stage.
 impl State {
-    /// Whether a shell is running, so closing the tab would cut it.
+    /// Whether a shell or a file browser is running, so closing the tab would cut it.
     pub(crate) fn is_connected(&self) -> bool {
-        matches!(self.stage, Stage::Connected(_))
+        matches!(self.stage, Stage::Connected(_) | Stage::Browsing(_))
     }
 
-    /// Whether the file pane is open on a connected shell.
+    /// Whether the file pane is open, or is the whole tab.
     pub(crate) fn has_files_open(&self) -> bool {
-        matches!(&self.stage, Stage::Connected(live) if live.files.is_some())
+        match &self.stage {
+            Stage::Connected(live) => live.files.is_some(),
+            Stage::Browsing(_) => true,
+            _ => false,
+        }
     }
 
     /// Puts the session into the connected stage without a server.
@@ -100,6 +113,17 @@ impl State {
         let (input, typed) = tokio::sync::mpsc::channel(4);
         self.stage = Stage::Connected(Box::new(Live::new(input, None, &self.connection.name)));
         typed
+    }
+
+    /// Puts the session into the file browser stage without a server.
+    #[cfg(test)]
+    pub(crate) fn browse_for_test(&mut self) {
+        let mut files = files_pane::State::empty();
+        files.closable = false;
+        self.stage = Stage::Browsing(Box::new(Browser {
+            files,
+            _connection: None,
+        }));
     }
 
     /// Opens an empty file pane on a connected session, without a server.
@@ -135,9 +159,15 @@ impl std::fmt::Debug for Sealed {
     }
 }
 
-/// A freshly opened shell on its way to the window. It is taken out once.
+/// What a connection started: a shell, or for a files-only connection just the SSH connection.
+pub(crate) enum Started {
+    Shell(Shell),
+    Files(Connection),
+}
+
+/// A freshly opened connection on its way to the window. It is taken out once.
 #[derive(Clone)]
-pub struct Opened(Arc<Mutex<Option<Shell>>>);
+pub struct Opened(Arc<Mutex<Option<Started>>>);
 
 impl std::fmt::Debug for Opened {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -386,14 +416,22 @@ impl State {
         };
         let known = context.known_hosts.clone();
         let hops: Vec<Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
+        let files_only = self.connection.protocol == Protocol::Sftp;
 
         self.stage = Stage::Connecting;
         let open = Task::perform(
             async move {
-                let shell =
-                    ssh::open_shell_through(&hops, &endpoint, &auth, known, INITIAL_SIZE).await;
-                match shell {
-                    Ok(shell) => Ok(Opened(Arc::new(Mutex::new(Some(shell))))),
+                let started = if files_only {
+                    ssh::open_connection_through(&hops, &endpoint, &auth, known)
+                        .await
+                        .map(Started::Files)
+                } else {
+                    ssh::open_shell_through(&hops, &endpoint, &auth, known, INITIAL_SIZE)
+                        .await
+                        .map(Started::Shell)
+                };
+                match started {
+                    Ok(started) => Ok(Opened(Arc::new(Mutex::new(Some(started))))),
                     Err(error) => Err(Failure::from(error)),
                 }
             },
@@ -406,9 +444,11 @@ impl State {
     }
 
     pub(crate) fn go_live(&mut self, opened: Opened) -> Task<Message> {
-        let shell = opened.0.lock().ok().and_then(|mut shell| shell.take());
-        let Some(shell) = shell else {
-            return Task::none();
+        let started = opened.0.lock().ok().and_then(|mut started| started.take());
+        let shell = match started {
+            Some(Started::Shell(shell)) => shell,
+            Some(Started::Files(connection)) => return self.browse(connection),
+            None => return Task::none(),
         };
         let connection = shell.connection.clone();
         let live = Live::new(shell.input, Some(shell.connection), &self.connection.name);
@@ -425,6 +465,18 @@ impl State {
             forwards,
             crate::session_update::next_tick(),
         ])
+    }
+
+    /// Shows the files of the server as the whole tab; there is no shell.
+    fn browse(&mut self, connection: Connection) -> Task<Message> {
+        let (mut pane, task) = files_pane::State::open(connection.clone());
+        // The tab is the browser: there is nothing behind the pane to go back to.
+        pane.closable = false;
+        self.stage = Stage::Browsing(Box::new(Browser {
+            files: pane,
+            _connection: Some(connection),
+        }));
+        task.map(Message::Files)
     }
 
     /// A key press for the terminal. Ctrl+Shift+V pastes.
