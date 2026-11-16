@@ -84,11 +84,11 @@ Rates update once per second. The same strip is used by [Remote Desktop](rdp.md)
 
 ## WSL distributions (Windows)
 
-On Windows, **Settings → Import and export → Import from WSL** lists the WSL distributions that are running, with their address and user, and adds the ticked ones as SSH connections in a folder called **WSL**. Docker Desktop's own distributions are left out.
+A connection with the protocol **WSL** opens a terminal in a WSL distribution the way Windows Terminal does: it runs `wsl.exe -d NAME` in a local terminal. There is no address and no SSH server involved, so it works with any distribution, and a stopped one starts when you connect. The host of the connection is the distribution's name. Typing `wsl://Ubuntu-24.04` in the new-tab box opens one too.
 
-- A distribution needs an SSH server. If nothing answers on port 22, the list says so and shows what to run inside it: `sudo apt install openssh-server && sudo service ssh start`.
-- A distribution gets a **new address each time it starts**. Import again to update the saved ones: connections with the same name in the WSL folder only get the new address, nothing else of them is touched.
-- The user a shell starts as becomes a credential that asks for the password. Root is not offered; passwords are never read or imported.
+**Settings → Import and export → Import from WSL** lists the installed distributions, marked running or stopped, and adds the ticked ones in a folder called **WSL**. Docker Desktop's own distributions are left out, and importing again adds only what is new.
+
+A WSL tab is a terminal like an SSH one: search, recording, screenshots and copy and paste work. It has no **Browse files** button and no port forwards, because there is no server behind it.
 
 ## Files only (SFTP)
 

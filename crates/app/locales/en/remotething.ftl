@@ -354,11 +354,18 @@ settings-tab-features = Optional features
 settings-tab-about = About
 settings-import-wsl = Import from WSL
 wsl-title = Import from WSL
-wsl-explain = The WSL distributions that are running. Tick the ones to add; they go in a folder called WSL as SSH connections. A distribution gets a new address each time it starts, so import again to update the saved ones. Passwords are never imported.
-wsl-looking = Looking for running distributions…
+wsl-explain = The WSL distributions installed on this computer. Tick the ones to add; they go in a folder called WSL. A connection opens a terminal in the distribution the way Windows Terminal does, so it needs no address and no SSH server, and a stopped distribution starts when you connect. Nothing is imported twice.
+wsl-looking = Looking for WSL distributions…
 wsl-refresh = Look again
-wsl-none = No running WSL distributions were found. Start one and press Look again.
+wsl-none = No WSL distributions are installed.
 wsl-import = Import { $count } distributions
-wsl-done = Added { $added }, updated the address of { $updated }.
+wsl-done = { $added ->
+    [one] Added 1 distribution
+   *[other] Added { $added } distributions
+}, { $existing } already there.
 wsl-windows-only = WSL exists only on Windows.
 wsl-not-installed = Could not run wsl.exe. Is WSL installed?
+wsl-running = running
+wsl-stopped = stopped
+protocol-wsl = WSL
+wsl-details-distribution = Distribution

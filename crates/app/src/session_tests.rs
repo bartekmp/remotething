@@ -870,3 +870,82 @@ fn a_saved_screenshot_is_announced_in_a_note() {
         .unwrap();
     assert!(note.contains("web-20260101-000000.txt"), "{note}");
 }
+
+fn wsl_connection() -> ResolvedConnection {
+    ResolvedConnection {
+        id: "ubuntu".to_string(),
+        name: "Ubuntu".to_string(),
+        protocol: Protocol::Wsl,
+        host: "Ubuntu".to_string(),
+        port: 0,
+        credential: None,
+        jump: None,
+        forwards: Vec::new(),
+        desktop_quality: Quality::Balanced,
+    }
+}
+
+#[test]
+fn a_wsl_connection_goes_straight_to_connecting_without_signing_in() {
+    let mut fixture = Fixture::new();
+
+    let (state, _task) = State::start(wsl_connection(), &fixture.context());
+
+    // No sign-in form, no secret to load, no jump hosts to plan.
+    assert!(matches!(state.stage, Stage::Connecting));
+}
+
+#[test]
+fn a_wsl_terminal_that_cannot_be_started_ends_with_the_reason() {
+    let mut fixture = Fixture::new();
+    let (mut state, _task) = State::start(wsl_connection(), &fixture.context());
+
+    fixture.send(
+        &mut state,
+        Message::Opened(Err(Failure::Other(
+            "WSL exists only on Windows.".to_string(),
+        ))),
+    );
+
+    assert!(matches!(&state.stage, Stage::Ended(reason) if reason.contains("only on Windows")));
+}
+
+#[tokio::test]
+async fn a_local_terminal_becomes_a_live_session_without_an_ssh_connection() {
+    let mut fixture = Fixture::new();
+    let (mut state, _task) = State::start(wsl_connection(), &fixture.context());
+    let local = remotething_remote::local::open(
+        "/bin/sh",
+        &["-c".to_string(), "sleep 5".to_string()],
+        INITIAL_SIZE,
+    )
+    .unwrap();
+    let opened = Opened(Arc::new(Mutex::new(Some(Started::Local(local)))));
+
+    fixture.send(&mut state, Message::Opened(Ok(opened)));
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    assert!(
+        live.connection.is_none(),
+        "no server behind it, so no file pane"
+    );
+    assert!(!state.has_files_open());
+}
+
+#[test]
+fn a_wsl_terminal_names_the_distribution_in_the_strip() {
+    let mut fixture = Fixture::new();
+    let (mut state, _task) = State::start(wsl_connection(), &fixture.context());
+    let _input = state.connect_for_test();
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+
+    let bar = crate::session_strip::bar(&state, live);
+
+    assert_eq!(bar.summary, "WSL · Ubuntu");
+    assert!(bar.details.iter().any(|(_, value)| value == "WSL"));
+    assert!(!bar.details.iter().any(|(_, value)| value.contains("ssh")));
+}

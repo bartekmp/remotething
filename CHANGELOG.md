@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.45.0 - 2026-11-16
+
+- Windows: WSL distributions open as local terminals, as in Windows Terminal (`wsl.exe -d NAME`), with no addresses and no SSH server. The WSL import now lists every installed distribution and adds them as WSL connections. This replaces the address-based import of 0.44.0.
+
 ## 0.44.0 - 2026-11-16
 
 - Windows: Settings → Import and export → Import from WSL finds the running WSL distributions and adds them as SSH connections in a WSL folder. Importing again updates their addresses.

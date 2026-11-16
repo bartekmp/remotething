@@ -105,7 +105,7 @@ pub fn for_connection(chosen: Option<&str>, protocol: Protocol) -> Icon {
         return icon;
     }
     let default = match protocol {
-        Protocol::Ssh => "terminal",
+        Protocol::Ssh | Protocol::Wsl => "terminal",
         Protocol::Sftp | Protocol::Ftp | Protocol::Ftps => "folder",
         Protocol::Rdp | Protocol::Vnc => "monitor",
     };

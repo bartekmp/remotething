@@ -56,7 +56,7 @@ impl State {
         self.error = None;
         Task::perform(
             async {
-                tokio::task::spawn_blocking(wsl_source::running_distributions)
+                tokio::task::spawn_blocking(wsl_source::installed_distributions)
                     .await
                     .map_err(|error| error.to_string())
                     .and_then(|found| found)
@@ -149,26 +149,18 @@ fn found_list<'a>(state: &'a State, plan: &'a WslPlan) -> Element<'a, Message> {
         list = list.push(text(fl!("wsl-none")).style(theme::secondary_text));
     }
     for distro in &plan.connections {
-        let target = match &distro.user {
-            Some(user) => format!("{user}@{}", distro.address),
-            None => distro.address.clone(),
-        };
         let name = distro.name.clone();
-        let label = format!("{}  ({target})", distro.name);
-        let mut entry = column![
+        let state_label = if distro.running {
+            fl!("wsl-running")
+        } else {
+            fl!("wsl-stopped")
+        };
+        let label = format!("{}  ({state_label})", distro.name);
+        list = list.push(
             checkbox(state.chosen.contains(&distro.name))
                 .label(label)
-                .on_toggle(move |on| Message::Toggled(name.clone(), on))
-        ]
-        .spacing(2);
-        for note in &distro.notes {
-            entry = entry.push(
-                text(format!("  {note}"))
-                    .size(theme::TEXT_SMALL)
-                    .style(theme::secondary_text),
-            );
-        }
-        list = list.push(entry);
+                .on_toggle(move |on| Message::Toggled(name.clone(), on)),
+        );
     }
     if !plan.skipped.is_empty() {
         list = list.push(text(fl!("putty-skipped")).size(theme::TEXT_SMALL));

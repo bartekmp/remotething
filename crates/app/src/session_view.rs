@@ -49,13 +49,15 @@ pub fn view(state: &State) -> Element<'_, Message> {
                         .style(theme::chip);
                     row![terminal, pane].spacing(theme::GAP).into()
                 }
-                None => {
+                None if live.connection.is_some() => {
                     let browse = button(text(fl!("files-browse")).size(theme::TEXT_SMALL))
                         .style(theme::pill)
                         .on_press(Message::BrowseFilesPressed);
                     let toolbar = container(browse).align_right(Length::Fill);
                     column![toolbar, terminal].spacing(6).into()
                 }
+                // A terminal on this machine has no server to browse the files of.
+                None => terminal,
             };
             let mut layers = column![].spacing(6);
             if let Some(bar) = live.forwards.view() {

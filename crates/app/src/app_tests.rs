@@ -561,9 +561,7 @@ fn importing_wsl_distributions_adds_them_to_a_wsl_folder_and_saves() {
     let mut state = state(&directory, ONE_CONNECTION);
     let plan = remotething_core::plan_wsl(&[remotething_core::WslDistro {
         name: "Ubuntu".to_string(),
-        address: Some("172.28.0.5".to_string()),
-        user: Some("bartek".to_string()),
-        ssh_answers: Some(true),
+        running: true,
     }]);
 
     state.apply_wsl(&plan, &["Ubuntu".to_string()]);
@@ -574,7 +572,8 @@ fn importing_wsl_distributions_adds_them_to_a_wsl_folder_and_saves() {
         .iter()
         .find(|c| c.name == "Ubuntu")
         .unwrap();
-    assert_eq!(added.host, "172.28.0.5");
+    assert_eq!(added.host, "Ubuntu");
+    assert_eq!(added.protocol, remotething_core::Protocol::Wsl);
     assert!(saved.folders.iter().any(|folder| folder.name == "WSL"));
     assert_eq!(state.centre, Centre::Sessions);
     assert!(state.notice.is_some());

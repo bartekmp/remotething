@@ -34,7 +34,7 @@ pub use putty::{
 pub use quick::{QuickTarget, parse_quick};
 pub use wsl::{
     PlannedWsl, WslDistro, WslImported, WslPlan, WslRunner, WslSkipped, decode_wsl_output,
-    discover as discover_wsl, first_ipv4, parse_running, parse_user, plan_wsl,
+    discover as discover_wsl, parse_names, plan_wsl,
 };
 
 /// The result type used across this crate.

@@ -9,13 +9,17 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["ssh"]
+default = ["ssh", "local"]
 ssh = ["dep:russh", "dep:tokio"]
+# A program on this machine in a pseudo-terminal. It speaks the same events as SSH.
+local = ["ssh", "dep:portable-pty"]
 
 [dependencies]
 remotething-secrets = { path = "../secrets" }
 # `ring` instead of the default `aws-lc-rs` backend, which needs cmake.
 russh = { version = "0.65", default-features = false, features = ["ring", "flate2", "rsa"], optional = true }
+# A pseudo-terminal that works on Linux, macOS and Windows (ConPTY).
+portable-pty = { version = "0.9", optional = true }
 thiserror = "2"
 tokio = { version = "1", features = ["net", "rt", "sync", "time", "macros", "io-util"], optional = true }
 

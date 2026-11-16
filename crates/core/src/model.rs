@@ -155,6 +155,8 @@ pub enum Protocol {
     Ftp,
     /// Files over FTP with explicit TLS.
     Ftps,
+    /// A WSL distribution on this Windows machine, in a local terminal. The host is its name.
+    Wsl,
     /// Windows Remote Desktop.
     Rdp,
     /// VNC remote framebuffer.
@@ -182,6 +184,8 @@ impl Protocol {
         match self {
             Protocol::Ssh | Protocol::Sftp => 22,
             Protocol::Ftp | Protocol::Ftps => 21,
+            // A distribution is reached through wsl.exe, not over the network.
+            Protocol::Wsl => 0,
             Protocol::Rdp => 3389,
             Protocol::Vnc => 5900,
         }

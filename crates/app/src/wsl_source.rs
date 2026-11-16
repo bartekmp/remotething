@@ -1,31 +1,42 @@
-//! Finding the running WSL distributions. Only Windows has WSL; elsewhere there is nothing to find.
+//! Finding the installed WSL distributions and the command that opens a terminal in one.
+//! Only Windows has WSL; elsewhere there is nothing to find.
 
 use remotething_core::WslDistro;
 
 use crate::i18n::fl;
 
-/// The running distributions, with their addresses and users. Runs `wsl.exe`, which can take
-/// a few seconds, so this is not for the window's thread.
-pub fn running_distributions() -> Result<Vec<WslDistro>, String> {
-    running_distributions_impl()
+/// The installed distributions, and which run. Runs `wsl.exe`, which can take a few
+/// seconds, so this is not for the window's thread.
+pub fn installed_distributions() -> Result<Vec<WslDistro>, String> {
+    installed_distributions_impl()
+}
+
+/// The program and arguments that open a terminal in `distribution`, the way Windows
+/// Terminal does: `wsl.exe -d NAME`. A distribution that is not running starts.
+pub fn terminal_command(distribution: &str) -> Result<(String, Vec<String>), String> {
+    if !cfg!(windows) {
+        return Err(fl!("wsl-windows-only"));
+    }
+    Ok((
+        "wsl.exe".to_string(),
+        vec!["-d".to_string(), distribution.to_string()],
+    ))
 }
 
 #[cfg(not(windows))]
-fn running_distributions_impl() -> Result<Vec<WslDistro>, String> {
+fn installed_distributions_impl() -> Result<Vec<WslDistro>, String> {
     Err(fl!("wsl-windows-only"))
 }
 
 #[cfg(windows)]
-fn running_distributions_impl() -> Result<Vec<WslDistro>, String> {
+fn installed_distributions_impl() -> Result<Vec<WslDistro>, String> {
     remotething_core::discover_wsl(&mut windows::Wsl)
 }
 
 #[cfg(windows)]
 mod windows {
-    use std::net::{SocketAddr, TcpStream};
     use std::os::windows::process::CommandExt;
     use std::process::Command;
-    use std::time::Duration;
 
     use remotething_core::{WslRunner, decode_wsl_output};
 
@@ -33,8 +44,6 @@ mod windows {
 
     /// Keeps a console window from flashing up for every command.
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    /// How long a port gets to answer.
-    const SSH_WAIT: Duration = Duration::from_millis(700);
 
     pub(super) struct Wsl;
 
@@ -48,20 +57,13 @@ mod windows {
             if output.status.success() {
                 return Ok(output.stdout);
             }
-            // What wsl.exe says, such as that no distribution is running, is the reason.
+            // What wsl.exe says is the reason.
             let said = if output.stdout.is_empty() {
                 output.stderr
             } else {
                 output.stdout
             };
             Err(decode_wsl_output(&said).trim().to_string())
-        }
-
-        fn ssh_answers(&mut self, address: &str) -> bool {
-            let Ok(address) = format!("{address}:22").parse::<SocketAddr>() else {
-                return false;
-            };
-            TcpStream::connect_timeout(&address, SSH_WAIT).is_ok()
         }
     }
 }

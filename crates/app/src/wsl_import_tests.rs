@@ -2,21 +2,19 @@
 
 use super::*;
 
-fn distro(name: &str, address: Option<&str>) -> WslDistro {
+fn distro(name: &str, running: bool) -> WslDistro {
     WslDistro {
         name: name.to_string(),
-        address: address.map(str::to_string),
-        user: Some("bartek".to_string()),
-        ssh_answers: Some(true),
+        running,
     }
 }
 
 fn found() -> State {
     let mut state = State::default();
     let distros = vec![
-        distro("Ubuntu", Some("172.28.0.5")),
-        distro("Debian", Some("172.28.0.9")),
-        distro("docker-desktop", None),
+        distro("Ubuntu", true),
+        distro("Debian", false),
+        distro("docker-desktop", false),
     ];
     let _ = update(&mut state, Message::Found(Ok(distros)));
     state

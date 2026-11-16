@@ -74,6 +74,7 @@ fn protocol_named(word: &str) -> Option<Protocol> {
     match word.to_ascii_lowercase().as_str() {
         "ssh" => Some(Protocol::Ssh),
         "sftp" => Some(Protocol::Sftp),
+        "wsl" => Some(Protocol::Wsl),
         "ftp" => Some(Protocol::Ftp),
         "ftps" => Some(Protocol::Ftps),
         "rdp" => Some(Protocol::Rdp),

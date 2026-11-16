@@ -1,5 +1,7 @@
 //! The strip under an SSH terminal and the details behind its (i) button.
 
+use remotething_core::Protocol;
+
 use crate::features;
 use crate::i18n::fl;
 use crate::jump;
@@ -11,7 +13,9 @@ use crate::status_bar::Bar;
 
 pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
     let connection = &state.connection;
-    let summary = if state.username.is_empty() {
+    let summary = if connection.protocol == Protocol::Wsl {
+        format!("WSL · {}", connection.host)
+    } else if state.username.is_empty() {
         format!("{}:{}", connection.host, connection.port)
     } else {
         format!("{}@{}:{}", state.username, connection.host, connection.port)
@@ -84,23 +88,35 @@ fn route(state: &State, live: &Live) -> String {
 
 fn details(state: &State, live: &Live) -> Vec<(String, String)> {
     let connection = &state.connection;
-    let mut lines = vec![
-        (fl!("details-protocol"), "SSH".to_string()),
-        (fl!("details-host"), connection.host.clone()),
-        (fl!("details-address"), route(state, live)),
-        (fl!("details-user"), state.username.clone()),
-        (fl!("details-method"), method_label(&state.method)),
-        (fl!("details-server"), live.details.server.clone()),
-        (
-            fl!("details-host-key"),
-            live.details.host_key_algorithm.clone(),
-        ),
-        (fl!("details-fingerprint"), live.details.fingerprint.clone()),
-        (
-            fl!("details-terminal"),
-            format!("{} × {}", live.screen.columns(), live.screen.lines()),
-        ),
-    ];
+    let mut lines = if connection.protocol == Protocol::Wsl {
+        // A terminal on this machine: no address, no server, no key to show.
+        vec![
+            (fl!("details-protocol"), "WSL".to_string()),
+            (fl!("wsl-details-distribution"), connection.host.clone()),
+            (
+                fl!("details-terminal"),
+                format!("{} × {}", live.screen.columns(), live.screen.lines()),
+            ),
+        ]
+    } else {
+        vec![
+            (fl!("details-protocol"), "SSH".to_string()),
+            (fl!("details-host"), connection.host.clone()),
+            (fl!("details-address"), route(state, live)),
+            (fl!("details-user"), state.username.clone()),
+            (fl!("details-method"), method_label(&state.method)),
+            (fl!("details-server"), live.details.server.clone()),
+            (
+                fl!("details-host-key"),
+                live.details.host_key_algorithm.clone(),
+            ),
+            (fl!("details-fingerprint"), live.details.fingerprint.clone()),
+            (
+                fl!("details-terminal"),
+                format!("{} × {}", live.screen.columns(), live.screen.lines()),
+            ),
+        ]
+    };
     let forwards = live.forwards.open_forwards();
     if !forwards.is_empty() {
         lines.push((fl!("details-forwards"), forwards.join(", ")));

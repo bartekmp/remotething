@@ -9,6 +9,7 @@ use iced::futures::stream;
 use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
 use remotething_core::{CredentialKind, Protocol, ResolvedConnection, Store};
+use remotething_remote::local::LocalShell;
 #[cfg(test)]
 use remotething_remote::ssh::ShellInput;
 use remotething_remote::ssh::{
@@ -163,6 +164,8 @@ impl std::fmt::Debug for Sealed {
 pub(crate) enum Started {
     Shell(Shell),
     Files(Connection),
+    /// A program on this machine in a terminal, such as `wsl.exe -d Ubuntu`.
+    Local(LocalShell),
 }
 
 /// A freshly opened connection on its way to the window. It is taken out once.
@@ -278,6 +281,9 @@ impl State {
     /// Starts over: works out the jump hosts first, then how to sign in to the target.
     pub(crate) fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
         self.jumps = Vec::new();
+        if self.connection.protocol == Protocol::Wsl {
+            return self.open_local();
+        }
         let Some(jump) = &self.connection.jump else {
             return self.begin_target(context);
         };
@@ -294,6 +300,26 @@ impl State {
         Task::perform(
             async move { jump::load(planned, secrets).map(SealedJumps) },
             Message::JumpsLoaded,
+        )
+    }
+
+    /// Opens a terminal in a WSL distribution on this machine: no sign-in, no network.
+    fn open_local(&mut self) -> Task<Message> {
+        self.stage = Stage::Connecting;
+        let distribution = self.connection.host.clone();
+        Task::perform(
+            async move {
+                let (program, arguments) =
+                    crate::wsl_source::terminal_command(&distribution).map_err(Failure::Other)?;
+                let opened = tokio::task::spawn_blocking(move || {
+                    remotething_remote::local::open(&program, &arguments, INITIAL_SIZE)
+                })
+                .await
+                .map_err(|error| Failure::Other(error.to_string()))?
+                .map_err(Failure::Other)?;
+                Ok(Opened(Arc::new(Mutex::new(Some(Started::Local(opened))))))
+            },
+            Message::Opened,
         )
     }
 
@@ -448,6 +474,7 @@ impl State {
         let shell = match started {
             Some(Started::Shell(shell)) => shell,
             Some(Started::Files(connection)) => return self.browse(connection),
+            Some(Started::Local(local)) => return self.go_live_local(local),
             None => return Task::none(),
         };
         let connection = shell.connection.clone();
@@ -463,6 +490,21 @@ impl State {
         Task::batch([
             Task::run(events, Message::Shell),
             forwards,
+            crate::session_update::next_tick(),
+        ])
+    }
+
+    /// Shows a terminal that runs on this machine. It has no SSH connection behind it, so no file
+    /// pane and no port forwards.
+    fn go_live_local(&mut self, local: LocalShell) -> Task<Message> {
+        let live = Live::new(local.input, None, &self.connection.name);
+        self.stage = Stage::Connected(Box::new(live));
+        let events = stream::unfold(local.events, |mut events| async move {
+            let event = events.recv().await?;
+            Some((event, events))
+        });
+        Task::batch([
+            Task::run(events, Message::Shell),
             crate::session_update::next_tick(),
         ])
     }

@@ -246,14 +246,17 @@ impl State {
         }
     }
 
-    /// Adds the ticked WSL distributions to the `WSL` folder, or gives the ones already there
-    /// their new address.
+    /// Adds the ticked WSL distributions to the `WSL` folder.
     pub(crate) fn apply_wsl(&mut self, plan: &remotething_core::WslPlan, names: &[String]) {
         let mut updated = self.store.clone();
         match updated.import_wsl(plan, names) {
             Ok(done) => {
                 if self.commit(updated) {
-                    self.notice = Some(fl!("wsl-done", added = done.added, updated = done.updated));
+                    self.notice = Some(fl!(
+                        "wsl-done",
+                        added = done.added,
+                        existing = done.already_there
+                    ));
                     self.centre = crate::app::Centre::Sessions;
                 }
             }
