@@ -11,6 +11,7 @@ use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
 use crate::file_preview::Content;
+use crate::files_menu::{self, Action, Menu};
 use crate::files_preview::{self, Preview};
 use crate::files_queueing::{
     check_upload, download_folder, refresh, start_download, start_ready, start_upload,
@@ -52,6 +53,8 @@ pub struct State {
     pub(crate) uploaded: bool,
     /// The file being previewed, which then takes the place of the tree.
     pub(crate) preview: Option<Preview>,
+    /// The context menu under a row, while it is open.
+    pub(crate) menu: Option<Menu>,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -95,6 +98,15 @@ pub enum Message {
     ReplaceCancelled,
     DownloadPressed,
     UploadFolderPressed,
+    /// A right-click on a row: its path and kind.
+    MenuOpened(String, EntryKind),
+    MenuChosen(Action),
+    MenuTyped(String),
+    /// Enter, or the confirm button of the menu.
+    MenuSubmitted,
+    MenuDismissed,
+    /// A rename, new folder or delete ended: the folder to read again, or the reason it failed.
+    OperationDone(Result<String, String>),
     PreviewPressed,
     /// The previewed file, fetched: its path and what it turned into.
     Previewed(String, Result<Content, String>),
@@ -154,6 +166,7 @@ impl State {
             queue: Queue::default(),
             uploaded: false,
             preview: None,
+            menu: None,
             pending_replace: None,
             status: None,
         }
@@ -178,69 +191,6 @@ impl State {
             |(folder, listed)| Message::Listed(folder, listed),
         )
     }
-
-    /// The tree as the lines to draw: the root's contents, and under each
-    /// unfolded folder its own.
-    pub fn rows(&self) -> Vec<Row> {
-        let mut rows = Vec::new();
-        self.push_rows(&self.root, 0, &mut rows);
-        rows
-    }
-
-    pub(crate) fn push_rows(&self, folder: &str, depth: usize, rows: &mut Vec<Row>) {
-        let Some(Listing::Loaded(entries)) = self.listings.get(folder) else {
-            return;
-        };
-        for entry in entries {
-            let path = remotething_files::join(folder, &entry.name);
-            let is_open = entry.kind == EntryKind::Folder && self.expanded.contains(&path);
-            rows.push(Row {
-                depth,
-                path: path.clone(),
-                entry: entry.clone(),
-            });
-            if is_open {
-                self.push_rows(&path, depth + 1, rows);
-            }
-        }
-    }
-
-    /// Where an upload goes: into the selected folder, beside the selected
-    /// file, or into the root when nothing is selected.
-    pub(crate) fn upload_folder(&self) -> String {
-        match &self.selected {
-            Some((path, EntryKind::Folder)) => path.clone(),
-            Some((path, _)) => remotething_files::parent(path).unwrap_or_else(|| self.root.clone()),
-            None => self.root.clone(),
-        }
-    }
-
-    /// The remote path an upload of `local` would write to.
-    pub(crate) fn upload_target(&self, local: &std::path::Path) -> Option<String> {
-        let name = local.file_name()?.to_string_lossy();
-        Some(remotething_files::join(&self.upload_folder(), &name))
-    }
-
-    /// The selected folder, if a folder is selected.
-    pub(crate) fn selected_folder(&self) -> Option<&str> {
-        match &self.selected {
-            Some((path, EntryKind::Folder)) => Some(path),
-            _ => None,
-        }
-    }
-
-    /// Whether something is selected that can be downloaded: a file or a folder.
-    pub(crate) fn can_download(&self) -> bool {
-        self.selected_file().is_some() || self.selected_folder().is_some()
-    }
-
-    /// The selected path, when it is something that can be downloaded.
-    pub(crate) fn selected_file(&self) -> Option<&str> {
-        match &self.selected {
-            Some((path, EntryKind::File | EntryKind::Link)) => Some(path),
-            _ => None,
-        }
-    }
 }
 
 pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Event>) {
@@ -264,6 +214,7 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             Task::none()
         }
         Message::FolderToggled(path) => {
+            state.menu = None;
             state.selected = Some((path.clone(), EntryKind::Folder));
             if state.expanded.remove(&path) {
                 Task::none()
@@ -276,18 +227,23 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             }
         }
         Message::Selected(path, kind) => {
+            state.menu = None;
             state.selected = Some((path, kind));
             Task::none()
         }
         Message::UpPressed => match remotething_files::parent(&state.root) {
             Some(parent) => {
+                state.menu = None;
                 state.root = parent.clone();
                 state.selected = None;
                 state.list(&parent)
             }
             None => Task::none(),
         },
-        Message::RefreshPressed => refresh(state),
+        Message::RefreshPressed => {
+            state.menu = None;
+            refresh(state)
+        }
         Message::UploadPressed => Task::perform(
             file_dialog::open_any(fl!("files-upload")),
             Message::UploadPicked,
@@ -324,6 +280,21 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             ),
             (None, None) => Task::none(),
         },
+        Message::MenuOpened(path, kind) => {
+            files_menu::open(state, path, kind);
+            Task::none()
+        }
+        Message::MenuChosen(action) => files_menu::choose(state, action),
+        Message::MenuTyped(text) => {
+            files_menu::typed(state, text);
+            Task::none()
+        }
+        Message::MenuSubmitted => files_menu::submit(state),
+        Message::MenuDismissed => {
+            state.menu = None;
+            Task::none()
+        }
+        Message::OperationDone(result) => files_menu::done(state, result),
         Message::PreviewPressed => files_preview::open(state),
         Message::Previewed(path, result) => {
             files_preview::arrived(state, &path, result);

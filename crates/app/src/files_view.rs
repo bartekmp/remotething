@@ -5,6 +5,7 @@ use iced::widget::{button, column, container, mouse_area, row, scrollable, space
 use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
+use crate::files_menu_view;
 use crate::files_pane::{Listing, Message, Row, State, Status, format_size};
 use crate::files_preview_view;
 use crate::files_transfers_view;
@@ -136,17 +137,29 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
         );
     }
 
+    let kind = tree_row.entry.kind;
+    let menu_here = state
+        .menu
+        .as_ref()
+        .filter(|menu| menu.path == tree_row.path);
+    let right_press = Message::MenuOpened(tree_row.path.clone(), kind);
     let on_press = if is_folder {
         Message::FolderToggled(tree_row.path)
     } else {
-        Message::Selected(tree_row.path, tree_row.entry.kind)
+        Message::Selected(tree_row.path, kind)
     };
     let line = container(line)
         .padding([5, 8])
         .width(Length::Fill)
         .clip(true)
         .style(theme::list_row(is_selected));
-    mouse_area(line).on_press(on_press).into()
+    let line = mouse_area(line)
+        .on_press(on_press)
+        .on_right_press(right_press);
+    match menu_here {
+        Some(menu) => column![line, files_menu_view::view(menu)].into(),
+        None => line.into(),
+    }
 }
 
 /// The last problem, if there is one.

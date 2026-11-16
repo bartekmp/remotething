@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.36.0 - 2026-11-16
+
+- File pane: a right-click menu on rows with rename, delete (asks first), new folder, copy path, preview and download.
+
 ## 0.35.0 - 2026-11-16
 
 - File pane: preview a remote text file or picture without downloading it.

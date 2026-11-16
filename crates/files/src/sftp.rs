@@ -77,6 +77,38 @@ impl SftpFs {
             .map_err(|error| remote("cannot look at", path, error))
     }
 
+    /// Makes one new remote folder. It fails when the path is already taken.
+    pub async fn create_folder(&self, path: &str) -> Result<()> {
+        self.session
+            .create_dir(path)
+            .await
+            .map_err(|error| remote("cannot create", path, error))
+    }
+
+    /// Gives a remote file or folder a new path. It fails when the new path is already taken.
+    pub async fn rename(&self, from: &str, to: &str) -> Result<()> {
+        self.session
+            .rename(from, to)
+            .await
+            .map_err(|error| remote("cannot rename", from, error))
+    }
+
+    /// Deletes a remote file.
+    pub async fn remove_file(&self, path: &str) -> Result<()> {
+        self.session
+            .remove_file(path)
+            .await
+            .map_err(|error| remote("cannot delete", path, error))
+    }
+
+    /// Deletes a remote folder. It fails when the folder is not empty.
+    pub async fn remove_folder(&self, path: &str) -> Result<()> {
+        self.session
+            .remove_dir(path)
+            .await
+            .map_err(|error| remote("cannot delete", path, error))
+    }
+
     /// Copies a remote file to a local one, replacing it. Returns the bytes copied.
     pub async fn download(&self, remote_file: &str, local_file: &Path) -> Result<u64> {
         let mut source = self

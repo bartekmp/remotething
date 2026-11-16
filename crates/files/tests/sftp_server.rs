@@ -189,3 +189,48 @@ async fn the_start_of_a_file_is_read_into_memory_and_a_longer_file_is_cut() {
     let (all, longer) = files.read_start(&remote, 100).await.unwrap();
     assert_eq!((all.len(), longer), (10, false));
 }
+
+#[tokio::test]
+#[ignore = "needs an SSH server; see the top of this file"]
+async fn files_and_folders_are_made_renamed_and_deleted_and_nothing_is_overwritten() {
+    let directory = tempfile::tempdir().unwrap();
+    let files = connect(directory.path()).await;
+    let home = files.home().await.unwrap();
+    let top = join(&home, "remotething-test-ops");
+    let local = directory.path().join("f.txt");
+    std::fs::write(&local, "x").unwrap();
+
+    files.create_folder(&top).await.unwrap();
+    assert!(
+        files.create_folder(&top).await.is_err(),
+        "a taken path is refused"
+    );
+
+    let first = join(&top, "first.txt");
+    let second = join(&top, "second.txt");
+    files
+        .upload_tracked(&local, &first, false, |_| {})
+        .await
+        .unwrap();
+    files
+        .upload_tracked(&local, &second, false, |_| {})
+        .await
+        .unwrap();
+    assert!(
+        files.rename(&first, &second).await.is_err(),
+        "renaming onto an existing file must not replace it"
+    );
+    let renamed = join(&top, "renamed.txt");
+    files.rename(&first, &renamed).await.unwrap();
+    assert!(!files.exists(&first).await.unwrap());
+    assert!(files.exists(&renamed).await.unwrap());
+
+    assert!(
+        files.remove_folder(&top).await.is_err(),
+        "a folder with files stays"
+    );
+    files.remove_file(&renamed).await.unwrap();
+    files.remove_file(&second).await.unwrap();
+    files.remove_folder(&top).await.unwrap();
+    assert!(!files.exists(&top).await.unwrap());
+}

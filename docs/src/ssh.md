@@ -93,6 +93,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | Read the folders again | **Refresh** |
 | Upload a file | **Upload**, then pick the file. It goes into the selected folder, beside the selected file, or into the top folder shown |
 | Download a file | Select it, press **Download**, then choose where to save it |
+| More actions | Right-click a row. A menu opens under it: **Preview**, **Download**, **Copy path**, **Rename**, **Delete**, and on a folder **New folder** inside it |
 | Preview a file | Select it, press **Preview**. **Back** returns to the tree |
 | Upload a folder | **Upload folder**, then pick it. Every file in it is queued, keeping its place |
 | Download a folder | Select it, press **Download**, then pick where to put it. It is saved as a folder of the same name |
@@ -100,6 +101,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 
 - The pane starts in your home folder. Folders come first, then files, by name.
 - An upload that would replace a file of the same name asks first: **Replace** or **Cancel**. A download's file dialog asks the same itself.
+- **Delete** asks first and cannot be undone. A folder can only be deleted when it is empty; the server's refusal is shown otherwise. **Rename** never replaces an existing file: if the new name is taken, the server refuses and the reason is shown. Names may not be empty, `.` or `..`, or contain `/`.
 - A preview shows text (the first 256 kB, as UTF-8) or a picture (PNG, JPEG, GIF or BMP up to 8 MB). The file is read into memory and never written to disk. Anything else says so and suggests a download.
 - A folder is sent file by file, so each file shows in the list and can be cancelled or retried on its own. Missing folders are made on the way. Empty folders, links and special files are skipped. Files of the same name on the other side are replaced; an upload asks once if the folder itself already exists.
 - Transfers go into a list under the tree, with a progress bar and the size done. Two run at the same time; the rest wait. **Cancel** stops one.
