@@ -29,12 +29,26 @@ pub(crate) struct Files {
     dropped: Vec<PathBuf>,
     /// The files last seen on the local clipboard, so each copy is offered once.
     pub(crate) copied: Option<Vec<PathBuf>>,
+    /// Files offered to the server and not pasted yet: how many, and their size together.
+    offered: Option<(usize, u64)>,
 }
 
 impl Files {
-    /// What the strip says while files are moving.
+    /// The offer is over: the clipboard holds something else now, or the server took the files.
+    pub(crate) fn forget_offer(&mut self) {
+        self.offered = None;
+    }
+
+    /// What the strip says while files are moving, or are waiting to be pasted.
     pub(crate) fn status(&self) -> Option<String> {
-        let (direction, done, total) = self.progress?;
+        let Some((direction, done, total)) = self.progress else {
+            let (count, bytes) = self.offered?;
+            return Some(fl!(
+                "rdpfiles-ready",
+                count = count,
+                size = format_size(bytes)
+            ));
+        };
         let (done, total) = (format_size(done), format_size(total));
         Some(match direction {
             Direction::Received => fl!("rdpfiles-progress-received", done = done, total = total),
@@ -165,13 +179,24 @@ fn on_event(state: &mut State, event: FilesEvent) {
                 .receivable()
                 .map(|count| fl!("rdpfiles-available", count = count))
         }
-        FilesEvent::Offered { files: count, .. } => Some(fl!("rdpfiles-offered", count = count)),
+        FilesEvent::Offered {
+            files: count,
+            bytes,
+        } => {
+            // The strip keeps saying so until they are pasted, not just for a few seconds.
+            files.offered = Some((count, bytes));
+            None
+        }
         FilesEvent::Progress {
             direction,
             done,
             total,
         } => {
-            files.progress = Some((direction, done, total));
+            // Only receiving is shown moving. The server paces a paste and Windows shows its
+            // own progress for it, so a send keeps saying "ready to paste" until it is done.
+            if direction == Direction::Received {
+                files.progress = Some((direction, done, total));
+            }
             None
         }
         FilesEvent::Finished {
@@ -179,6 +204,9 @@ fn on_event(state: &mut State, event: FilesEvent) {
             files: count,
         } => {
             files.progress = None;
+            if direction == Direction::Sent {
+                files.offered = None;
+            }
             Some(match direction {
                 Direction::Received => fl!("rdpfiles-finished-received", count = count),
                 Direction::Sent => fl!("rdpfiles-finished-sent", count = count),

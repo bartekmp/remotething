@@ -329,9 +329,9 @@ rdpfiles-available = { $count ->
     [one] 1 file copied remotely
    *[other] { $count } files copied remotely
 }
-rdpfiles-offered = { $count ->
-    [one] 1 file ready to paste
-   *[other] { $count } files ready to paste
+rdpfiles-ready = { $count ->
+    [one] 1 file ({ $size }) ready to paste
+   *[other] { $count } files ({ $size }) ready to paste
 }
 rdpfiles-progress-received = Receiving { $done } of { $total }
 rdpfiles-progress-sent = Sending { $done } of { $total }

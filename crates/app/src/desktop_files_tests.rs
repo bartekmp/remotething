@@ -137,7 +137,7 @@ fn a_finished_transfer_clears_the_progress_and_says_so() {
     on_event(
         &mut state,
         FilesEvent::Progress {
-            direction: Direction::Sent,
+            direction: Direction::Received,
             done: 1,
             total: 2,
         },
@@ -146,7 +146,7 @@ fn a_finished_transfer_clears_the_progress_and_says_so() {
     on_event(
         &mut state,
         FilesEvent::Finished {
-            direction: Direction::Sent,
+            direction: Direction::Received,
             files: 3,
         },
     );
@@ -248,8 +248,11 @@ fn receiving_shows_a_bar_that_fills_and_sending_shows_none() {
     on_event(&mut state, progress(Direction::Received, 100));
     assert_eq!(live(&state).files.progress_share(), Some(0.25));
 
-    on_event(&mut state, progress(Direction::Sent, 100));
-    assert_eq!(live(&state).files.progress_share(), None);
+    // A send never moves the bar: Windows paces and shows a paste itself.
+    let mut other = Fixture::new();
+    let (mut sending, _input) = other.connected();
+    on_event(&mut sending, progress(Direction::Sent, 100));
+    assert_eq!(live(&sending).files.progress_share(), None);
 }
 
 #[test]
@@ -301,4 +304,103 @@ fn copying_text_after_files_lets_the_same_files_be_offered_again_later() {
     state.local_files(files.clone());
 
     assert_eq!(input.try_recv().unwrap(), Input::OfferFiles(files));
+}
+
+/// `text` without the invisible direction marks the translations put around values.
+fn plain(text: String) -> String {
+    text.chars()
+        .filter(|character| !matches!(character, '\u{2066}'..='\u{2069}'))
+        .collect()
+}
+
+fn offered(files: usize, bytes: u64) -> FilesEvent {
+    FilesEvent::Offered { files, bytes }
+}
+
+#[test]
+fn offered_files_stay_announced_in_the_strip_until_they_are_pasted() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+    assert_eq!(live(&state).files.status(), None);
+
+    on_event(&mut state, offered(3, 12_000_000));
+
+    // The translation puts invisible direction marks around the numbers.
+    let status = plain(live(&state).files.status().unwrap());
+    assert!(
+        status.contains("3 files") && status.contains("12.0 MB"),
+        "{status}"
+    );
+    assert!(status.contains("ready to paste"), "{status}");
+    // Not a note that fades: still there long after.
+    assert!(live(&state).files.status().is_some());
+
+    on_event(
+        &mut state,
+        FilesEvent::Finished {
+            direction: Direction::Sent,
+            files: 3,
+        },
+    );
+    assert_eq!(live(&state).files.status(), None);
+    assert!(live(&state).note.is_some(), "and the result is said once");
+}
+
+#[test]
+fn a_single_offered_file_is_said_in_the_singular() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+
+    on_event(&mut state, offered(1, 17));
+
+    assert!(plain(live(&state).files.status().unwrap()).starts_with("1 file "));
+}
+
+#[test]
+fn copying_text_or_a_picture_ends_the_offer() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+    on_event(&mut state, offered(2, 10));
+
+    state.local_clipboard("words".to_string());
+
+    assert_eq!(live(&state).files.status(), None);
+}
+
+#[test]
+fn sending_shows_no_moving_progress_and_the_offer_text_stays() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+    on_event(&mut state, offered(2, 1_000));
+
+    on_event(
+        &mut state,
+        FilesEvent::Progress {
+            direction: Direction::Sent,
+            done: 500,
+            total: 1_000,
+        },
+    );
+
+    let status = live(&state).files.status().unwrap();
+    assert!(status.contains("ready to paste"), "{status}");
+    assert_eq!(live(&state).files.progress_share(), None);
+}
+
+#[test]
+fn receiving_progress_wins_over_a_waiting_offer() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = fixture.connected();
+    on_event(&mut state, offered(2, 1_000));
+
+    on_event(
+        &mut state,
+        FilesEvent::Progress {
+            direction: Direction::Received,
+            done: 1,
+            total: 4,
+        },
+    );
+
+    assert!(live(&state).files.status().unwrap().contains("Receiving"));
 }

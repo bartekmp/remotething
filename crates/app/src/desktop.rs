@@ -405,6 +405,7 @@ impl State {
         // Copying the same picture or files again later must count as a change.
         live.clipboard_picture = None;
         live.files.copied = None;
+        live.files.forget_offer();
         self.send(Input::Clipboard(text));
     }
 
@@ -420,6 +421,7 @@ impl State {
         live.clipboard_picture = Some(fingerprint);
         live.clipboard = None;
         live.files.copied = None;
+        live.files.forget_offer();
         self.send(Input::ClipboardPicture(picture));
     }
 
