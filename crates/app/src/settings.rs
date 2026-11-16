@@ -36,8 +36,37 @@ impl fmt::Display for TabLayoutOption {
     }
 }
 
+/// The pages of the settings screen.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Tab {
+    /// Theme, language and how the tab bar behaves.
+    #[default]
+    General,
+    /// Moving connections to another copy of the app.
+    ImportExport,
+    /// The optional features and their folders.
+    Features,
+    /// The logo, name and version.
+    About,
+}
+
+const TABS: [Tab; 4] = [Tab::General, Tab::ImportExport, Tab::Features, Tab::About];
+
+impl Tab {
+    fn label(self) -> String {
+        match self {
+            Tab::General => fl!("settings-tab-general"),
+            Tab::ImportExport => fl!("settings-tab-exchange"),
+            Tab::Features => fl!("settings-tab-features"),
+            Tab::About => fl!("settings-tab-about"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// A page of the settings was picked.
+    PagePicked(Tab),
     TabLayoutPicked(TabLayoutOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
@@ -78,6 +107,8 @@ pub fn set_folder(preferences: &mut Preferences, kind: FolderKind, folder: Optio
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Changed,
+    /// Another page was picked; the window remembers which.
+    PageChanged(Tab),
     /// Ask which folder to use for this, then set it.
     PickFolder(FolderKind),
     /// Ask where to save the connections, then write them.
@@ -119,6 +150,7 @@ impl fmt::Display for LanguageOption {
 
 pub fn update(preferences: &mut Preferences, message: Message) -> Event {
     match message {
+        Message::PagePicked(tab) => Event::PageChanged(tab),
         Message::TabLayoutPicked(option) => {
             preferences.tab_layout = option.0;
             Event::Changed
@@ -163,7 +195,7 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
     }
 }
 
-pub fn view(preferences: &Preferences) -> Element<'_, Message> {
+pub fn view(preferences: &Preferences, page: Tab) -> Element<'_, Message> {
     let header = row![
         text(fl!("settings-title"))
             .size(theme::TEXT_DISPLAY)
@@ -172,7 +204,31 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
             .style(theme::pill)
             .on_press(Message::ClosePressed),
     ];
+    let content = match page {
+        Tab::General => general(preferences),
+        Tab::ImportExport => import_export(),
+        Tab::Features => features(preferences),
+        Tab::About => about(),
+    };
+    column![header, page_bar(page), content].spacing(16).into()
+}
 
+/// The row of buttons that picks the page.
+fn page_bar<'a>(page: Tab) -> Element<'a, Message> {
+    row(TABS.iter().map(|tab| {
+        button(text(tab.label()))
+            .padding([6, 12])
+            .style(theme::entry(*tab == page))
+            .on_press(Message::PagePicked(*tab))
+            .into()
+    }))
+    .spacing(4)
+    .wrap()
+    .into()
+}
+
+/// Theme, language and the behaviour of the tab bar.
+fn general(preferences: &Preferences) -> Element<'_, Message> {
     let theme = column![
         text(fl!("settings-theme"))
             .size(theme::TEXT_SMALL)
@@ -210,7 +266,12 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(2);
 
-    let exchange = column![
+    column![theme, language, tabs].spacing(16).into()
+}
+
+/// Exporting and importing the connections.
+fn import_export<'a>() -> Element<'a, Message> {
+    column![
         text(fl!("settings-exchange"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
@@ -231,18 +292,7 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
     ]
-    .spacing(4);
-
-    column![
-        header,
-        theme,
-        language,
-        tabs,
-        exchange,
-        features(preferences),
-        about()
-    ]
-    .spacing(16)
+    .spacing(4)
     .into()
 }
 
@@ -250,9 +300,6 @@ pub fn view(preferences: &Preferences) -> Element<'_, Message> {
 fn features(preferences: &Preferences) -> Element<'_, Message> {
     let features = preferences.features;
     let mut switches = column![
-        text(fl!("settings-features"))
-            .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text),
         checkbox(features.screenshots)
             .label(fl!("settings-feature-screenshots"))
             .on_toggle(Message::ScreenshotsToggled),
@@ -460,5 +507,28 @@ mod tests {
         );
         assert_eq!(event, Event::Changed);
         assert!(preferences.folders.is_empty());
+    }
+
+    #[test]
+    fn the_settings_open_on_the_general_page() {
+        assert_eq!(Tab::default(), Tab::General);
+    }
+
+    #[test]
+    fn picking_a_page_asks_the_window_to_remember_it_and_changes_nothing_saved() {
+        let mut preferences = Preferences::default();
+        let before = preferences.clone();
+
+        let event = update(&mut preferences, Message::PagePicked(Tab::Features));
+
+        assert_eq!(event, Event::PageChanged(Tab::Features));
+        assert_eq!(preferences, before);
+    }
+
+    #[test]
+    fn every_page_has_a_label() {
+        for tab in TABS {
+            assert!(!tab.label().is_empty());
+        }
     }
 }

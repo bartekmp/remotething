@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.43.0 - 2026-11-16
+
+- Settings are grouped into pages: General, Import and export, Optional features and About.
+
 ## 0.42.1 - 2026-11-16
 
 - Remote Desktop: files waiting to be pasted stay announced in the status strip ("3 files (12 MB) ready to paste") until they are pasted or the clipboard changes, instead of a message that fades after a few seconds.

@@ -75,11 +75,13 @@ pub fn view(state: &State) -> Element<'_, Message> {
         (_, Centre::Credentials) => {
             credentials::view(&state.credentials, &state.store).map(Message::Credentials)
         }
-        (_, Centre::Settings) => settings::view(&state.preferences).map(Message::Settings),
+        (_, Centre::Settings) => {
+            settings::view(&state.preferences, state.settings_page).map(Message::Settings)
+        }
         (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
         (_, Centre::Import) => match &state.import {
             Some(screen) => import_preview::view(screen).map(Message::Preview),
-            None => settings::view(&state.preferences).map(Message::Settings),
+            None => settings::view(&state.preferences, state.settings_page).map(Message::Settings),
         },
     };
     let tabs = container(centre)

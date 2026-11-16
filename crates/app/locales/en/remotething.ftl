@@ -348,3 +348,7 @@ tree-search-empty = No connection matches.
 settings-folder-change = Change…
 settings-folder-default = Default
 settings-folder-pick = Choose a folder
+settings-tab-general = General
+settings-tab-exchange = Import and export
+settings-tab-features = Optional features
+settings-tab-about = About

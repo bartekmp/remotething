@@ -540,3 +540,17 @@ fn a_picked_folder_is_saved_and_used_by_its_feature() {
     );
     assert!(state.preferences.folders.screenshots.is_none());
 }
+
+#[test]
+fn the_chosen_settings_page_is_kept_while_the_screen_is_open() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    assert_eq!(state.settings_page, settings::Tab::General);
+
+    let _ = update(
+        &mut state,
+        Message::Settings(settings::Message::PagePicked(settings::Tab::Features)),
+    );
+
+    assert_eq!(state.settings_page, settings::Tab::Features);
+}

@@ -70,6 +70,8 @@ pub struct State {
     pub(crate) system_mode: Mode,
     /// The context menu of the tree, while it is open.
     pub(crate) menu: Option<menu::State>,
+    /// The page of the settings screen that is showing.
+    pub(crate) settings_page: settings::Tab,
     /// A folder with content that waits for the user to confirm its removal.
     pub(crate) removal: Option<folder_removal::Question>,
     /// Where the pointer is, in window coordinates.
@@ -206,6 +208,7 @@ impl State {
             vault: None,
             system_mode: Mode::None,
             menu: None,
+            settings_page: settings::Tab::default(),
             removal: None,
             pointer: Point::ORIGIN,
             window: INITIAL_WINDOW,
@@ -479,6 +482,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Settings(message) => match settings::update(&mut state.preferences, message) {
             settings::Event::Changed => state.save_preferences(),
             settings::Event::Close => state.centre = Centre::Sessions,
+            settings::Event::PageChanged(page) => state.settings_page = page,
             settings::Event::PickFolder(kind) => {
                 return Task::perform(
                     crate::file_dialog::pick_folder(fl!("settings-folder-pick")),
