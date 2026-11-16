@@ -3,6 +3,8 @@ pipeline {
     agent {
         dockerfile {
             dir 'ci'
+            // The Jenkins host itself builds; it is the powerful machine.
+            label 'main'
             // 1 = the Microsoft SDK licence is accepted (see ci/Dockerfile).
             additionalBuildArgs '--build-arg XWIN_ACCEPT_LICENSE=1'
             // Root inside the container, with caches on named volumes outside the workspace.
@@ -11,6 +13,8 @@ pipeline {
     }
     environment {
         CARGO_TARGET_DIR = '/cache/target'
+        // Incremental caches are huge and a clean CI build gains nothing from them.
+        CARGO_INCREMENTAL = '0'
         XWIN_CACHE_DIR = '/cache/xwin'
     }
     stages {
