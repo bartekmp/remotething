@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.41.1 - 2026-11-16
+
+- VNC: when the server sends an empty pointer, as Windows does on a machine without a mouse, your own arrow stays visible instead of no pointer at all.
+
 ## 0.41.0 - 2026-11-16
 
 - VNC: servers that offer only the Tight security type now work with a password. A server that offers only its own user name and password method is reported with what it offered and how to fix it.

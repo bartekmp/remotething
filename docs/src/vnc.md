@@ -2,6 +2,10 @@
 
 Double-click a VNC connection to open its desktop in a tab.
 
+## The pointer
+
+The pointer over the picture is the server's own, as it sends it, drawn at your pointer's position. When the server sends none or an empty one, for example a Windows machine with no mouse attached, your system's arrow is shown instead, so you can always see where you point.
+
 ## Signing in
 
 | The connection has | What happens |

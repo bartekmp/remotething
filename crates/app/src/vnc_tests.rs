@@ -312,14 +312,14 @@ fn stats_become_a_reading() {
 }
 
 #[test]
-fn an_empty_pointer_from_the_server_hides_the_local_one() {
+fn an_empty_pointer_from_the_server_keeps_the_local_one_so_the_user_is_not_left_blind() {
     let mut fixture = Fixture::new();
     let mut state = fixture.start(None);
     let _input = state.connect_for_test(info());
 
     fixture.send(&mut state, Message::Cursor(None));
 
-    assert!(matches!(&state.stage, Stage::Connected(live) if live.cursor.hides_local()));
+    assert!(matches!(&state.stage, Stage::Connected(live) if !live.cursor.hides_local()));
 }
 
 fn tunnelled(fixture: &mut Fixture) -> ResolvedConnection {

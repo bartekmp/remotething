@@ -40,3 +40,46 @@ async fn a_tight_server_signs_in_with_its_password_and_sends_a_picture() {
     }
     panic!("no picture within 20 seconds");
 }
+
+#[tokio::test]
+#[ignore = "needs RT_VNC_HOST and RT_VNC_PASSWORD"]
+async fn the_server_sends_a_cursor_shape() {
+    let target = Target {
+        host: env("RT_VNC_HOST"),
+        port: 5900,
+        password: Some(Secret::new(env("RT_VNC_PASSWORD"))),
+        quality: Quality::default(),
+    };
+    let mut session = connect(target).await.unwrap();
+    let mut shapes = Vec::new();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let mut step = 0u16;
+    while Instant::now() < deadline {
+        // Moving the pointer makes a server that was waiting send its cursor.
+        step += 7;
+        let _ = session
+            .input
+            .send(remotething_vnc::Input::MouseMoved {
+                x: 200 + step,
+                y: 200 + step / 2,
+            })
+            .await;
+        if let Ok(Some(event)) =
+            tokio::time::timeout(Duration::from_millis(500), session.events.recv()).await
+        {
+            match event {
+                Event::Cursor(Some(cursor)) => {
+                    let visible = cursor.rgba.chunks_exact(4).filter(|p| p[3] > 0).count();
+                    shapes.push(format!(
+                        "{}x{} hot {},{} visible pixels {}",
+                        cursor.width, cursor.height, cursor.hotspot_x, cursor.hotspot_y, visible
+                    ));
+                }
+                Event::Cursor(None) => shapes.push("hidden".to_string()),
+                _ => {}
+            }
+        }
+    }
+    eprintln!("CURSOR EVENTS: {shapes:?}");
+    assert!(!shapes.is_empty(), "the server sent no cursor shape");
+}

@@ -484,7 +484,9 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                         (cursor.hotspot_x, cursor.hotspot_y),
                         cursor.rgba,
                     ),
-                    None => Look::Hidden,
+                    // An empty shape means the server shows no pointer, which on a machine
+                    // with no mouse is what Windows does, so the local arrow stays.
+                    None => Look::Local,
                 };
             }
             Task::none()
