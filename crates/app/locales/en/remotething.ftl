@@ -371,3 +371,7 @@ wsl-stopped = stopped
 protocol-wsl = WSL
 wsl-details-distribution = Distribution
 smb-label = SMB
+properties-save-password = Or save a password for this connection
+properties-save-password-user = User name
+properties-save-password-secret = Password
+properties-save-password-note = Saved in the system keyring and added to the credentials, named after this connection.

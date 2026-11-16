@@ -589,3 +589,44 @@ fn the_wsl_screen_closes_back_to_the_settings() {
 
     assert_eq!(state.centre, Centre::Settings);
 }
+
+#[test]
+fn saving_a_connection_with_a_typed_password_adds_its_credential_to_the_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+    properties(
+        &mut state,
+        properties::Message::NewUsernameChanged("ops".to_string()),
+    );
+    properties(
+        &mut state,
+        properties::Message::NewPasswordChanged(credentials::Hidden("s3cret".to_string())),
+    );
+
+    let _task = update(
+        &mut state,
+        Message::Properties(properties::Message::SavePressed),
+    );
+
+    let saved = on_disk(&state);
+    let credential = saved
+        .credentials
+        .iter()
+        .find(|c| c.name == "web-01")
+        .unwrap();
+    assert_eq!(credential.username.as_deref(), Some("ops"));
+    let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
+    assert_eq!(
+        connection.settings.credential.as_deref(),
+        Some(credential.id.as_str())
+    );
+    assert!(
+        !std::fs::read_to_string(&state.path)
+            .unwrap()
+            .contains("s3cret")
+    );
+}

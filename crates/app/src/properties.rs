@@ -5,9 +5,12 @@ use std::fmt;
 use iced::widget::{button, column, row, scrollable, text};
 use iced::{Element, Length};
 use remotething_core::{
-    Forward, Protocol, Quality, Settings, Store, format_forwards, parse_forwards,
+    Credential, CredentialKind, Forward, Protocol, Quality, Settings, Store, format_forwards,
+    parse_forwards,
 };
+use remotething_secrets::Secret;
 
+use crate::credentials::Hidden;
 use crate::i18n::fl;
 use crate::icons;
 use crate::quality_choice::{self, QualityChoice};
@@ -44,6 +47,11 @@ pub struct Draft {
     pub desktop_quality: Option<Quality>,
     /// `None` means the default icon for the kind of item.
     pub icon: Option<String>,
+    /// The user name of a password typed here to be saved as a credential. Connections only.
+    pub new_username: String,
+    /// A password typed here; saving makes it a credential of its own, with no detour through
+    /// the credentials screen. Empty means none.
+    pub new_password: Hidden,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +66,8 @@ pub enum Message {
     CredentialPicked(Choice),
     JumpPicked(Choice),
     ForwardsChanged(String),
+    NewUsernameChanged(String),
+    NewPasswordChanged(Hidden),
     QualityPicked(QualityChoice),
     SavePressed,
     DeletePressed,
@@ -143,13 +153,28 @@ impl Draft {
             forwards: format_forwards(&settings.forwards),
             desktop_quality: settings.desktop.quality,
             icon: icon.clone(),
+            new_username: String::new(),
+            new_password: Hidden(String::new()),
         }
     }
 
     /// Returns a copy of the store with this draft written into the selected item.
     ///
     /// Nothing is changed when a field is invalid or the result would not validate.
+    #[cfg(test)]
     pub fn apply(&self, store: &Store, selection: &Selection) -> Result<Store, String> {
+        self.apply_with_password(store, selection)
+            .map(|saved| saved.store)
+    }
+
+    /// Like `apply`, and when a password was typed for a connection that has no credential, adds
+    /// a credential for it and links the connection to it. The secret is handed back to be
+    /// stored; the file only ever holds the credential's description.
+    pub fn apply_with_password(
+        &self,
+        store: &Store,
+        selection: &Selection,
+    ) -> Result<Saved, String> {
         let name = self.name.trim();
         if name.is_empty() {
             return Err(fl!("properties-error-name"));
@@ -159,6 +184,7 @@ impl Draft {
             .map_err(|bad| fl!("properties-error-forwards", text = bad.0))?;
 
         let mut updated = store.clone();
+        let mut password_for = None;
         match selection {
             Selection::Folder(id) => {
                 let folder = updated.folders.iter_mut().find(|folder| &folder.id == id);
@@ -182,12 +208,42 @@ impl Draft {
                     connection.parent = self.parent.clone();
                     connection.icon = self.icon.clone();
                     self.write_settings(&mut connection.settings, port, &forwards);
+                    if self.credential.is_none() && !self.new_password.0.is_empty() {
+                        password_for = Some(connection.id.clone());
+                    }
                 }
             }
         }
 
+        let secret = password_for
+            .and_then(|connection_id| self.add_credential(&mut updated, &connection_id));
         updated.validate().map_err(|error| error.to_string())?;
-        Ok(updated)
+        Ok(Saved {
+            store: updated,
+            secret,
+        })
+    }
+
+    /// Adds a credential named after the connection for the typed password, and links the
+    /// connection to it. Returns its id and the secret.
+    fn add_credential(&self, store: &mut Store, connection_id: &str) -> Option<(String, Secret)> {
+        let name = self.name.trim().to_string();
+        let username = Some(self.new_username.trim().to_string()).filter(|user| !user.is_empty());
+        let id = store.new_credential_id(&name);
+        store.credentials.push(Credential {
+            id: id.clone(),
+            name,
+            username,
+            domain: None,
+            kind: CredentialKind::Password,
+            key_file: None,
+        });
+        let connection = store
+            .connections
+            .iter_mut()
+            .find(|connection| connection.id == connection_id)?;
+        connection.settings.credential = Some(id.clone());
+        Some((id, Secret::new(self.new_password.0.clone())))
     }
 
     fn write_settings(&self, settings: &mut Settings, port: Option<u16>, forwards: &[Forward]) {
@@ -197,6 +253,14 @@ impl Draft {
         settings.jump = self.jump.clone();
         settings.desktop.quality = self.desktop_quality;
     }
+}
+
+/// What saving a draft produced.
+pub struct Saved {
+    /// The tree with the draft written into it.
+    pub store: Store,
+    /// The id and secret of a credential made for a typed password, to put in the secret store.
+    pub secret: Option<(String, Secret)>,
 }
 
 /// Empty means "not set"; anything else must be a valid, non-zero port.
@@ -222,6 +286,8 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
+        Message::NewUsernameChanged(user) => draft.new_username = user,
+        Message::NewPasswordChanged(password) => draft.new_password = password,
         Message::QualityPicked(choice) => draft.desktop_quality = choice.0,
         Message::SavePressed => return Some(Event::Save),
         Message::DeletePressed => return Some(Event::Delete),
@@ -293,6 +359,10 @@ pub fn view<'a>(
         &draft.credential,
         Message::CredentialPicked,
     ));
+    // With no credential chosen, a password can be typed right here.
+    if is_connection && draft.credential.is_none() {
+        fields = fields.push(save_password(draft));
+    }
     fields = fields.push(choice_field(
         fl!("properties-jump"),
         jump_choices(store, selection),
@@ -333,6 +403,28 @@ pub fn view<'a>(
         buttons
     ]
     .spacing(theme::GAP)
+    .into()
+}
+
+/// The fields for a password to be saved for this connection, so a credential need not be made first.
+fn save_password(draft: &Draft) -> Element<'_, Message> {
+    column![
+        text(fl!("properties-save-password"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        theme::input(&fl!("properties-save-password-user"), &draft.new_username)
+            .on_input(Message::NewUsernameChanged),
+        theme::input(
+            &fl!("properties-save-password-secret"),
+            &draft.new_password.0
+        )
+        .secure(true)
+        .on_input(|typed| Message::NewPasswordChanged(Hidden(typed))),
+        text(fl!("properties-save-password-note"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+    ]
+    .spacing(4)
     .into()
 }
 

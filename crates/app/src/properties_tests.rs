@@ -1,6 +1,7 @@
 //! Tests of `properties.rs`.
 
 use super::*;
+use remotething_core::{Credential, CredentialKind};
 
 fn store() -> Store {
     let directory = tempfile::tempdir().unwrap();
@@ -224,4 +225,116 @@ fn choosing_inherit_clears_the_quality() {
     let updated = draft.apply(&store(), &web()).unwrap();
 
     assert_eq!(updated.connections[1].settings.desktop.quality, None);
+}
+
+fn typed(draft: &mut Draft, user: &str, password: &str) {
+    update(draft, Message::NewUsernameChanged(user.to_string()));
+    update(
+        draft,
+        Message::NewPasswordChanged(Hidden(password.to_string())),
+    );
+}
+
+#[test]
+fn a_password_typed_for_a_connection_without_a_credential_becomes_one_and_is_linked() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    typed(&mut draft, " ops ", "s3cret");
+
+    let saved = draft.apply_with_password(&original, &web()).unwrap();
+
+    let credential = saved.store.credentials.last().unwrap();
+    assert_eq!(credential.name, "web-01");
+    assert_eq!(credential.username.as_deref(), Some("ops"));
+    assert_eq!(credential.kind, CredentialKind::Password);
+    let connection = saved
+        .store
+        .connections
+        .iter()
+        .find(|connection| connection.id == "web-01")
+        .unwrap();
+    assert_eq!(
+        connection.settings.credential.as_deref(),
+        Some(credential.id.as_str())
+    );
+    let (id, secret) = saved.secret.unwrap();
+    assert_eq!(id, credential.id);
+    assert_eq!(secret.expose(), "s3cret");
+}
+
+#[test]
+fn the_password_never_reaches_the_stored_description() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    typed(&mut draft, "ops", "s3cret");
+
+    let saved = draft.apply_with_password(&original, &web()).unwrap();
+
+    let text = saved.store.to_export().unwrap();
+    assert!(!text.contains("s3cret"), "{text}");
+}
+
+#[test]
+fn a_password_with_no_user_name_makes_a_credential_without_one() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    typed(&mut draft, "  ", "s3cret");
+
+    let saved = draft.apply_with_password(&original, &web()).unwrap();
+
+    assert_eq!(saved.store.credentials.last().unwrap().username, None);
+}
+
+#[test]
+fn nothing_typed_makes_no_credential() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    typed(&mut draft, "ops", "");
+
+    let saved = draft.apply_with_password(&original, &web()).unwrap();
+
+    assert!(saved.secret.is_none());
+    assert!(saved.store.credentials.is_empty());
+}
+
+#[test]
+fn a_chosen_credential_is_kept_and_a_typed_password_is_ignored() {
+    let mut original = store();
+    original.credentials.push(Credential {
+        id: "cred".to_string(),
+        name: "Ops".to_string(),
+        username: Some("ops".to_string()),
+        domain: None,
+        kind: CredentialKind::Ask,
+        key_file: None,
+    });
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    draft.credential = Some("cred".to_string());
+    typed(&mut draft, "someone", "s3cret");
+
+    let saved = draft.apply_with_password(&original, &web()).unwrap();
+
+    assert!(saved.secret.is_none());
+    assert_eq!(saved.store.credentials.len(), 1);
+}
+
+#[test]
+fn a_folder_never_takes_a_password() {
+    let original = store();
+    let folder = Selection::Folder("prod".to_string());
+    let mut draft = Draft::load(&original, &folder).unwrap();
+    typed(&mut draft, "ops", "s3cret");
+
+    let saved = draft.apply_with_password(&original, &folder).unwrap();
+
+    assert!(saved.secret.is_none());
+}
+
+#[test]
+fn a_draft_prints_without_the_password() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    typed(&mut draft, "ops", "s3cret");
+
+    assert!(!format!("{draft:?}").contains("s3cret"));
 }

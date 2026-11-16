@@ -8,6 +8,7 @@ use remotething_core::{
 use iced::Task;
 
 use crate::app::{Centre, Message, State};
+use crate::credentials::SecretAction;
 use crate::folder_removal;
 use crate::i18n::fl;
 use crate::import_preview;
@@ -75,18 +76,27 @@ impl State {
         }
     }
 
-    pub(crate) fn save_draft(&mut self) {
+    pub(crate) fn save_draft(&mut self) -> Task<Message> {
         let (Some(draft), Some(selection)) = (&self.draft, self.tree.selected()) else {
-            return;
+            return Task::none();
         };
-        match draft.apply(&self.store, selection) {
-            Ok(updated) => {
+        match draft.apply_with_password(&self.store, selection) {
+            Ok(saved) => {
                 // A saved edit is finished; a refused one stays open to be corrected.
-                if self.commit(updated) {
-                    self.properties_open = false;
+                if !self.commit(saved.store) {
+                    return Task::none();
+                }
+                self.properties_open = false;
+                // The password goes to the secret store off the UI thread; it can wait on an unlock prompt.
+                match saved.secret {
+                    Some((id, secret)) => self.secret_task(id, SecretAction::Set(secret)),
+                    None => Task::none(),
                 }
             }
-            Err(reason) => self.error = Some(reason),
+            Err(reason) => {
+                self.error = Some(reason);
+                Task::none()
+            }
         }
     }
 

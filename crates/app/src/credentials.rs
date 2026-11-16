@@ -22,7 +22,7 @@ const KINDS: [KindChoice; 5] = [
 ];
 
 /// Typed text that must not show up when a message is printed.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Hidden(pub String);
 
 impl fmt::Debug for Hidden {

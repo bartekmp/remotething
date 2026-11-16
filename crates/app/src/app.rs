@@ -435,7 +435,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             };
             let selected = state.tree.selected().cloned();
             match (properties::update(draft, message), selected) {
-                (Some(properties::Event::Save), _) => state.save_draft(),
+                (Some(properties::Event::Save), _) => return state.save_draft(),
                 (Some(properties::Event::Delete), Some(item)) => state.delete(&item),
                 _ => {}
             }
