@@ -37,7 +37,7 @@ const STABLE_FOR: std::time::Duration = std::time::Duration::from_secs(30);
 /// How long Ctrl+Alt+Del is held; Windows ignores a shorter press.
 const CTRL_ALT_DEL_HOLD: std::time::Duration = std::time::Duration::from_millis(300);
 /// How long the room for the picture must stay the same before the server is asked to match it.
-const RESIZE_SETTLE: std::time::Duration = std::time::Duration::from_millis(400);
+const RESIZE_SETTLE: std::time::Duration = std::time::Duration::from_millis(700);
 
 pub struct State {
     pub(crate) connection: ResolvedConnection,
@@ -98,6 +98,8 @@ pub(crate) struct Live {
     pub(crate) note: Option<Note>,
     /// The recording of this desktop, if there is one.
     pub(crate) video: Video,
+    /// The connection broke and is being made again; the last picture stays up meanwhile.
+    pub(crate) reconnecting: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -194,6 +196,7 @@ impl State {
             over: false,
             note: None,
             video: Video::default(),
+            reconnecting: false,
         }));
         typed
     }
@@ -270,6 +273,15 @@ impl State {
 
     /// Connects with what is known, or asks for what is missing.
     fn connect(&mut self, context: &Context<'_>) -> Task<Message> {
+        if self.password.is_none() || self.username.is_empty() {
+            return self.ask(None);
+        }
+        self.stage = Stage::Connecting;
+        self.open(context)
+    }
+
+    /// Opens a session with what is known, leaving the stage as it is.
+    fn open(&mut self, context: &Context<'_>) -> Task<Message> {
         let Some(password) = self.password.clone().filter(|_| !self.username.is_empty()) else {
             return self.ask(None);
         };
@@ -285,7 +297,6 @@ impl State {
             scale: display::scale_percent(),
         };
         let known = context.known_hosts.clone();
-        self.stage = Stage::Connecting;
         Task::perform(desktop_open::open(target, known), Message::Opened)
     }
 
@@ -299,7 +310,13 @@ impl State {
             events,
             input,
         } = session;
-        self.stage = Stage::Connected(Box::new(Live {
+        // After a broken connection the new session takes over from the old one, so
+        // the picture, the recording and the clipboard state carry on.
+        let previous = match std::mem::replace(&mut self.stage, Stage::Connecting) {
+            Stage::Connected(old) if old.reconnecting => Some(old),
+            _ => None,
+        };
+        let mut live = Live {
             // Black until the first picture arrives.
             picture: Picture::black(),
             size: (u32::from(WIDTH), u32::from(HEIGHT)),
@@ -315,7 +332,25 @@ impl State {
             over: false,
             note: None,
             video: Video::default(),
-        }));
+            reconnecting: false,
+        };
+        let carried_on = previous.is_some();
+        if let Some(old) = previous {
+            let old = *old;
+            live.picture = old.picture;
+            live.area = old.area;
+            live.clipboard = old.clipboard;
+            live.clipboard_picture = old.clipboard_picture;
+            live.pointer = old.pointer;
+            live.cursor = old.cursor;
+            live.details_open = old.details_open;
+            live.video = old.video;
+        }
+        self.stage = Stage::Connected(Box::new(live));
+        if carried_on {
+            // The new desktop starts at the default size; ask for the size of the room again.
+            self.rescaled();
+        }
 
         // The stream ends when the session thread stops, for example once this tab is closed.
         let messages = stream::unfold(events, |mut events| async move {
@@ -449,6 +484,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             state.ask(Some(fl!("session-refused")))
         }
         Message::Opened(Err(Failure::Other(reason))) => {
+            let reconnecting = matches!(&state.stage, Stage::Connected(live) if live.reconnecting);
+            // A failed try to take the session back is tried again, a few times.
+            if reconnecting && state.reconnects < MAX_RECONNECTS {
+                state.reconnects += 1;
+                return state.open(context);
+            }
             state.stage = Stage::Ended(reason);
             Task::none()
         }
@@ -597,7 +638,11 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 return Task::none();
             }
             state.reconnects += 1;
-            state.connect(context)
+            if let Stage::Connected(live) = &mut state.stage {
+                // The last picture stays on screen until the new session paints over it.
+                live.reconnecting = true;
+            }
+            state.open(context)
         }
         Message::Closed(reason) => {
             state.stage = Stage::Ended(reason.unwrap_or_else(|| fl!("session-closed")));

@@ -163,6 +163,9 @@ fn with_status_bar<'a>(
 }
 
 fn live_rate(live: &Live) -> String {
+    if live.reconnecting {
+        return fl!("desktop-reconnecting-short");
+    }
     if let Some(note) = live.note.as_ref().and_then(Note::current) {
         return note.to_string();
     }

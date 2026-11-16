@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.32.2 - 2026-11-16
+
+- Remote Desktop: when a broken connection is made again, the last picture stays on screen and recordings and the clipboard carry on. Resizes wait a little longer to settle, so fewer are sent.
+
 ## 0.32.1 - 2026-11-16
 
 - Remote Desktop: a connection that breaks on the way, which Windows 11 sometimes causes when the desktop changes size, is made again by itself up to three times.

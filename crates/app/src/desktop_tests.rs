@@ -526,8 +526,51 @@ fn a_lost_connection_is_made_again_by_itself() {
 
     fixture.send(&mut state, Message::ConnectionLost("gone".to_string()));
 
-    assert!(matches!(state.stage, Stage::Connecting));
+    // The tab stays as it was, with the last picture, while the new session opens.
+    assert!(matches!(&state.stage, Stage::Connected(live) if live.reconnecting));
     assert_eq!(state.reconnects, 1);
+}
+
+#[test]
+fn the_picture_and_the_clipboard_state_carry_over_to_the_new_session() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    let mut state = connected_with_password(&mut fixture);
+    state.local_clipboard("words".to_string());
+    fixture.send(&mut state, Message::AreaChanged(Size::new(1500.0, 900.0)));
+    let painted = Picture::new(2, 2, vec![9; 16]);
+    let serial = painted.serial();
+    fixture.send(&mut state, Message::Frame(painted));
+    fixture.send(&mut state, Message::ConnectionLost("gone".to_string()));
+
+    // The new session arrives.
+    let (_events_tx, events) = tokio::sync::mpsc::channel(4);
+    let (input, mut typed) = tokio::sync::mpsc::channel(16);
+    let session = remotething_rdp::Session {
+        info: remotething_rdp::Info {
+            peer: "127.0.0.1:3389".parse().unwrap(),
+            codec: "test",
+            security: "test",
+        },
+        events,
+        input,
+    };
+    fixture.send(&mut state, Message::Opened(Ok(Opened::new(session))));
+
+    let Stage::Connected(live) = &state.stage else {
+        panic!("not connected");
+    };
+    assert!(!live.reconnecting);
+    assert_eq!(live.picture.serial(), serial);
+    assert_eq!(live.clipboard.as_deref(), Some("words"));
+    // The new desktop is asked for the size of the room again.
+    assert!(matches!(
+        typed.try_recv().unwrap(),
+        Input::Resize {
+            width: 1500,
+            height: 900,
+            ..
+        }
+    ));
 }
 
 #[test]

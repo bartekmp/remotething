@@ -22,14 +22,14 @@ If the certificate later changes, the tab warns before sending anything. Trust t
 
 ## Using the desktop
 
-- The remote desktop follows the size of the tab: a moment after you stop resizing the window or the tree, the server is asked for a desktop of that size. It starts at 1280 x 800 and is asked to resize about two seconds after connecting. Until the new size arrives the picture is scaled to fit.
+- The remote desktop follows the size of the tab: about a second after you stop resizing the window or the tree, the server is asked for a desktop of that size. It starts at 1280 x 800 and is asked to resize about two seconds after connecting. Until the new size arrives the picture is scaled to fit.
 - On a screen with display scaling (for example 150 %) the desktop is asked for in real screen pixels, and Windows is told the scaling, so its text and icons have the size you expect and the picture is sharp. Moving the window to a screen with another scaling changes it.
 - The mouse works as on the remote machine: move, the three buttons and the wheel. The pointer you see is the remote machine's own, so it changes to a text cursor, resize arrows, a busy ring and so on as Windows asks. Until the server sends one, your system's arrow shows.
 - Keys are sent by their position on the keyboard, so the remote keyboard layout decides which character appears. Everything is sent except **Ctrl+Shift+T** and **Ctrl+Shift+W**, which stay with the app for opening and closing tabs. **Ctrl+W** goes to the remote machine.
 - **Clipboard:** text and pictures are shared both ways. Whatever you copy on the remote machine appears on your clipboard, and text or a picture on your clipboard can be pasted there. Your clipboard is looked at once per second, and only while this tab is in front and connected; then its content is offered to the server. If the remote machine copied both text and a picture, only the text is taken. Files are not shared yet.
 - **Ctrl+Alt+Del** cannot be typed, because your own system takes it. The **Ctrl+Alt+Del** button in the strip under the desktop sends it to the remote machine and opens Windows' security screen. Press Escape or choose Cancel there to leave it.
 - Closing the tab ends the session and asks first.
-- If the connection breaks on the way, the tab connects again by itself, up to three times in a row, and Windows gives back the same desktop. This happens now and then on Windows 11 when the desktop changes size: the server skips one piece of the encrypted stream and everything after it fails to decrypt (`cannot decrypt peer's message`). A session that ends for another reason shows why, with a **Reconnect** button.
+- If the connection breaks on the way, the tab connects again by itself, up to three times in a row, and Windows gives back the same desktop. The last picture stays on screen, the strip says the connection was lost, and a recording, the clipboard and your window size carry on; only a second or two of input is lost. This happens now and then on Windows 11 when the desktop changes size: the server skips one piece of the encrypted stream and everything after it fails to decrypt (`cannot decrypt peer's message`). A session that ends for another reason shows why, with a **Reconnect** button.
 
 ## Quality
 
