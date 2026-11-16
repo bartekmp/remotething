@@ -63,6 +63,8 @@ Some RDP tests need a Windows machine with Remote Desktop switched on. They are 
 ```sh
 RT_RDP_HOST=192.168.0.35 RT_RDP_USER=test RT_RDP_PASSWORD=... \
   cargo test -p remotething-rdp --test windows_host -- --ignored
+  # Files both ways: types into the host's Run dialog, pastes in Explorer, leaves C:\rtrecv behind.
+  cargo test -p remotething-rdp --test windows_files -- --ignored --test-threads 1
 ```
 
 Run them one at a time (`--test-threads=1`, or name one test): a second connection of the same user takes the session over from the first.

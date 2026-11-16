@@ -6,12 +6,15 @@
 
 use ironrdp_cliprdr::backend::CliprdrBackend;
 use ironrdp_cliprdr::pdu::{
-    ClipboardFormat, ClipboardFormatId, ClipboardGeneralCapabilityFlags, FileContentsRequest,
-    FileContentsResponse, FormatDataRequest, FormatDataResponse, LockDataId,
+    ClipboardFormat, ClipboardFormatId, ClipboardFormatName, ClipboardGeneralCapabilityFlags,
+    FileContentsRequest, FileContentsResponse, FileDescriptor, FormatDataRequest,
+    FormatDataResponse, LockDataId,
 };
 use ironrdp_cliprdr::{Client, Cliprdr};
 use ironrdp_core::{IntoOwned, impl_as_any};
 use ironrdp_session::ActiveStage;
+
+use crate::files::{FileNotes, Files, FilesEvent};
 
 /// What a pasted piece of clipboard data was asked for, so the answer can be read right.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +42,8 @@ pub(crate) struct Notes {
     pub(crate) other_requested: bool,
     /// The channel is ready, so our clipboard can be announced.
     pub(crate) ready: bool,
+    /// What happened to files.
+    pub(crate) files: FileNotes,
 }
 
 /// The channel's side of the clipboard: collects notes, shares text and pictures.
@@ -80,6 +85,8 @@ pub(crate) struct Shared {
     picture: Option<Vec<u8>>,
     /// The local clipboard changed and the server has not been told.
     announce: bool,
+    /// Files going either way.
+    pub(crate) files: Files,
 }
 
 /// What came out of one round with the channel.
@@ -91,6 +98,8 @@ pub(crate) struct Served {
     pub(crate) texts: Vec<String>,
     /// Pictures the server copied, as DIB data.
     pub(crate) pictures: Vec<Vec<u8>>,
+    /// What happened to files.
+    pub(crate) files: Vec<FilesEvent>,
 }
 
 type BoxedError = Box<dyn std::error::Error>;
@@ -158,9 +167,13 @@ impl Shared {
             let refusal = FormatDataResponse::new_error().into_owned();
             messages.push(channel.submit_format_data(refusal)?);
         }
+        let mut files = Vec::new();
+        self.files
+            .step(channel, notes.files, &mut messages, &mut files)?;
         let mut served = Served {
             texts: notes.received,
             pictures: notes.received_pictures,
+            files,
             ..Served::default()
         };
         for one in messages {
@@ -179,12 +192,17 @@ pub(crate) fn channel() -> Cliprdr<Client> {
 
 impl CliprdrBackend for ClipboardBackend {
     fn temporary_directory(&self) -> &str {
-        // Only used for file transfers, which are not offered.
+        // Files are written where the user chose, never to a temporary place.
         ""
     }
 
     fn client_capabilities(&self) -> ClipboardGeneralCapabilityFlags {
-        ClipboardGeneralCapabilityFlags::empty()
+        // File transfer needs long format names (the file list has a name), streamed
+        // contents, and no paths: Windows sends names without drive letters.
+        ClipboardGeneralCapabilityFlags::USE_LONG_FORMAT_NAMES
+            | ClipboardGeneralCapabilityFlags::STREAM_FILECLIP_ENABLED
+            | ClipboardGeneralCapabilityFlags::FILECLIP_NO_FILE_PATHS
+            | ClipboardGeneralCapabilityFlags::CAN_LOCK_CLIPDATA
     }
 
     fn on_ready(&mut self) {
@@ -210,6 +228,16 @@ impl CliprdrBackend for ClipboardBackend {
         if has(ClipboardFormatId::CF_DIB) {
             self.notes.remote_has_picture = true;
         }
+        let list = available_formats
+            .iter()
+            .find(|format| format.name() == Some(&ClipboardFormatName::FILE_LIST));
+        if let Some(list) = list {
+            self.notes.files.remote_list = Some(list.id());
+        }
+    }
+
+    fn on_remote_file_list(&mut self, files: &[FileDescriptor], clip_data_id: Option<u32>) {
+        self.notes.files.list = Some((files.to_vec(), clip_data_id));
     }
 
     fn on_format_data_request(&mut self, request: FormatDataRequest) {
@@ -238,9 +266,17 @@ impl CliprdrBackend for ClipboardBackend {
         }
     }
 
-    fn on_file_contents_request(&mut self, _request: FileContentsRequest) {}
+    fn on_file_contents_request(&mut self, request: FileContentsRequest) {
+        self.notes.files.requests.push(request);
+    }
 
-    fn on_file_contents_response(&mut self, _response: FileContentsResponse<'_>) {}
+    fn on_file_contents_response(&mut self, response: FileContentsResponse<'_>) {
+        let data = (!response.is_error()).then(|| response.data().to_vec());
+        self.notes
+            .files
+            .responses
+            .push((response.stream_id(), data));
+    }
 
     fn on_lock(&mut self, _data_id: LockDataId) {}
 
@@ -338,6 +374,43 @@ mod tests {
         backend.on_format_data_response(FormatDataResponse::new_error());
 
         assert!(backend.take_notes().received.is_empty());
+    }
+
+    #[test]
+    fn copied_files_on_the_server_are_noted_by_the_name_of_their_format() {
+        let mut backend = ClipboardBackend::default();
+        let list = ClipboardFormat::new(ClipboardFormatId::new(0xC0F0))
+            .with_name(ClipboardFormatName::FILE_LIST);
+
+        backend.on_remote_copy(&[
+            ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT),
+            list,
+        ]);
+
+        let notes = backend.take_notes();
+        assert_eq!(
+            notes.files.remote_list,
+            Some(ClipboardFormatId::new(0xC0F0))
+        );
+    }
+
+    #[test]
+    fn a_file_answer_keeps_its_stream_and_a_failed_one_has_no_data() {
+        let mut backend = ClipboardBackend::default();
+
+        backend.on_file_contents_response(FileContentsResponse::new_data_response(4, vec![1, 2]));
+        backend.on_file_contents_response(FileContentsResponse::new_error(5));
+
+        let notes = backend.take_notes();
+        assert_eq!(notes.files.responses, [(4, Some(vec![1, 2])), (5, None)]);
+    }
+
+    #[test]
+    fn the_client_asks_for_file_transfer() {
+        let flags = ClipboardBackend::default().client_capabilities();
+
+        assert!(flags.contains(ClipboardGeneralCapabilityFlags::STREAM_FILECLIP_ENABLED));
+        assert!(flags.contains(ClipboardGeneralCapabilityFlags::USE_LONG_FORMAT_NAMES));
     }
 
     #[test]

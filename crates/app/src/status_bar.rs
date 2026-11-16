@@ -10,6 +10,9 @@ use crate::theme;
 const HEIGHT: f32 = 30.0;
 const PANEL_WIDTH: f32 = 360.0;
 
+/// The most room the live text takes, so the buttons next to it keep theirs.
+const LIVE_MAX: f32 = 260.0;
+
 /// What the bar shows.
 pub(crate) struct Bar<Message> {
     /// Left side, for example the host and the desktop size.
@@ -36,16 +39,21 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
         .style(theme::entry(bar.details_open))
         .on_press(on_toggle);
     let actions = bar.actions.into_iter().map(|(label, message)| {
-        button(text(label).size(theme::TEXT_SMALL))
-            .padding([2, 8])
-            .style(theme::pill)
-            .on_press(message)
-            .into()
+        button(
+            text(label)
+                .size(theme::TEXT_SMALL)
+                .wrapping(text::Wrapping::None),
+        )
+        .padding([2, 8])
+        .style(theme::pill)
+        .on_press(message)
+        .into()
     });
     let strip = row![
         text(bar.summary)
             .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text),
+            .style(theme::secondary_text)
+            .wrapping(text::Wrapping::None),
         space().width(Length::Fill),
     ]
     .extend(bar.recording.map(|elapsed| {
@@ -54,10 +62,17 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
             .style(text::danger)
             .into()
     }))
+    // The live text gives way to the buttons when there is not room for both.
     .push(
-        text(bar.live)
-            .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text),
+        container(
+            text(bar.live)
+                .size(theme::TEXT_SMALL)
+                .style(theme::secondary_text)
+                .wrapping(text::Wrapping::None),
+        )
+        .width(Length::Shrink)
+        .max_width(LIVE_MAX)
+        .clip(true),
     )
     .extend(actions)
     .push(info)

@@ -78,6 +78,8 @@ pub enum Event {
     Clipboard(String),
     /// A picture was copied on the server; it belongs on the local clipboard.
     ClipboardPicture(crate::dib::Picture),
+    /// Files were copied, offered, moved or failed to move.
+    Files(crate::files::FilesEvent),
     /// The server changed what the pointer looks like.
     Cursor(crate::cursor::Cursor),
     /// The screen changed. Only the newest frame matters.

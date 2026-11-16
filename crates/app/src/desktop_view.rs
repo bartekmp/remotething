@@ -136,6 +136,7 @@ fn with_status_bar<'a>(
     quality: remotething_core::Quality,
 ) -> Element<'a, Message> {
     let mut actions = vec![(fl!("desktop-ctrl-alt-del"), Message::CtrlAltDelPressed)];
+    actions.extend(live.files.actions());
     if features::screenshots() {
         actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
     }
@@ -165,6 +166,9 @@ fn with_status_bar<'a>(
 fn live_rate(live: &Live) -> String {
     if live.reconnecting {
         return fl!("desktop-reconnecting-short");
+    }
+    if let Some(files) = live.files.status() {
+        return files;
     }
     if let Some(note) = live.note.as_ref().and_then(Note::current) {
         return note.to_string();

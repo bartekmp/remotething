@@ -8,6 +8,7 @@ use iced::keyboard::{Key, Modifiers};
 use remotething_core::{Protocol, Quality, QuickTarget, ResolvedConnection, parse_quick};
 
 use crate::desktop;
+use crate::desktop_files;
 use crate::files_pane;
 use crate::ftp_tab;
 use crate::i18n::fl;
@@ -148,18 +149,23 @@ impl State {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
     }
 
-    /// The message that uploads a dropped file, when the tab in front shows files:
-    /// a session with its file pane open, or a file-only tab.
+    /// The message for a dropped file, when the tab in front takes files: a session with
+    /// its file pane open, a file-only tab, or a remote desktop.
     pub fn file_dropped(&self, path: std::path::PathBuf) -> Option<Message> {
         let tab = self.tabs.get(self.active)?;
-        let upload = files_pane::Message::UploadPicked(Some(path));
+        let upload = || files_pane::Message::UploadPicked(Some(path.clone()));
         match &tab.content {
             Content::Session(session) if session.has_files_open() => {
-                Some(Message::Session(tab.id, session::Message::Files(upload)))
+                Some(Message::Session(tab.id, session::Message::Files(upload())))
             }
             Content::Ftp(ftp) if ftp.is_connected() => {
-                Some(Message::Ftp(tab.id, ftp_tab::Message::Files(upload)))
+                Some(Message::Ftp(tab.id, ftp_tab::Message::Files(upload())))
             }
+            // A dropped file goes to the remote desktop, which can paste it.
+            Content::Desktop(desktop) if desktop.is_connected() => Some(Message::Desktop(
+                tab.id,
+                desktop::Message::Files(desktop_files::Message::Dropped(path)),
+            )),
             _ => None,
         }
     }

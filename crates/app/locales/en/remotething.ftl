@@ -321,3 +321,25 @@ desktop-reconnecting-short = Connection lost, connecting again…
 ftp-credential-kind = This connection uses a credential that is for SSH. For FTP use a password credential, or ask every time.
 ftp-not-encrypted = Not encrypted
 ftp-encrypted = Encrypted (TLS)
+rdpfiles-send = Send files…
+rdpfiles-receive = Receive ({ $count })
+rdpfiles-pick-send = Send files to the remote desktop
+rdpfiles-pick-folder = Save the files into
+rdpfiles-available = { $count ->
+    [one] 1 file copied remotely
+   *[other] { $count } files copied remotely
+}
+rdpfiles-offered = { $count ->
+    [one] 1 file ready to paste
+   *[other] { $count } files ready to paste
+}
+rdpfiles-progress-received = Receiving { $done } of { $total }
+rdpfiles-progress-sent = Sending { $done } of { $total }
+rdpfiles-finished-received = { $count ->
+    [one] Received 1 item
+   *[other] Received { $count } items
+}
+rdpfiles-finished-sent = { $count ->
+    [one] Sent 1 item
+   *[other] Sent { $count } items
+}

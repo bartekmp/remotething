@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.40.0 - 2026-11-16
+
+- Remote Desktop: copy files both ways. Send files with a button or by dropping them on the window and paste them on the remote desktop; copy files there and receive them into a folder. Nothing is ever replaced.
+
 ## 0.39.0 - 2026-11-16
 
 - New protocols FTP and FTPS: the tab is a file browser. FTPS pins the server's certificate and asks before the password is sent. Uploads and downloads resume.

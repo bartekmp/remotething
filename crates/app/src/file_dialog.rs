@@ -50,3 +50,17 @@ pub async fn pick_folder(title: String) -> Option<PathBuf> {
         .await?;
     Some(picked.path().to_path_buf())
 }
+
+/// Asks which files to use. `None` when the user cancels.
+pub async fn open_many(title: String) -> Option<Vec<PathBuf>> {
+    let picked = rfd::AsyncFileDialog::new()
+        .set_title(title)
+        .pick_files()
+        .await?;
+    Some(
+        picked
+            .into_iter()
+            .map(|file| file.path().to_path_buf())
+            .collect(),
+    )
+}

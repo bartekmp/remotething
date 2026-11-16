@@ -177,6 +177,9 @@ impl Worker {
                     scale,
                 }) => self.resize = Some((width, height, scale)),
                 Ok(Input::Clipboard(text)) => self.clipboard.set_text(text),
+                Ok(Input::OfferFiles(paths)) => self.clipboard.files.offer(paths),
+                Ok(Input::ReceiveFiles(folder)) => self.clipboard.files.receive(folder),
+                Ok(Input::CancelFiles) => self.clipboard.files.cancel(),
                 Ok(Input::ClipboardPicture(picture)) => {
                     if let Some(dib) = dib::to_dib(&picture) {
                         self.clipboard.set_picture(dib);
@@ -228,6 +231,10 @@ impl Worker {
             if let Some(picture) = dib::from_dib(&dib) {
                 let _ = events.try_send(Event::ClipboardPicture(picture));
             }
+        }
+        // What happened to files is not dropped when the queue is full: it waits.
+        for event in served.files {
+            let _ = events.blocking_send(Event::Files(event));
         }
         Ok(())
     }

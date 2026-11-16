@@ -11,6 +11,7 @@ mod credential_actions;
 mod credentials;
 mod desktop;
 mod desktop_cursor;
+mod desktop_files;
 mod desktop_open;
 mod desktop_size;
 mod desktop_view;

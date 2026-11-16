@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::desktop_cursor::Look;
+use crate::desktop_files;
 use crate::desktop_open::{self, Failure, Opened};
 use crate::desktop_size;
 use crate::display;
@@ -100,6 +101,8 @@ pub(crate) struct Live {
     pub(crate) video: Video,
     /// The connection broke and is being made again; the last picture stays up meanwhile.
     pub(crate) reconnecting: bool,
+    /// Files going between the desktop and this machine.
+    pub(crate) files: desktop_files::Files,
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +148,8 @@ pub enum Message {
     Closed(Option<String>),
     TrustPressed,
     ReconnectPressed,
+    /// Something about files going to or from the desktop.
+    Files(desktop_files::Message),
     /// The pointer moved over the picture, in pixels of the remote desktop.
     Moved(u16, u16),
     /// A mouse button went down (true) or up.
@@ -197,6 +202,7 @@ impl State {
             note: None,
             video: Video::default(),
             reconnecting: false,
+            files: desktop_files::Files::default(),
         }));
         typed
     }
@@ -333,6 +339,7 @@ impl State {
             note: None,
             video: Video::default(),
             reconnecting: false,
+            files: desktop_files::Files::default(),
         };
         let carried_on = previous.is_some();
         if let Some(old) = previous {
@@ -362,6 +369,7 @@ impl State {
                 Event::Clipboard(text) => Message::Clipboard(text),
                 Event::ClipboardPicture(picture) => Message::ClipboardPicture(picture),
                 Event::Cursor(cursor) => Message::Cursor(cursor),
+                Event::Files(event) => Message::Files(desktop_files::Message::Event(event)),
                 Event::Closed(reason) => Message::Closed(reason),
                 Event::ConnectionLost(reason) => Message::ConnectionLost(reason),
             };
@@ -422,7 +430,7 @@ impl State {
         });
     }
 
-    fn send(&mut self, input: Input) {
+    pub(crate) fn send(&mut self, input: Input) {
         if let Stage::Connected(live) = &mut self.stage {
             // A full queue drops the input; stale mouse moves are not worth waiting for.
             let _ = live.input.try_send(input);
@@ -572,6 +580,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             }
             Task::none()
         }
+        Message::Files(message) => desktop_files::update(state, message),
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.details_open = !live.details_open;

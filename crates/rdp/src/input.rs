@@ -58,6 +58,12 @@ pub enum Input {
     Clipboard(String),
     /// A picture is on the local clipboard now; the server may paste it.
     ClipboardPicture(crate::dib::Picture),
+    /// Files were picked locally; they are offered to the server, which can paste them.
+    OfferFiles(Vec<std::path::PathBuf>),
+    /// The files the server copied are to be saved into this folder.
+    ReceiveFiles(std::path::PathBuf),
+    /// The file transfer that is going is to stop.
+    CancelFiles,
     /// A key went down or up, by its scancode (the position of the key, not its letter).
     Key {
         /// The set-1 scancode without the extended prefix.
@@ -93,7 +99,12 @@ pub fn ctrl_alt_delete(pressed: bool) -> Vec<Input> {
 pub(crate) fn to_events(input: Input) -> Vec<FastPathInputEvent> {
     match input {
         // Not an input event: the session sends it over its own channel.
-        Input::Resize { .. } | Input::Clipboard(_) | Input::ClipboardPicture(_) => Vec::new(),
+        Input::Resize { .. }
+        | Input::Clipboard(_)
+        | Input::ClipboardPicture(_)
+        | Input::OfferFiles(_)
+        | Input::ReceiveFiles(_)
+        | Input::CancelFiles => Vec::new(),
         Input::MouseMoved { x, y } => vec![mouse(PointerFlags::MOVE, 0, x, y)],
         Input::Button {
             button,
