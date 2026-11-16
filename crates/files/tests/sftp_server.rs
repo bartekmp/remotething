@@ -130,3 +130,38 @@ async fn a_cut_short_transfer_carries_on_where_it_stopped() {
     assert_eq!(again.resumed_from, 0);
     assert_eq!(std::fs::read(&back).unwrap(), content);
 }
+
+#[tokio::test]
+#[ignore = "needs an SSH server; see the top of this file"]
+async fn a_folder_tree_goes_up_and_is_walked_and_comes_back() {
+    let directory = tempfile::tempdir().unwrap();
+    let files = connect(directory.path()).await;
+    let home = files.home().await.unwrap();
+    let top = join(&home, "remotething-test-tree");
+
+    // Files in nested folders that do not exist yet: the folders are made on the way.
+    let local = directory.path().join("one.txt");
+    std::fs::write(&local, "one").unwrap();
+    files
+        .upload_tracked(&local, &join(&top, "a/b/one.txt"), false, |_| {})
+        .await
+        .unwrap();
+    files
+        .upload_tracked(&local, &join(&top, "two.txt"), false, |_| {})
+        .await
+        .unwrap();
+
+    let found = files.files_under(&top).await.unwrap();
+    assert_eq!(
+        found,
+        [("a/b/one.txt".to_string(), 3), ("two.txt".to_string(), 3)]
+    );
+
+    // A download into folders that do not exist yet.
+    let target = directory.path().join("x/y/one.txt");
+    files
+        .download_tracked(&join(&top, "a/b/one.txt"), &target, false, |_| {})
+        .await
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "one");
+}

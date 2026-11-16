@@ -31,6 +31,55 @@ pub struct Transferred {
 }
 
 impl SftpFs {
+    /// Makes a remote folder and the ones above it that are missing.
+    pub async fn create_folders(&self, folder: &str) -> Result<()> {
+        let mut path = String::new();
+        for part in folder.split('/').filter(|part| !part.is_empty()) {
+            path.push('/');
+            path.push_str(part);
+            let exists = self
+                .session
+                .try_exists(path.clone())
+                .await
+                .map_err(|error| crate::sftp::remote("cannot look at", &path, error))?;
+            if !exists {
+                self.session
+                    .create_dir(path.clone())
+                    .await
+                    .map_err(|error| crate::sftp::remote("cannot create", &path, error))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Every file under a remote folder, with its size, as paths relative to the folder
+    /// (`a/b.txt`). Links and other special entries are left out, so a loop cannot trap the walk.
+    pub async fn files_under(&self, folder: &str) -> Result<Vec<(String, u64)>> {
+        let mut found = Vec::new();
+        let mut waiting = vec![String::new()];
+        while let Some(relative) = waiting.pop() {
+            let here = if relative.is_empty() {
+                folder.to_string()
+            } else {
+                crate::join(folder, &relative)
+            };
+            for entry in self.list(&here).await? {
+                let name = if relative.is_empty() {
+                    entry.name.clone()
+                } else {
+                    format!("{relative}/{}", entry.name)
+                };
+                match entry.kind {
+                    crate::EntryKind::Folder => waiting.push(name),
+                    crate::EntryKind::File => found.push((name, entry.size.unwrap_or(0))),
+                    _ => {}
+                }
+            }
+        }
+        found.sort();
+        Ok(found)
+    }
+
     /// The size of a remote file.
     pub async fn size(&self, remote_file: &str) -> Result<u64> {
         self.session
@@ -61,6 +110,11 @@ impl SftpFs {
             0
         };
 
+        if let Some(folder) = local_file.parent() {
+            tokio::fs::create_dir_all(folder)
+                .await
+                .map_err(|error| crate::sftp::local(folder, error))?;
+        }
         let mut source = self
             .session
             .open(remote_file)
@@ -127,6 +181,9 @@ impl SftpFs {
             0
         };
 
+        if let Some(folder) = crate::parent(remote_file) {
+            self.create_folders(&folder).await?;
+        }
         let mut target = if offset > 0 {
             let mut file = self
                 .session

@@ -152,6 +152,11 @@ impl Queue {
         }
     }
 
+    /// Nothing waits or runs.
+    pub(crate) fn is_idle(&self) -> bool {
+        self.jobs.iter().all(|job| !job.is_active())
+    }
+
     /// Forgets the transfers that are over.
     pub(crate) fn clear_finished(&mut self) {
         self.jobs.retain(Job::is_active);
@@ -264,6 +269,19 @@ mod tests {
         queue.retry(1);
 
         assert_eq!(queue.job(1).unwrap().state, JobState::Done(3));
+    }
+
+    #[test]
+    fn the_queue_is_idle_once_everything_is_over() {
+        let mut queue = queue_of(2);
+        assert!(!queue.is_idle());
+        queue.take_ready();
+        queue.ended(1, done(1));
+        assert!(!queue.is_idle());
+
+        queue.ended(2, done(1));
+
+        assert!(queue.is_idle());
     }
 
     #[test]

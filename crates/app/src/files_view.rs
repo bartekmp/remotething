@@ -45,8 +45,12 @@ pub fn view(state: &State) -> Element<'_, Message> {
         ),
         pill(fl!("files-upload"), ready.then_some(Message::UploadPressed)),
         pill(
+            fl!("files-upload-folder"),
+            ready.then_some(Message::UploadFolderPressed)
+        ),
+        pill(
             fl!("files-download"),
-            (ready && state.selected_file().is_some()).then_some(Message::DownloadPressed)
+            (ready && state.can_download()).then_some(Message::DownloadPressed)
         ),
     ]
     .spacing(6)

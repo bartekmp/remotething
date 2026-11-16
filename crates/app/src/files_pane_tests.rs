@@ -287,3 +287,98 @@ fn a_failed_check_is_shown_and_nothing_is_uploaded() {
     );
     assert_eq!(state.pending_replace, None);
 }
+
+#[test]
+fn the_files_of_a_folder_are_queued_in_order_with_their_direction() {
+    let mut state = loaded();
+    let pairs = vec![
+        (
+            PathBuf::from("/tmp/site/a.txt"),
+            "/home/ops/site/a.txt".to_string(),
+        ),
+        (
+            PathBuf::from("/tmp/site/b/c.txt"),
+            "/home/ops/site/b/c.txt".to_string(),
+        ),
+    ];
+
+    let _ = update(&mut state, Message::Expanded(Direction::Upload, Ok(pairs)));
+
+    let remotes: Vec<&str> = state
+        .queue
+        .jobs
+        .iter()
+        .map(|job| job.remote.as_str())
+        .collect();
+    assert_eq!(remotes, ["/home/ops/site/a.txt", "/home/ops/site/b/c.txt"]);
+    assert!(
+        state
+            .queue
+            .jobs
+            .iter()
+            .all(|job| job.direction == Direction::Upload)
+    );
+}
+
+#[test]
+fn a_folder_that_cannot_be_read_shows_its_reason_and_queues_nothing() {
+    let mut state = loaded();
+
+    let _ = update(
+        &mut state,
+        Message::Expanded(Direction::Download, Err("permission denied".to_string())),
+    );
+
+    assert_eq!(
+        state.status,
+        Some(Status::Failed("permission denied".to_string()))
+    );
+    assert!(state.queue.jobs.is_empty());
+}
+
+#[test]
+fn a_selected_folder_can_be_downloaded_too() {
+    let mut state = loaded();
+    assert!(!state.can_download());
+
+    let _ = update(
+        &mut state,
+        Message::Selected("/home/ops/notes.txt".to_string(), EntryKind::File),
+    );
+    assert!(state.can_download());
+
+    let _ = update(
+        &mut state,
+        Message::FolderToggled("/home/ops/logs".to_string()),
+    );
+    assert!(state.can_download());
+}
+
+#[test]
+fn the_pane_reads_the_folders_again_once_the_last_upload_is_over() {
+    let mut state = loaded();
+    let _ = update(
+        &mut state,
+        Message::UploadChecked(PathBuf::from("/tmp/a.txt"), Ok(false)),
+    );
+    let _ = update(
+        &mut state,
+        Message::UploadChecked(PathBuf::from("/tmp/b.txt"), Ok(false)),
+    );
+    let (first, second) = (state.queue.jobs[0].id, state.queue.jobs[1].id);
+    let done = || Transferred {
+        bytes: 1,
+        resumed_from: 0,
+    };
+    // Make both running, as the started tasks would have.
+    state.queue.take_ready();
+
+    let _ = update(&mut state, Message::TransferEnded(first, Ok(done())));
+    assert!(state.uploaded, "one is still going, the read waits");
+    assert!(state.listings.contains_key("/home/ops"));
+
+    let _ = update(&mut state, Message::TransferEnded(second, Ok(done())));
+    assert!(!state.uploaded);
+    // Everything was forgotten for the new read (no service in a test to ask again).
+    assert!(state.listings.is_empty());
+}

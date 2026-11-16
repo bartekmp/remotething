@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.34.0 - 2026-11-16
+
+- File pane: upload and download whole folders. Each file goes through the transfer list.
+
 ## 0.33.0 - 2026-11-16
 
 - File pane: uploads and downloads go into a list with progress. Several can be queued, two run at once, each can be cancelled, and a failed or cancelled one can be retried from where it stopped.

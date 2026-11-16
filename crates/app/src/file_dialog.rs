@@ -41,3 +41,12 @@ pub async fn open_any(title: String) -> Option<PathBuf> {
         .await?;
     Some(picked.path().to_path_buf())
 }
+
+/// Asks which folder to use. `None` when the user cancels.
+pub async fn pick_folder(title: String) -> Option<PathBuf> {
+    let picked = rfd::AsyncFileDialog::new()
+        .set_title(title)
+        .pick_folder()
+        .await?;
+    Some(picked.path().to_path_buf())
+}
