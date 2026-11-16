@@ -1,6 +1,7 @@
 //! Tests of `files_pane.rs`.
 
 use super::*;
+use crate::transfer_queue::JobState;
 
 fn entry(name: &str, kind: EntryKind) -> Entry {
     Entry {
@@ -128,26 +129,6 @@ fn a_folder_that_cannot_be_listed_keeps_its_reason() {
 }
 
 #[test]
-fn a_finished_transfer_shows_its_result_and_a_failed_one_its_reason() {
-    let mut state = loaded();
-    state.busy = true;
-
-    let done = Message::Transferred(Ok(("Uploaded a.txt".to_string(), None)));
-    let _ = update(&mut state, done);
-    assert!(!state.busy);
-    assert_eq!(
-        state.status,
-        Some(Status::Done("Uploaded a.txt".to_string()))
-    );
-
-    let _ = update(
-        &mut state,
-        Message::Transferred(Err("disk full".to_string())),
-    );
-    assert_eq!(state.status, Some(Status::Failed("disk full".to_string())));
-}
-
-#[test]
 fn the_close_button_asks_the_session_to_close_the_pane() {
     let mut state = loaded();
 
@@ -173,6 +154,67 @@ fn an_upload_to_a_name_that_is_free_starts_at_once() {
 
     // No files service in a test, so nothing starts, but nothing is asked either.
     assert_eq!(state.pending_replace, None);
+    let job = &state.queue.jobs[0];
+    assert_eq!(job.direction, Direction::Upload);
+    assert_eq!(job.remote, "/home/ops/new.txt");
+}
+
+#[test]
+fn a_download_of_the_selected_file_is_queued() {
+    let mut state = loaded();
+    let _ = update(
+        &mut state,
+        Message::Selected("/home/ops/notes.txt".to_string(), EntryKind::File),
+    );
+
+    let _ = update(
+        &mut state,
+        Message::DownloadPicked(Some(PathBuf::from("/tmp/notes.txt"))),
+    );
+
+    let job = &state.queue.jobs[0];
+    assert_eq!(job.direction, Direction::Download);
+    assert_eq!(job.remote, "/home/ops/notes.txt");
+    assert_eq!(job.local, PathBuf::from("/tmp/notes.txt"));
+}
+
+#[test]
+fn a_transfer_that_ends_shows_its_result_and_can_be_retried_when_it_failed() {
+    let mut state = loaded();
+    let _ = update(
+        &mut state,
+        Message::UploadChecked(PathBuf::from("/tmp/a.txt"), Ok(false)),
+    );
+    let id = state.queue.jobs[0].id;
+
+    let _ = update(
+        &mut state,
+        Message::TransferEnded(id, Err("connection lost".to_string())),
+    );
+    assert_eq!(
+        state.queue.job(id).unwrap().state,
+        JobState::Failed("connection lost".to_string())
+    );
+
+    let _ = update(&mut state, Message::RetryPressed(id));
+    let job = state.queue.job(id).unwrap();
+    assert_eq!(job.state, JobState::Waiting);
+    assert!(job.resume);
+}
+
+#[test]
+fn clearing_removes_the_transfers_that_are_over() {
+    let mut state = loaded();
+    let _ = update(
+        &mut state,
+        Message::UploadChecked(PathBuf::from("/tmp/a.txt"), Ok(false)),
+    );
+    let id = state.queue.jobs[0].id;
+    let _ = update(&mut state, Message::CancelPressed(id));
+
+    let _ = update(&mut state, Message::ClearPressed);
+
+    assert!(state.queue.jobs.is_empty());
 }
 
 #[test]
@@ -197,7 +239,7 @@ fn cancelling_the_question_keeps_the_remote_file_and_clears_the_question() {
     let _ = update(&mut state, Message::ReplaceCancelled);
 
     assert_eq!(state.pending_replace, None);
-    assert!(!state.busy);
+    assert!(state.queue.jobs.is_empty());
 }
 
 #[test]

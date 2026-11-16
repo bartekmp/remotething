@@ -4,9 +4,11 @@
 
 mod entry;
 mod sftp;
+mod transfer;
 
 pub use entry::{Entry, EntryKind, join, parent, sort};
 pub use sftp::SftpFs;
+pub use transfer::{Progress, Transferred};
 
 /// Everything that can go wrong with a remote file system.
 #[derive(Debug, thiserror::Error)]

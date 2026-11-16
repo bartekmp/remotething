@@ -10,7 +10,7 @@ use crate::{Error, Result};
 
 /// The files of an SSH server, reached through the connection of a session.
 pub struct SftpFs {
-    session: SftpSession,
+    pub(crate) session: SftpSession,
 }
 
 impl SftpFs {
@@ -113,7 +113,7 @@ impl SftpFs {
     }
 }
 
-fn remote(action: &'static str, path: &str, error: impl std::fmt::Display) -> Error {
+pub(crate) fn remote(action: &'static str, path: &str, error: impl std::fmt::Display) -> Error {
     Error::Remote {
         action,
         path: path.to_string(),
@@ -121,7 +121,7 @@ fn remote(action: &'static str, path: &str, error: impl std::fmt::Display) -> Er
     }
 }
 
-fn local(path: &Path, error: std::io::Error) -> Error {
+pub(crate) fn local(path: &Path, error: std::io::Error) -> Error {
     Error::Local {
         path: path.to_path_buf(),
         reason: error.to_string(),

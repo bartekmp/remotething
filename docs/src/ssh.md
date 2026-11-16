@@ -97,7 +97,8 @@ A connected session has a **Browse files** button above the terminal. It opens a
 
 - The pane starts in your home folder. Folders come first, then files, by name.
 - An upload that would replace a file of the same name asks first: **Replace** or **Cancel**. A download's file dialog asks the same itself.
-- One transfer runs at a time, and there is no progress bar yet; the result or the reason for a failure is shown at the bottom of the pane.
+- Transfers go into a list under the tree, with a progress bar and the size done. Two run at the same time; the rest wait. **Cancel** stops one.
+- A failed or cancelled transfer has a **Retry** button. It carries on from what is already there: a shorter file on the other side is taken as the start and only the rest is sent. **Clear** forgets the transfers that are over.
 
 ## Not available yet
 

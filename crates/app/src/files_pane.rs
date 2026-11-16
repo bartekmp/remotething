@@ -6,11 +6,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::Task;
-use remotething_files::{Entry, EntryKind, SftpFs};
+use remotething_files::{Entry, EntryKind, Progress, SftpFs, Transferred};
 use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
+use crate::files_transfer;
 use crate::i18n::fl;
+use crate::transfer_queue::{Direction, Queue};
 
 pub const WIDTH: f32 = 320.0;
 
@@ -40,8 +42,8 @@ pub struct State {
     pub(crate) expanded: HashSet<String>,
     /// The highlighted row, as path and kind.
     pub(crate) selected: Option<(String, EntryKind)>,
-    /// A transfer is running.
-    pub(crate) busy: bool,
+    /// The uploads and downloads of this pane, waiting, running and over.
+    pub(crate) queue: Queue,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -51,7 +53,6 @@ pub struct State {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Status {
     Failed(String),
-    Done(String),
 }
 
 /// The started file service on its way to the window.
@@ -87,8 +88,16 @@ pub enum Message {
     DownloadPressed,
     /// Where to save the download, or `None` when the dialog was cancelled.
     DownloadPicked(Option<PathBuf>),
-    /// A transfer finished: the text to show, and the folder to list again after an upload.
-    Transferred(Result<(String, Option<String>), String>),
+    /// How far a running transfer has come.
+    TransferProgress(u64, Progress),
+    /// A transfer ended, with its result.
+    TransferEnded(u64, Result<Transferred, String>),
+    /// "Cancel" on a transfer.
+    CancelPressed(u64),
+    /// "Retry" on a failed or cancelled transfer.
+    RetryPressed(u64),
+    /// "Clear" on the list of transfers.
+    ClearPressed,
     ClosePressed,
 }
 
@@ -125,7 +134,7 @@ impl State {
             listings: HashMap::new(),
             expanded: HashSet::new(),
             selected: None,
-            busy: false,
+            queue: Queue::default(),
             pending_replace: None,
             status: None,
         }
@@ -288,21 +297,35 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
         Message::DownloadPicked(Some(local)) => start_download(state, local),
         // A cancelled dialog.
         Message::UploadPicked(None) | Message::DownloadPicked(None) => Task::none(),
-        Message::Transferred(result) => {
-            state.busy = false;
-            match result {
-                Ok((done, folder_to_list)) => {
-                    state.status = Some(Status::Done(done));
-                    match folder_to_list {
-                        Some(folder) => state.list(&folder),
-                        None => Task::none(),
-                    }
-                }
-                Err(reason) => {
-                    state.status = Some(Status::Failed(reason));
-                    Task::none()
-                }
-            }
+        Message::TransferProgress(id, progress) => {
+            state.queue.progress(id, progress);
+            Task::none()
+        }
+        Message::TransferEnded(id, result) => {
+            // After an upload the folder it went into shows the new file.
+            let uploaded_to = state
+                .queue
+                .job(id)
+                .filter(|job| job.direction == Direction::Upload && result.is_ok())
+                .and_then(|job| remotething_files::parent(&job.remote));
+            state.queue.ended(id, result);
+            let refresh = match uploaded_to {
+                Some(folder) => state.list(&folder),
+                None => Task::none(),
+            };
+            Task::batch([refresh, start_ready(state)])
+        }
+        Message::CancelPressed(id) => {
+            state.queue.cancel(id);
+            start_ready(state)
+        }
+        Message::RetryPressed(id) => {
+            state.queue.retry(id);
+            start_ready(state)
+        }
+        Message::ClearPressed => {
+            state.queue.clear_finished();
+            Task::none()
         }
         Message::ClosePressed => return (Task::none(), Some(Event::Close)),
     };
@@ -325,49 +348,41 @@ fn check_upload(state: &mut State, local: PathBuf) -> Task<Message> {
     )
 }
 
+/// Puts an upload of `local` in the queue, into the folder the selection points at.
 fn start_upload(state: &mut State, local: PathBuf) -> Task<Message> {
-    let (Some(files), Some(name)) = (&state.files, local.file_name()) else {
+    let Some(remote) = state.upload_target(&local) else {
         return Task::none();
     };
-    let folder = state.upload_folder();
-    let remote = remotething_files::join(&folder, &name.to_string_lossy());
-    let files = Arc::clone(files);
-    state.busy = true;
     state.status = None;
-    Task::perform(
-        async move {
-            let sent = files.upload(&local, &remote).await;
-            sent.map(|bytes| {
-                let done = fl!("files-uploaded", file = remote, size = format_size(bytes));
-                (done, Some(folder))
-            })
-            .map_err(|error| error.to_string())
-        },
-        Message::Transferred,
-    )
+    state.queue.add(Direction::Upload, local, remote);
+    start_ready(state)
 }
 
+/// Puts a download of the selected file in the queue.
 fn start_download(state: &mut State, local: PathBuf) -> Task<Message> {
-    let (Some(files), Some(remote)) = (&state.files, state.selected_file()) else {
+    let Some(remote) = state.selected_file().map(str::to_string) else {
         return Task::none();
     };
-    let files = Arc::clone(files);
-    let remote = remote.to_string();
-    state.busy = true;
     state.status = None;
-    Task::perform(
-        async move {
-            let received = files.download(&remote, &local).await;
-            received
-                .map(|bytes| {
-                    let file = local.display().to_string();
-                    let done = fl!("files-downloaded", file = file, size = format_size(bytes));
-                    (done, None)
-                })
-                .map_err(|error| error.to_string())
-        },
-        Message::Transferred,
-    )
+    state.queue.add(Direction::Download, local, remote);
+    start_ready(state)
+}
+
+/// Starts the transfers that are next in line, as many as there is room for.
+fn start_ready(state: &mut State) -> Task<Message> {
+    let Some(files) = state.files.clone() else {
+        return Task::none();
+    };
+    let mut tasks = Vec::new();
+    for id in state.queue.take_ready() {
+        let Some(job) = state.queue.job(id) else {
+            continue;
+        };
+        let (task, handle) = files_transfer::start(Arc::clone(&files), job);
+        state.queue.set_handle(id, handle);
+        tasks.push(task);
+    }
+    Task::batch(tasks)
 }
 
 /// A size the way people read it: `512 B`, `1.5 kB`, `20.0 MB`.

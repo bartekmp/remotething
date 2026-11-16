@@ -6,6 +6,7 @@ use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
 use crate::files_pane::{Listing, Message, Row, State, Status, format_size};
+use crate::files_transfers_view;
 use crate::i18n::fl;
 use crate::icons;
 use crate::theme;
@@ -35,7 +36,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
             .style(theme::pill)
             .on_press_maybe(message)
     };
-    let ready = state.files.is_some() && !state.busy;
+    let ready = state.files.is_some();
     let toolbar = row![
         pill(fl!("files-up"), ready.then_some(Message::UpPressed)),
         pill(
@@ -68,18 +69,15 @@ pub fn view(state: &State) -> Element<'_, Message> {
 
     let status: Element<'_, Message> = match &state.pending_replace {
         Some((_, remote)) => replace_question(remote),
-        None => view_status(&state.status, state.busy),
+        None => view_status(&state.status),
     };
 
-    column![
-        header,
-        path,
-        toolbar,
-        container(list).height(Length::Fill),
-        status
-    ]
-    .spacing(theme::GAP)
-    .into()
+    let mut page =
+        column![header, path, toolbar, container(list).height(Length::Fill)].spacing(theme::GAP);
+    if let Some(transfers) = files_transfers_view::view(state) {
+        page = page.push(transfers);
+    }
+    page.push(status).into()
 }
 
 fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
@@ -139,19 +137,14 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
     mouse_area(line).on_press(on_press).into()
 }
 
-/// The last result of a transfer, or that one is running.
-fn view_status(status: &Option<Status>, busy: bool) -> Element<'_, Message> {
-    match (status, busy) {
-        (_, true) => text(fl!("files-working"))
-            .size(theme::TEXT_SMALL)
-            .style(theme::secondary_text)
-            .into(),
-        (Some(Status::Failed(reason)), _) => text(reason.as_str())
+/// The last problem, if there is one.
+fn view_status(status: &Option<Status>) -> Element<'_, Message> {
+    match status {
+        Some(Status::Failed(reason)) => text(reason.as_str())
             .size(theme::TEXT_SMALL)
             .style(text::danger)
             .into(),
-        (Some(Status::Done(done)), _) => text(done.as_str()).size(theme::TEXT_SMALL).into(),
-        (None, false) => space().into(),
+        None => space().into(),
     }
 }
 

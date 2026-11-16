@@ -175,9 +175,14 @@ files-upload = Upload
 files-download = Download
 files-empty = This folder is empty.
 files-loading = Loading…
-files-working = Transferring…
-files-uploaded = Uploaded { $file } ({ $size }).
-files-downloaded = Downloaded to { $file } ({ $size }).
+files-transfers = Transfers
+files-transfer-waiting = Waiting
+files-transfer-progress = { $done } of { $total }
+files-transfer-done = Done, { $size }
+files-transfer-cancelled = Cancelled
+files-cancel = Cancel
+files-retry = Retry
+files-clear = Clear
 
 jump-needs-credential = The jump host { $name } needs a credential with a user name and either a stored password or a key file. A jump host cannot ask while connecting.
 jump-loop = The jump hosts form a loop at { $name }.
