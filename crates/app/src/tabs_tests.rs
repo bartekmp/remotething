@@ -402,3 +402,28 @@ fn an_ftp_tab_takes_dropped_files_once_it_shows_files_and_asks_before_it_is_clos
     fixture.state.close_front();
     assert!(fixture.state.confirming_close.is_some());
 }
+
+#[test]
+fn closing_a_tab_by_request_closes_an_idle_tab_without_asking() {
+    let mut fixture = Fixture::with_tabs(&["a", "b"]);
+
+    // What a middle click on the first tab sends.
+    fixture.send(Message::CloseRequested(0));
+
+    assert_eq!(fixture.state.open_ids(), ["b"]);
+}
+
+#[test]
+fn the_close_question_takes_the_keys_until_it_is_answered() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+    fixture.make_front_live();
+    assert!(!fixture.state.has_question());
+
+    fixture.state.close_front();
+    assert!(fixture.state.has_question());
+
+    let _ = fixture
+        .state
+        .key(&Key::Named(Named::Escape), Modifiers::empty(), None);
+    assert!(!fixture.state.has_question());
+}

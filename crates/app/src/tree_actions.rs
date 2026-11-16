@@ -7,6 +7,7 @@ use remotething_core::Direction;
 use crate::app::{Centre, Message, State};
 use crate::menu;
 use crate::organise;
+use crate::rows;
 use crate::tree::{self, Selection};
 
 pub(crate) fn on_tree_event(state: &mut State, event: tree::Event) -> Task<Message> {
@@ -16,6 +17,17 @@ pub(crate) fn on_tree_event(state: &mut State, event: tree::Event) -> Task<Messa
             state.select(selection);
         }
         tree::Event::Open(connection_id) => return state.open(&connection_id),
+        tree::Event::Search(query) => {
+            let first = rows::matching_rows(&state.store, &query)
+                .into_iter()
+                .find(|row| matches!(row.kind, rows::RowKind::Connection(_)));
+            // With nothing to open the field stays, for another try.
+            let Some(first) = first else {
+                return Task::none();
+            };
+            state.tree.escape();
+            return state.open(&first.id);
+        }
         tree::Event::NewFolder => state.add_folder(state.folder_for_new_item()),
         tree::Event::NewConnection => state.add_connection(state.folder_for_new_item()),
         tree::Event::ShowCredentials => state.centre = Centre::Credentials,

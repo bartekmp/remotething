@@ -27,6 +27,8 @@ pub(crate) struct Files {
     progress: Option<(Direction, u64, u64)>,
     /// Files dropped on the window, waiting for the rest of the drop.
     dropped: Vec<PathBuf>,
+    /// The files last seen on the local clipboard, so each copy is offered once.
+    pub(crate) copied: Option<Vec<PathBuf>>,
 }
 
 impl Files {

@@ -19,6 +19,8 @@ const ARROW_WIDTH: f32 = 14.0;
 const ICON_SIZE: f32 = 16.0;
 /// The widget id of the text field of the row being renamed.
 pub const RENAME_INPUT: &str = "tree-rename";
+/// The id of the search field above the list.
+pub const SEARCH_INPUT: &str = "tree-search";
 
 /// What is highlighted in the tree and shown in the properties panel.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,6 +50,8 @@ pub struct State {
     hovered: Option<Selection>,
     /// Whether the pointer is over the list at all.
     over_list: bool,
+    /// The search field above the list, with what was typed; `None` while it is closed.
+    search: Option<String>,
 }
 
 impl State {
@@ -64,9 +68,21 @@ impl State {
         self.rename = Some((selection, name));
     }
 
-    /// Whether a rename or a drag is in progress, so Escape belongs to the tree.
+    /// Whether a rename, a drag or a search is in progress, so Escape belongs to the tree.
     pub fn is_busy(&self) -> bool {
-        self.rename.is_some() || self.dragged.is_some()
+        self.rename.is_some() || self.dragged.is_some() || self.search.is_some()
+    }
+
+    /// Opens the search field, empty, or keeps what is typed when it is already open.
+    pub fn open_search(&mut self) {
+        self.search.get_or_insert_with(String::new);
+        self.cancel();
+    }
+
+    /// Escape: drops a rename or a drag, and closes the search.
+    pub fn escape(&mut self) {
+        self.cancel();
+        self.search = None;
     }
 
     /// Drops a rename or a drag in progress.
@@ -131,6 +147,9 @@ pub enum Message {
     MenuRequested(Option<Selection>),
     RenameChanged(String),
     RenameSubmitted,
+    SearchChanged(String),
+    /// Enter in the search field: opens the first match.
+    SearchSubmitted,
 }
 
 /// What the tree asks the window to do.
@@ -138,6 +157,8 @@ pub enum Message {
 pub enum Event {
     SelectionChanged,
     Open(String),
+    /// Enter was pressed in the search for this text: open its first match.
+    Search(String),
     NewFolder,
     NewConnection,
     ShowCredentials,
@@ -203,6 +224,15 @@ pub fn update(state: &mut State, message: Message) -> Option<Event> {
             let (selection, name) = state.rename.take()?;
             Some(Event::Renamed(selection, name))
         }
+        Message::SearchChanged(text) => {
+            state.search = Some(text);
+            state.rows_changed();
+            None
+        }
+        Message::SearchSubmitted => {
+            let query = state.search.clone()?;
+            Some(Event::Search(query))
+        }
     }
 }
 
@@ -221,9 +251,22 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
         .on_press(Message::CredentialsPressed);
     let toolbar = column![toolbar, credentials].spacing(6);
 
-    let rows = rows::visible_rows(store, &state.collapsed);
+    let query = state
+        .search
+        .as_deref()
+        .map(str::trim)
+        .filter(|query| !query.is_empty());
+    let rows = match query {
+        Some(query) => rows::matching_rows(store, query),
+        None => rows::visible_rows(store, &state.collapsed),
+    };
     let content: Element<'a, Message> = if rows.is_empty() {
-        text(fl!("tree-empty")).style(theme::secondary_text).into()
+        let empty = if query.is_some() {
+            fl!("tree-search-empty")
+        } else {
+            fl!("tree-empty")
+        };
+        text(empty).style(theme::secondary_text).into()
     } else {
         // No gap between rows: a drop between two of them must land on one.
         let lines = rows.into_iter().map(|row| view_row(state, row));
@@ -235,7 +278,17 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
         .on_exit(Message::ListExited)
         .on_press(Message::ListPressed)
         .on_right_press(Message::MenuRequested(None));
-    column![toolbar, list].spacing(theme::GAP).into()
+    let mut panel = column![toolbar].spacing(theme::GAP);
+    if let Some(typed) = &state.search {
+        panel = panel.push(
+            theme::input(&fl!("tree-search-hint"), typed)
+                .id(SEARCH_INPUT)
+                .padding(6)
+                .on_input(Message::SearchChanged)
+                .on_submit(Message::SearchSubmitted),
+        );
+    }
+    panel.push(list).into()
 }
 
 fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {

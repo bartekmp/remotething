@@ -268,3 +268,37 @@ fn a_transfer_of_unknown_size_shows_no_bar() {
 
     assert_eq!(live(&state).files.progress_share(), None);
 }
+
+#[test]
+fn files_copied_locally_are_offered_once_and_again_when_they_change() {
+    let mut fixture = Fixture::new();
+    let (mut state, mut input) = fixture.connected();
+    let first = vec![PathBuf::from("/tmp/a")];
+
+    state.local_files(first.clone());
+    state.local_files(first.clone());
+    assert_eq!(input.try_recv().unwrap(), Input::OfferFiles(first));
+    assert!(
+        input.try_recv().is_err(),
+        "the same copy is not offered twice"
+    );
+
+    let second = vec![PathBuf::from("/tmp/b")];
+    state.local_files(second.clone());
+    assert_eq!(input.try_recv().unwrap(), Input::OfferFiles(second));
+}
+
+#[test]
+fn copying_text_after_files_lets_the_same_files_be_offered_again_later() {
+    let mut fixture = Fixture::new();
+    let (mut state, mut input) = fixture.connected();
+    let files = vec![PathBuf::from("/tmp/a")];
+    state.local_files(files.clone());
+    let _ = input.try_recv();
+
+    state.local_clipboard("words".to_string());
+    let _ = input.try_recv();
+    state.local_files(files.clone());
+
+    assert_eq!(input.try_recv().unwrap(), Input::OfferFiles(files));
+}

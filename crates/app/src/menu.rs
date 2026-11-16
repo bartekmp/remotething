@@ -12,8 +12,9 @@ use crate::tree::Selection;
 const WIDTH: f32 = 200.0;
 const PADDING: f32 = 6.0;
 const ITEM_HEIGHT: f32 = 30.0;
-/// The icon grid: 23 cells of 30 px, six to a row.
-const ICONS_HEIGHT: f32 = 4.0 * 32.0;
+/// The icon grid: cells of 30 px with 2 px between, five to a row in the menu.
+const ICON_ROW: f32 = 32.0;
+const ICONS_PER_ROW: usize = 5;
 /// Kept free between the menu and the edge of the window.
 const MARGIN: f32 = 8.0;
 
@@ -106,7 +107,7 @@ fn label(action: Message) -> String {
 /// A layer the size of the window: the menu, and around it a catcher for clicks outside.
 pub fn view<'a>(state: &'a State, store: &'a Store, window: Size) -> Element<'a, Message> {
     let (content, height): (Element<'a, Message>, f32) = if state.picking_icon {
-        (icon_page(state, store), ICONS_HEIGHT)
+        (icon_page(state, store), icons_height())
     } else {
         let actions = actions(state.target());
         let items = actions.iter().map(|action| item(*action));
@@ -126,6 +127,11 @@ pub fn view<'a>(state: &'a State, store: &'a Store, window: Size) -> Element<'a,
         pin(opaque(panel)).position(place(state.position, size, window))
     ]
     .into()
+}
+
+/// The height of the icon grid: the default cell and every choice, in rows.
+fn icons_height() -> f32 {
+    (icons::CHOICES.len() + 1).div_ceil(ICONS_PER_ROW) as f32 * ICON_ROW
 }
 
 fn item<'a>(action: Message) -> Element<'a, Message> {
@@ -204,6 +210,14 @@ mod tests {
         assert!(actions.contains(&Message::NewConnection));
         assert!(actions.contains(&Message::Rename));
         assert!(!actions.contains(&Message::Connect));
+    }
+
+    #[test]
+    fn the_icon_grid_has_room_for_every_icon_six_to_a_row() {
+        let cells = icons::CHOICES.len() + 1;
+
+        assert!(icons_height() >= (cells / ICONS_PER_ROW) as f32 * ICON_ROW);
+        assert_eq!(icons_height() % ICON_ROW, 0.0);
     }
 
     #[test]

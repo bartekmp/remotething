@@ -103,7 +103,7 @@ impl Live {
         self.recording_problem = None;
         let (columns, lines) = (self.screen.columns(), self.screen.lines());
         let started = Recording::start(
-            &features::recordings_folder(),
+            &features::console_recordings_folder(),
             &self.name,
             u16::try_from(columns).unwrap_or(u16::MAX),
             u16::try_from(lines).unwrap_or(u16::MAX),

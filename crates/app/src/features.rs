@@ -13,7 +13,8 @@ use crate::preferences::{self, Features, Preferences};
 #[derive(Default)]
 struct Switches {
     features: Features,
-    recordings: PathBuf,
+    desktop_recordings: PathBuf,
+    console_recordings: PathBuf,
     screenshots: PathBuf,
 }
 
@@ -21,13 +22,26 @@ thread_local! {
     static SWITCHES: RefCell<Switches> = RefCell::new(Switches::default());
 }
 
-/// Takes the switches from `preferences`; recordings go beside `connections_file`.
+/// Takes the switches and folders from `preferences`. A folder the user did not choose is
+/// one beside `connections_file`.
 pub(crate) fn apply(preferences: &Preferences, connections_file: &Path) {
+    let chosen = &preferences.folders;
+    let default_recordings = preferences::recordings_beside(connections_file);
     SWITCHES.with(|switches| {
         *switches.borrow_mut() = Switches {
             features: preferences.features,
-            recordings: preferences::recordings_beside(connections_file),
-            screenshots: preferences::screenshots_beside(connections_file),
+            desktop_recordings: chosen
+                .desktop_recordings
+                .clone()
+                .unwrap_or_else(|| default_recordings.clone()),
+            console_recordings: chosen
+                .console_recordings
+                .clone()
+                .unwrap_or(default_recordings),
+            screenshots: chosen
+                .screenshots
+                .clone()
+                .unwrap_or_else(|| preferences::screenshots_beside(connections_file)),
         };
     });
 }
@@ -65,9 +79,14 @@ pub(crate) fn record_every_session() -> bool {
     })
 }
 
-/// The folder recordings are written to.
-pub(crate) fn recordings_folder() -> PathBuf {
-    SWITCHES.with(|switches| switches.borrow().recordings.clone())
+/// The folder recordings of remote desktops are written to.
+pub(crate) fn desktop_recordings_folder() -> PathBuf {
+    SWITCHES.with(|switches| switches.borrow().desktop_recordings.clone())
+}
+
+/// The folder recordings of terminals are written to.
+pub(crate) fn console_recordings_folder() -> PathBuf {
+    SWITCHES.with(|switches| switches.borrow().console_recordings.clone())
 }
 
 #[cfg(test)]
@@ -90,6 +109,21 @@ mod tests {
         preferences.features.console_recording = true;
         apply(&preferences, Path::new("/x/connections.toml"));
         assert!(record_every_session());
-        assert_eq!(recordings_folder(), Path::new("/x/recordings"));
+        assert_eq!(desktop_recordings_folder(), Path::new("/x/recordings"));
+        assert_eq!(console_recordings_folder(), Path::new("/x/recordings"));
+        assert_eq!(screenshots_folder(), Path::new("/x/screenshots"));
+    }
+
+    #[test]
+    fn a_chosen_folder_replaces_only_its_own_default() {
+        let mut preferences = Preferences::default();
+        preferences.folders.console_recordings = Some(PathBuf::from("/data/casts"));
+        preferences.folders.screenshots = Some(PathBuf::from("/data/shots"));
+
+        apply(&preferences, Path::new("/x/connections.toml"));
+
+        assert_eq!(console_recordings_folder(), Path::new("/data/casts"));
+        assert_eq!(screenshots_folder(), Path::new("/data/shots"));
+        assert_eq!(desktop_recordings_folder(), Path::new("/x/recordings"));
     }
 }

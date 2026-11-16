@@ -161,7 +161,7 @@ impl Video {
             return;
         }
         self.problem = None;
-        match VideoRecording::start(&features::recordings_folder(), connection, picture) {
+        match VideoRecording::start(&features::desktop_recordings_folder(), connection, picture) {
             Ok(recording) => self.recording = Some(recording),
             Err(error) => {
                 self.problem = Some(format!("{} {error}", fl!("recording-failed")));

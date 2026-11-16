@@ -309,7 +309,7 @@ settings-features = Optional features
 settings-feature-console = Record SSH terminals
 settings-feature-keystrokes = Also record what I type (passwords are typed too)
 settings-feature-every = Record every SSH session from its start
-settings-features-note = Recordings go to the recordings folder beside the connections file: terminals as asciicast files (play with asciinema), desktops as AVI video. A recording is always shown in red in the status strip while it runs.
+settings-features-note = Terminals are recorded as asciicast files (play with asciinema), desktops as AVI video. A recording is always shown in red in the status strip while it runs.
 
 screenshot-button = Screenshot
 screenshot-saved = Saved { $name }
@@ -343,3 +343,8 @@ rdpfiles-finished-sent = { $count ->
     [one] Sent 1 item
    *[other] Sent { $count } items
 }
+tree-search-hint = Search connections…
+tree-search-empty = No connection matches.
+settings-folder-change = Change…
+settings-folder-default = Default
+settings-folder-pick = Choose a folder

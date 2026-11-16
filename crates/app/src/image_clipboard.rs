@@ -10,7 +10,9 @@ use remotething_rdp::Picture;
 /// while the object that put it there is alive.
 static CLIPBOARD: OnceLock<Mutex<Option<arboard::Clipboard>>> = OnceLock::new();
 
-fn with_clipboard<T>(action: impl FnOnce(&mut arboard::Clipboard) -> Option<T>) -> Option<T> {
+pub(crate) fn with_clipboard<T>(
+    action: impl FnOnce(&mut arboard::Clipboard) -> Option<T>,
+) -> Option<T> {
     let cell = CLIPBOARD.get_or_init(|| Mutex::new(arboard::Clipboard::new().ok()));
     let mut guard = cell.lock().ok()?;
     action(guard.as_mut()?)

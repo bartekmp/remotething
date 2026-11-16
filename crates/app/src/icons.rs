@@ -21,7 +21,7 @@ const fn icon(name: &'static str, glyph: char) -> Icon {
 }
 
 /// The icons a user can give to a folder or connection, in the order shown.
-pub const CHOICES: [Icon; 22] = [
+pub const CHOICES: [Icon; 54] = [
     icon("folder", '\u{e0dc}'),
     icon("server", '\u{e156}'),
     icon("database", '\u{e0b1}'),
@@ -44,6 +44,38 @@ pub const CHOICES: [Icon; 22] = [
     icon("wrench", '\u{e1b0}'),
     icon("flask", '\u{e0da}'),
     icon("star", '\u{e179}'),
+    icon("container", '\u{e4d9}'),
+    icon("git-branch", '\u{e0e5}'),
+    icon("package", '\u{e12c}'),
+    icon("server-cog", '\u{e344}'),
+    icon("smartphone", '\u{e166}'),
+    icon("tablet", '\u{e181}'),
+    icon("tv", '\u{e194}'),
+    icon("printer", '\u{e144}'),
+    icon("camera", '\u{e068}'),
+    icon("video", '\u{e1a4}'),
+    icon("gamepad-2", '\u{e0e2}'),
+    icon("music", '\u{e125}'),
+    icon("mail", '\u{e112}'),
+    icon("calendar", '\u{e067}'),
+    icon("book", '\u{e062}'),
+    icon("bug", '\u{e20b}'),
+    icon("code", '\u{e097}'),
+    icon("bot", '\u{e1ba}'),
+    icon("wifi", '\u{e1ad}'),
+    icon("radio", '\u{e145}'),
+    icon("plug", '\u{e382}'),
+    icon("zap", '\u{e1b3}'),
+    icon("activity", '\u{e038}'),
+    icon("heart", '\u{e0f5}'),
+    icon("bell", '\u{e05d}'),
+    icon("flag", '\u{e0d6}'),
+    icon("map-pin", '\u{e114}'),
+    icon("rocket", '\u{e285}'),
+    icon("factory", '\u{e29e}'),
+    icon("store", '\u{e3e7}'),
+    icon("warehouse", '\u{e3e9}'),
+    icon("truck", '\u{e193}'),
 ];
 
 // Icons used by the window itself.

@@ -1,11 +1,13 @@
 //! The settings screen. Every change is saved at once; there is no Save button.
 
 use std::fmt;
+use std::path::PathBuf;
 
-use iced::widget::{button, checkbox, column, row, text};
+use iced::widget::{button, checkbox, column, container, row, text};
 use iced::{Element, Length};
 
 use crate::branding;
+use crate::features;
 use crate::i18n::{self, fl};
 use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
@@ -44,16 +46,40 @@ pub enum Message {
     DesktopRecordingToggled(bool),
     KeystrokesToggled(bool),
     EveryRecordingToggled(bool),
+    /// "Change…" on the folder of a feature.
+    FolderChangePressed(FolderKind),
+    /// "Default" on the folder of a feature.
+    FolderResetPressed(FolderKind),
     ExportPressed,
     ImportPressed,
     ImportPuttyPressed,
     ClosePressed,
 }
 
+/// The folders the user can choose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderKind {
+    Screenshots,
+    DesktopRecordings,
+    ConsoleRecordings,
+}
+
+/// Sets or clears (with `None`) the folder of `kind`.
+pub fn set_folder(preferences: &mut Preferences, kind: FolderKind, folder: Option<PathBuf>) {
+    let folders = &mut preferences.folders;
+    match kind {
+        FolderKind::Screenshots => folders.screenshots = folder,
+        FolderKind::DesktopRecordings => folders.desktop_recordings = folder,
+        FolderKind::ConsoleRecordings => folders.console_recordings = folder,
+    }
+}
+
 /// What the screen asks the window to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Changed,
+    /// Ask which folder to use for this, then set it.
+    PickFolder(FolderKind),
     /// Ask where to save the connections, then write them.
     Export,
     /// Ask for an export file, then add what is in it.
@@ -123,6 +149,11 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::EveryRecordingToggled(on) => {
             preferences.features.record_every_session = on;
+            Event::Changed
+        }
+        Message::FolderChangePressed(kind) => Event::PickFolder(kind),
+        Message::FolderResetPressed(kind) => {
+            set_folder(preferences, kind, None);
             Event::Changed
         }
         Message::ExportPressed => Event::Export,
@@ -225,14 +256,39 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
         checkbox(features.screenshots)
             .label(fl!("settings-feature-screenshots"))
             .on_toggle(Message::ScreenshotsToggled),
+    ]
+    .spacing(6);
+    if features.screenshots {
+        switches = switches.push(folder_row(
+            FolderKind::Screenshots,
+            features::screenshots_folder(),
+            preferences.folders.screenshots.is_some(),
+        ));
+    }
+    switches = switches.push(
         checkbox(features.console_recording)
             .label(fl!("settings-feature-console"))
             .on_toggle(Message::ConsoleRecordingToggled),
+    );
+    if features.console_recording {
+        switches = switches.push(folder_row(
+            FolderKind::ConsoleRecordings,
+            features::console_recordings_folder(),
+            preferences.folders.console_recordings.is_some(),
+        ));
+    }
+    switches = switches.push(
         checkbox(features.desktop_recording)
             .label(fl!("settings-feature-desktop"))
             .on_toggle(Message::DesktopRecordingToggled),
-    ]
-    .spacing(6);
+    );
+    if features.desktop_recording {
+        switches = switches.push(folder_row(
+            FolderKind::DesktopRecordings,
+            features::desktop_recordings_folder(),
+            preferences.folders.desktop_recordings.is_some(),
+        ));
+    }
     if features.console_recording || features.desktop_recording {
         switches = switches.push(
             text(fl!("settings-features-note"))
@@ -254,6 +310,38 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
             );
     }
     switches.into()
+}
+
+/// Where a feature writes its files, with buttons to change it or go back to the default.
+fn folder_row(kind: FolderKind, folder: PathBuf, chosen: bool) -> Element<'static, Message> {
+    let pill = |label: String, message: Message| {
+        button(text(label).size(theme::TEXT_SMALL))
+            .style(theme::pill)
+            .on_press(message)
+    };
+    let mut line = row![
+        text(folder.display().to_string())
+            .size(theme::TEXT_SMALL)
+            .font(iced::Font::MONOSPACE)
+            .style(theme::secondary_text)
+            .wrapping(text::Wrapping::Glyph)
+            .width(Length::Fill),
+        pill(
+            fl!("settings-folder-change"),
+            Message::FolderChangePressed(kind)
+        ),
+    ]
+    .spacing(8)
+    .align_y(iced::Alignment::Center);
+    if chosen {
+        line = line.push(pill(
+            fl!("settings-folder-default"),
+            Message::FolderResetPressed(kind),
+        ));
+    }
+    container(line)
+        .padding(iced::Padding::default().left(26.0))
+        .into()
 }
 
 /// The logo, name and version. The name and version stay unformatted and
@@ -337,5 +425,40 @@ mod tests {
     #[test]
     fn english_is_always_shipped() {
         assert!(i18n::available_languages().contains(&"en".to_string()));
+    }
+
+    #[test]
+    fn changing_a_folder_asks_the_window_to_pick_one() {
+        let mut preferences = Preferences::default();
+
+        let event = update(
+            &mut preferences,
+            Message::FolderChangePressed(FolderKind::ConsoleRecordings),
+        );
+
+        assert_eq!(event, Event::PickFolder(FolderKind::ConsoleRecordings));
+    }
+
+    #[test]
+    fn a_picked_folder_is_kept_for_its_own_feature_and_the_default_button_clears_it() {
+        let mut preferences = Preferences::default();
+
+        set_folder(
+            &mut preferences,
+            FolderKind::Screenshots,
+            Some(PathBuf::from("/data/shots")),
+        );
+        assert_eq!(
+            preferences.folders.screenshots,
+            Some(PathBuf::from("/data/shots"))
+        );
+        assert_eq!(preferences.folders.desktop_recordings, None);
+
+        let event = update(
+            &mut preferences,
+            Message::FolderResetPressed(FolderKind::Screenshots),
+        );
+        assert_eq!(event, Event::Changed);
+        assert!(preferences.folders.is_empty());
     }
 }

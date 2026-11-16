@@ -402,8 +402,9 @@ impl State {
             return;
         }
         live.clipboard = Some(text.clone());
-        // Copying the same picture again later must count as a change.
+        // Copying the same picture or files again later must count as a change.
         live.clipboard_picture = None;
+        live.files.copied = None;
         self.send(Input::Clipboard(text));
     }
 
@@ -418,7 +419,23 @@ impl State {
         }
         live.clipboard_picture = Some(fingerprint);
         live.clipboard = None;
+        live.files.copied = None;
         self.send(Input::ClipboardPicture(picture));
+    }
+
+    /// The local clipboard holds these files. New ones are offered to the server, which can
+    /// paste them; nothing is read until it does.
+    pub(crate) fn local_files(&mut self, paths: Vec<std::path::PathBuf>) {
+        let Stage::Connected(live) = &mut self.stage else {
+            return;
+        };
+        if live.files.copied.as_ref() == Some(&paths) {
+            return;
+        }
+        live.files.copied = Some(paths.clone());
+        live.clipboard = None;
+        live.clipboard_picture = None;
+        self.send(Input::OfferFiles(paths));
     }
 
     /// A key went down or up while this desktop was in front.

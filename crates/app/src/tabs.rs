@@ -170,6 +170,11 @@ impl State {
         }
     }
 
+    /// Whether a question or a menu of the tab bar is open, which then takes the keys.
+    pub fn has_question(&self) -> bool {
+        self.confirming_close.is_some() || self.menu.is_some()
+    }
+
     /// Whether a connected remote desktop (RDP or VNC) is in front.
     pub fn front_is_desktop(&self) -> bool {
         match self.tabs.get(self.active).map(|tab| &tab.content) {
@@ -225,6 +230,18 @@ impl State {
         {
             desktop.local_picture(picture);
         }
+    }
+
+    /// Offers files from the local clipboard to the remote desktop in front. Only RDP shares
+    /// files; false when the tab in front is not one, so the clipboard is looked at for text.
+    pub fn desktop_clipboard_files(&mut self, paths: Vec<std::path::PathBuf>) -> bool {
+        let Some(Content::Desktop(desktop)) =
+            self.tabs.get_mut(self.active).map(|tab| &mut tab.content)
+        else {
+            return false;
+        };
+        desktop.local_files(paths);
+        true
     }
 
     /// Whether any remote desktop is being recorded, which needs a tick ten times a second.

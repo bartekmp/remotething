@@ -5,6 +5,13 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.42.0 - 2026-11-16
+
+- Ctrl+F searches the connections; a middle click closes a tab; 32 more icons for folders and connections.
+- Settings: choose the folders for screenshots, terminal recordings and desktop recordings. A folder that already exists keeps its permissions; the files are private either way.
+- Remote Desktop: files copied in your file manager are offered to the remote desktop automatically; paste them there. This works on Wayland, where dropping files does not.
+- Fixed: keys went to a remote desktop while the "close this tab?" question was open.
+
 ## 0.41.1 - 2026-11-16
 
 - VNC: when the server sends an empty pointer, as Windows does on a machine without a mouse, your own arrow stays visible instead of no pointer at all.

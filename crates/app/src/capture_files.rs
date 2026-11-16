@@ -13,8 +13,11 @@ pub(crate) fn unix_now() -> u64 {
         .map_or(0, |since| since.as_secs())
 }
 
-/// Creates `folder` and its parents. On Unix the folder is for its owner alone,
-/// because a recording can hold anything that was on the screen.
+/// Creates `folder` and its parents if they are missing. On Unix a folder made here is
+/// for its owner alone, because a recording can hold anything that was on the screen.
+///
+/// A folder that is there already keeps its permissions: it may be one the user chose,
+/// such as `~/Videos`, and is not ours to change. The files in it are private either way.
 pub(crate) fn create_private_folder(folder: &Path) -> io::Result<()> {
     let mut builder = std::fs::DirBuilder::new();
     builder.recursive(true);
@@ -23,14 +26,7 @@ pub(crate) fn create_private_folder(folder: &Path) -> io::Result<()> {
         use std::os::unix::fs::DirBuilderExt;
         builder.mode(0o700);
     }
-    builder.create(folder)?;
-    #[cfg(unix)]
-    {
-        // A folder that was there already keeps its old permissions unless they are set here.
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(folder, std::fs::Permissions::from_mode(0o700))?;
-    }
-    Ok(())
+    builder.create(folder)
 }
 
 /// Creates the file for a recording or screenshot. If the name is taken (a second one
@@ -151,11 +147,25 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn the_folder_and_the_files_are_for_their_owner_alone() {
+    fn a_folder_made_here_and_the_files_in_it_are_for_their_owner_alone() {
         use std::os::unix::fs::PermissionsExt;
         let directory = tempfile::tempdir().unwrap();
-        let folder = directory.path().join("recordings");
-        // A folder that already exists with open permissions is closed again.
+        let folder = directory.path().join("made").join("recordings");
+
+        create_private_folder(&folder).unwrap();
+        let (_, file) = create_file(&folder, "shot.png").unwrap();
+
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&folder), 0o700);
+        assert_eq!(mode(&file), 0o600);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_that_was_there_keeps_its_permissions_but_the_files_are_still_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let folder = directory.path().join("Videos");
         std::fs::create_dir(&folder).unwrap();
         std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o755)).unwrap();
 
@@ -163,7 +173,11 @@ mod tests {
         let (_, file) = create_file(&folder, "shot.png").unwrap();
 
         let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode(&folder), 0o700);
+        assert_eq!(
+            mode(&folder),
+            0o755,
+            "a folder the user chose is not ours to close"
+        );
         assert_eq!(mode(&file), 0o600);
     }
 

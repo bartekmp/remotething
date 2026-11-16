@@ -20,6 +20,31 @@ pub struct Preferences {
     /// The optional features, which are all off until switched on.
     #[serde(default, skip_serializing_if = "Features::is_empty")]
     pub features: Features,
+    /// Where screenshots and recordings go, when not in the default folders.
+    #[serde(default, skip_serializing_if = "Folders::is_empty")]
+    pub folders: Folders,
+}
+
+/// Folders the user chose for what the optional features write. `None` is the default
+/// folder beside the connections file.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Folders {
+    /// Screenshots of remote desktops and terminals.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screenshots: Option<PathBuf>,
+    /// Recordings of remote desktops.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desktop_recordings: Option<PathBuf>,
+    /// Recordings of SSH terminals, in the asciicast format.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub console_recordings: Option<PathBuf>,
+}
+
+impl Folders {
+    /// True when every folder is the default, so the table can be left out of the file.
+    pub fn is_empty(&self) -> bool {
+        *self == Folders::default()
+    }
 }
 
 /// The optional features of the app. Each one that is off leaves no trace in the window.
@@ -130,6 +155,27 @@ mod tests {
     }
 
     #[test]
+    fn chosen_folders_are_saved_and_default_ones_are_not_written() {
+        let mut preferences = Preferences::default();
+        assert!(
+            !toml::to_string_pretty(&preferences)
+                .unwrap()
+                .contains("folders")
+        );
+
+        preferences.folders.console_recordings = Some(PathBuf::from("/data/casts"));
+        let text = toml::to_string_pretty(&preferences).unwrap();
+
+        assert!(text.contains("console_recordings"), "{text}");
+        assert!(!text.contains("screenshots"), "{text}");
+        let loaded: Preferences = toml::from_str(&text).unwrap();
+        assert_eq!(
+            loaded.folders.console_recordings,
+            Some(PathBuf::from("/data/casts"))
+        );
+    }
+
+    #[test]
     fn recordings_go_in_a_folder_beside_the_connections_file() {
         let folder = recordings_beside(Path::new("/home/me/.config/remotething/connections.toml"));
 
@@ -160,6 +206,11 @@ mod tests {
                 desktop_recording: true,
                 record_keystrokes: false,
                 record_every_session: true,
+            },
+            folders: Folders {
+                screenshots: Some(PathBuf::from("/data/shots")),
+                desktop_recordings: None,
+                console_recordings: Some(PathBuf::from("/data/casts")),
             },
         };
 

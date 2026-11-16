@@ -17,6 +17,7 @@ mod desktop_size;
 mod desktop_view;
 mod display;
 mod features;
+mod file_clipboard;
 mod file_dialog;
 mod file_preview;
 mod files_folders;

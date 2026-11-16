@@ -158,6 +158,8 @@ fn view_tab(state: &State, index: usize) -> Element<'_, Message> {
     };
     mouse_area(tab_box)
         .on_right_press(Message::MenuRequested(index))
+        // A middle click closes the tab, as in a browser.
+        .on_middle_press(Message::CloseRequested(index))
         .on_press(Message::TabPressed(index))
         .on_enter(Message::TabEntered(index))
         .on_exit(Message::TabExited(index))

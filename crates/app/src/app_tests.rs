@@ -515,3 +515,28 @@ fn the_putty_screen_is_reached_from_settings_and_goes_back_to_it() {
     );
     assert_eq!(state.centre, Centre::Settings);
 }
+
+#[test]
+fn a_picked_folder_is_saved_and_used_by_its_feature() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let chosen = directory.path().join("casts");
+
+    let _ = update(
+        &mut state,
+        Message::FolderPicked(
+            settings::FolderKind::ConsoleRecordings,
+            Some(chosen.clone()),
+        ),
+    );
+
+    assert_eq!(features::console_recordings_folder(), chosen);
+    let saved = preferences::load(&preferences::path_beside(&state.path)).unwrap();
+    assert_eq!(saved.folders.console_recordings, Some(chosen));
+    // A cancelled dialog changes nothing.
+    let _ = update(
+        &mut state,
+        Message::FolderPicked(settings::FolderKind::Screenshots, None),
+    );
+    assert!(state.preferences.folders.screenshots.is_none());
+}

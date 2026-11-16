@@ -14,6 +14,8 @@ pub(crate) enum Shortcut {
     CloseTab,
     /// Ctrl+W: closes the tab in front unless a terminal would want the key.
     CloseTabUnlessTerminal,
+    /// Ctrl+F: searches the connections, unless a terminal would want the key.
+    SearchConnections,
 }
 
 impl Shortcut {
@@ -28,6 +30,7 @@ impl Shortcut {
             ("t", true) => Some(Shortcut::NewTab),
             ("w", true) => Some(Shortcut::CloseTab),
             ("w", false) => Some(Shortcut::CloseTabUnlessTerminal),
+            ("f", false) => Some(Shortcut::SearchConnections),
             _ => None,
         }
     }
@@ -42,6 +45,22 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::CloseTab => {
             state.tabs.close_front();
             Task::none()
+        }
+        Shortcut::SearchConnections => {
+            // A shell uses Ctrl+F to move forward, so a live terminal keeps the key.
+            if state.centre == Centre::Sessions && state.tabs.front_is_terminal() {
+                if captured {
+                    return Task::none();
+                }
+                let key = keyboard::Key::Character("f".into());
+                return state
+                    .tabs
+                    .key(&key, keyboard::Modifiers::CTRL, None)
+                    .map(Message::Tabs);
+            }
+            state.preferences.tree_collapsed = false;
+            state.tree.open_search();
+            iced::widget::operation::focus(crate::tree::SEARCH_INPUT)
         }
         Shortcut::CloseTabUnlessTerminal => {
             // Shells use Ctrl+W to delete a word, so a live terminal keeps the key.

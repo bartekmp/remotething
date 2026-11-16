@@ -188,3 +188,50 @@ fn folding_a_folder_does_not_pick_anything_up() {
 
     assert_eq!(state.release(), None);
 }
+
+#[test]
+fn opening_the_search_shows_an_empty_field_and_keeps_what_was_typed() {
+    let mut state = State::default();
+    assert!(!state.is_busy());
+
+    state.open_search();
+    let _ = update(&mut state, Message::SearchChanged("web".to_string()));
+    state.open_search();
+
+    assert!(
+        state.is_busy(),
+        "Escape belongs to the tree while searching"
+    );
+    assert_eq!(state.search.as_deref(), Some("web"));
+}
+
+#[test]
+fn escape_closes_the_search_and_forgets_it() {
+    let mut state = State::default();
+    state.open_search();
+    let _ = update(&mut state, Message::SearchChanged("web".to_string()));
+
+    state.escape();
+
+    assert!(state.search.is_none());
+    assert!(!state.is_busy());
+}
+
+#[test]
+fn enter_in_the_search_asks_to_open_the_first_match_and_keeps_the_field() {
+    let mut state = State::default();
+    state.open_search();
+    let _ = update(&mut state, Message::SearchChanged("web".to_string()));
+
+    let event = update(&mut state, Message::SearchSubmitted);
+
+    assert_eq!(event, Some(Event::Search("web".to_string())));
+    assert_eq!(state.search.as_deref(), Some("web"));
+}
+
+#[test]
+fn enter_with_no_search_open_does_nothing() {
+    let mut state = State::default();
+
+    assert_eq!(update(&mut state, Message::SearchSubmitted), None);
+}

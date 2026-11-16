@@ -12,6 +12,7 @@ use remotething_secrets::{KnownHosts, SecretStore};
 use crate::credentials::{self};
 use crate::display;
 use crate::features;
+use crate::file_clipboard;
 use crate::file_dialog;
 use crate::folder_removal;
 use crate::i18n::fl;
@@ -109,6 +110,8 @@ pub enum Message {
     Putty(putty_import::Message),
     Preview(import_preview::Message),
     Settings(settings::Message),
+    /// The folder chosen for a feature, or `None` when the dialog was cancelled.
+    FolderPicked(settings::FolderKind, Option<std::path::PathBuf>),
     Vault(vault::Message),
     /// Creating or unlocking the passwords file finished.
     VaultOpened(Result<Unlocked, String>),
@@ -145,6 +148,8 @@ pub enum Message {
     /// Time to look at the local clipboard, because a remote desktop is in front.
     ClipboardTick,
     /// The local clipboard text, if it holds any.
+    /// The files on the local clipboard, if there are any.
+    ClipboardFilesRead(Option<Vec<std::path::PathBuf>>),
     ClipboardRead(Option<String>),
     /// The local clipboard picture, if it holds one and no text.
     ClipboardPictureRead(Option<remotething_rdp::Picture>),
@@ -280,6 +285,7 @@ impl State {
             && self.removal.is_none()
             && !self.properties_open
             && !self.tree.is_busy()
+            && !self.tabs.has_question()
             && self.tabs.front_is_desktop()
     }
 }
@@ -298,10 +304,32 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::Menu(message) => return tree_actions::on_menu(state, message),
+        Message::FolderPicked(kind, Some(folder)) => {
+            settings::set_folder(&mut state.preferences, kind, Some(folder));
+            state.save_preferences();
+        }
+        Message::FolderPicked(_, None) => {}
         Message::Removal(message) => state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::RecordTick => state.tabs.record_tick(),
-        Message::ClipboardTick => return iced::clipboard::read().map(Message::ClipboardRead),
+        Message::ClipboardTick => {
+            // Files first: copying them in a file manager often puts their paths there as text too.
+            return Task::perform(
+                async {
+                    tokio::task::spawn_blocking(file_clipboard::read)
+                        .await
+                        .ok()
+                        .flatten()
+                },
+                Message::ClipboardFilesRead,
+            );
+        }
+        Message::ClipboardFilesRead(files) => {
+            let offered = files.is_some_and(|files| state.tabs.desktop_clipboard_files(files));
+            if !offered {
+                return iced::clipboard::read().map(Message::ClipboardRead);
+            }
+        }
         Message::ClipboardRead(text) => match text.filter(|text| !text.is_empty()) {
             Some(text) => state.tabs.desktop_clipboard(text),
             // No text: there may be a picture.
@@ -357,7 +385,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             let is_escape = key == keyboard::Key::Named(keyboard::key::Named::Escape);
             if is_escape && (state.menu.is_some() || state.tree.is_busy()) {
                 state.menu = None;
-                state.tree.cancel();
+                state.tree.escape();
                 return Task::none();
             }
             if is_escape && state.removal.is_some() {
@@ -451,6 +479,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Settings(message) => match settings::update(&mut state.preferences, message) {
             settings::Event::Changed => state.save_preferences(),
             settings::Event::Close => state.centre = Centre::Sessions,
+            settings::Event::PickFolder(kind) => {
+                return Task::perform(
+                    crate::file_dialog::pick_folder(fl!("settings-folder-pick")),
+                    move |folder| Message::FolderPicked(kind, folder),
+                );
+            }
             settings::Event::Export => {
                 let dialog =
                     file_dialog::save(fl!("settings-export"), EXPORT_FILE_NAME.to_string());
