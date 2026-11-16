@@ -10,6 +10,8 @@ use remotething_files::{Entry, EntryKind, Progress, SftpFs, Transferred};
 use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
+use crate::file_preview::Content;
+use crate::files_preview::{self, Preview};
 use crate::files_queueing::{
     check_upload, download_folder, refresh, start_download, start_ready, start_upload,
 };
@@ -48,6 +50,8 @@ pub struct State {
     pub(crate) queue: Queue,
     /// An upload ended since the folders were last read again.
     pub(crate) uploaded: bool,
+    /// The file being previewed, which then takes the place of the tree.
+    pub(crate) preview: Option<Preview>,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -91,6 +95,10 @@ pub enum Message {
     ReplaceCancelled,
     DownloadPressed,
     UploadFolderPressed,
+    PreviewPressed,
+    /// The previewed file, fetched: its path and what it turned into.
+    Previewed(String, Result<Content, String>),
+    PreviewClosed,
     /// Where to save the downloaded folder, or `None` when the dialog was cancelled.
     DownloadFolderPicked(Option<PathBuf>),
     /// The files a folder stands for, ready to queue: local file and remote path.
@@ -145,6 +153,7 @@ impl State {
             selected: None,
             queue: Queue::default(),
             uploaded: false,
+            preview: None,
             pending_replace: None,
             status: None,
         }
@@ -315,6 +324,15 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             ),
             (None, None) => Task::none(),
         },
+        Message::PreviewPressed => files_preview::open(state),
+        Message::Previewed(path, result) => {
+            files_preview::arrived(state, &path, result);
+            Task::none()
+        }
+        Message::PreviewClosed => {
+            state.preview = None;
+            Task::none()
+        }
         Message::UploadFolderPressed => Task::perform(
             file_dialog::pick_folder(fl!("files-upload-folder")),
             Message::UploadPicked,

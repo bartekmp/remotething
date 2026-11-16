@@ -930,6 +930,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "combine"
 version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2034,6 +2040,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gif"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
+dependencies = [
+ "color_quant",
+ "weezl",
+]
+
+[[package]]
 name = "gl_generator"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2707,10 +2723,14 @@ checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
+ "color_quant",
+ "gif",
  "moxcms",
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -4909,7 +4929,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -4917,6 +4937,8 @@ dependencies = [
  "i18n-embed",
  "i18n-embed-fl",
  "iced",
+ "image",
+ "png",
  "remotething-capture",
  "remotething-core",
  "remotething-files",
@@ -4934,7 +4956,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-capture"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "jpeg-encoder",
  "png",
@@ -4944,7 +4966,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-core"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4955,7 +4977,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "remotething-remote",
  "remotething-secrets",
@@ -4967,7 +4989,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-cliprdr",
@@ -4989,7 +5011,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "remotething-secrets",
  "russh",
@@ -5000,7 +5022,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -5016,7 +5038,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-vnc"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "remotething-secrets",
  "tempfile",
@@ -7646,7 +7668,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.34.1"
+version = "0.35.0"
 
 [[package]]
 name = "yazi"

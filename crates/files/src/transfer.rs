@@ -80,6 +80,25 @@ impl SftpFs {
         Ok(found)
     }
 
+    /// The first `limit` bytes of a remote file, read into memory, and whether the file goes on.
+    pub async fn read_start(&self, remote_file: &str, limit: u64) -> Result<(Vec<u8>, bool)> {
+        let mut source = self
+            .session
+            .open(remote_file)
+            .await
+            .map_err(|error| crate::sftp::remote("cannot open", remote_file, error))?;
+        // One byte more than asked for tells whether the file is longer.
+        let mut bytes = Vec::new();
+        (&mut source)
+            .take(limit + 1)
+            .read_to_end(&mut bytes)
+            .await
+            .map_err(|error| crate::sftp::remote("cannot read", remote_file, error))?;
+        let longer = bytes.len() as u64 > limit;
+        bytes.truncate(limit as usize);
+        Ok((bytes, longer))
+    }
+
     /// The size of a remote file.
     pub async fn size(&self, remote_file: &str) -> Result<u64> {
         self.session

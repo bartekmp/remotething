@@ -93,12 +93,14 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | Read the folders again | **Refresh** |
 | Upload a file | **Upload**, then pick the file. It goes into the selected folder, beside the selected file, or into the top folder shown |
 | Download a file | Select it, press **Download**, then choose where to save it |
+| Preview a file | Select it, press **Preview**. **Back** returns to the tree |
 | Upload a folder | **Upload folder**, then pick it. Every file in it is queued, keeping its place |
 | Download a folder | Select it, press **Download**, then pick where to put it. It is saved as a folder of the same name |
 | Close the pane | The **x** at its top |
 
 - The pane starts in your home folder. Folders come first, then files, by name.
 - An upload that would replace a file of the same name asks first: **Replace** or **Cancel**. A download's file dialog asks the same itself.
+- A preview shows text (the first 256 kB, as UTF-8) or a picture (PNG, JPEG, GIF or BMP up to 8 MB). The file is read into memory and never written to disk. Anything else says so and suggests a download.
 - A folder is sent file by file, so each file shows in the list and can be cancelled or retried on its own. Missing folders are made on the way. Empty folders, links and special files are skipped. Files of the same name on the other side are replaced; an upload asks once if the folder itself already exists.
 - Transfers go into a list under the tree, with a progress bar and the size done. Two run at the same time; the rest wait. **Cancel** stops one.
 - A failed or cancelled transfer has a **Retry** button. It carries on from what is already there: a shorter file on the other side is taken as the start and only the rest is sent. **Clear** forgets the transfers that are over.

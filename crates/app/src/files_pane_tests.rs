@@ -382,3 +382,69 @@ fn the_pane_reads_the_folders_again_once_the_last_upload_is_over() {
     // Everything was forgotten for the new read (no service in a test to ask again).
     assert!(state.listings.is_empty());
 }
+
+fn previewing(path: &str) -> State {
+    let mut state = loaded();
+    state.preview = Some(Preview {
+        name: "notes.txt".to_string(),
+        path: path.to_string(),
+        content: None,
+    });
+    state
+}
+
+#[test]
+fn a_fetched_file_fills_the_open_preview() {
+    let mut state = previewing("/home/ops/notes.txt");
+    let text = Content::Text {
+        text: "hello".to_string(),
+        cut: false,
+    };
+
+    let _ = update(
+        &mut state,
+        Message::Previewed("/home/ops/notes.txt".to_string(), Ok(text)),
+    );
+
+    let content = state.preview.unwrap().content;
+    assert!(matches!(content, Some(Ok(Content::Text { .. }))));
+}
+
+#[test]
+fn a_file_that_arrives_after_the_preview_moved_on_is_dropped() {
+    let mut state = previewing("/home/ops/notes.txt");
+
+    let _ = update(
+        &mut state,
+        Message::Previewed("/home/ops/other.txt".to_string(), Ok(Content::Binary)),
+    );
+
+    assert!(state.preview.unwrap().content.is_none());
+}
+
+#[test]
+fn closing_the_preview_brings_the_tree_back_and_drops_a_late_file() {
+    let mut state = previewing("/home/ops/notes.txt");
+
+    let _ = update(&mut state, Message::PreviewClosed);
+    let _ = update(
+        &mut state,
+        Message::Previewed("/home/ops/notes.txt".to_string(), Ok(Content::Binary)),
+    );
+
+    assert!(state.preview.is_none());
+}
+
+#[test]
+fn only_a_selected_file_can_be_previewed() {
+    let mut state = loaded();
+    let _ = update(&mut state, Message::PreviewPressed);
+    assert!(state.preview.is_none());
+
+    let _ = update(
+        &mut state,
+        Message::FolderToggled("/home/ops/logs".to_string()),
+    );
+    let _ = update(&mut state, Message::PreviewPressed);
+    assert!(state.preview.is_none());
+}

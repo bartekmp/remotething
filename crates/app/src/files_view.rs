@@ -6,6 +6,7 @@ use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
 use crate::files_pane::{Listing, Message, Row, State, Status, format_size};
+use crate::files_preview_view;
 use crate::files_transfers_view;
 use crate::i18n::fl;
 use crate::icons;
@@ -45,6 +46,10 @@ pub fn view(state: &State) -> Element<'_, Message> {
         ),
         pill(fl!("files-upload"), ready.then_some(Message::UploadPressed)),
         pill(
+            fl!("files-preview"),
+            (ready && state.selected_file().is_some()).then_some(Message::PreviewPressed)
+        ),
+        pill(
             fl!("files-upload-folder"),
             ready.then_some(Message::UploadFolderPressed)
         ),
@@ -76,8 +81,11 @@ pub fn view(state: &State) -> Element<'_, Message> {
         None => view_status(&state.status),
     };
 
-    let mut page =
-        column![header, path, toolbar, container(list).height(Length::Fill)].spacing(theme::GAP);
+    let body: Element<'_, Message> = match &state.preview {
+        Some(preview) => files_preview_view::view(preview),
+        None => container(list).height(Length::Fill).into(),
+    };
+    let mut page = column![header, path, toolbar, body].spacing(theme::GAP);
     if let Some(transfers) = files_transfers_view::view(state) {
         page = page.push(transfers);
     }

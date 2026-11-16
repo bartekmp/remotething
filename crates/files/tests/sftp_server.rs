@@ -165,3 +165,27 @@ async fn a_folder_tree_goes_up_and_is_walked_and_comes_back() {
         .unwrap();
     assert_eq!(std::fs::read_to_string(&target).unwrap(), "one");
 }
+
+#[tokio::test]
+#[ignore = "needs an SSH server; see the top of this file"]
+async fn the_start_of_a_file_is_read_into_memory_and_a_longer_file_is_cut() {
+    let directory = tempfile::tempdir().unwrap();
+    let files = connect(directory.path()).await;
+    let home = files.home().await.unwrap();
+    let remote = join(&home, "remotething-test-preview.txt");
+    let local = directory.path().join("p.txt");
+    std::fs::write(&local, "0123456789").unwrap();
+    files
+        .upload_tracked(&local, &remote, false, |_| {})
+        .await
+        .unwrap();
+
+    let (start, longer) = files.read_start(&remote, 4).await.unwrap();
+    assert_eq!((start.as_slice(), longer), (b"0123".as_slice(), true));
+
+    let (all, longer) = files.read_start(&remote, 10).await.unwrap();
+    assert_eq!((all.as_slice(), longer), (b"0123456789".as_slice(), false));
+
+    let (all, longer) = files.read_start(&remote, 100).await.unwrap();
+    assert_eq!((all.len(), longer), (10, false));
+}
