@@ -121,6 +121,8 @@ pub enum Message {
     /// The close button of the properties panel.
     PropertiesClosed,
     Menu(menu::Message),
+    /// A file was dropped on the window.
+    FileDropped(std::path::PathBuf),
     Removal(folder_removal::Message),
     PointerMoved(Point),
     /// The left mouse button went up, anywhere in the window.
@@ -321,6 +323,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::WindowResized(size) => state.window = size,
+        Message::FileDropped(path) => return input::on_file_dropped(state, path),
         Message::ScaleChanged(scale) => {
             display::set_scale(scale);
             state.tabs.rescale_desktops();

@@ -89,12 +89,25 @@ impl State {
         matches!(self.stage, Stage::Connected(_))
     }
 
+    /// Whether the file pane is open on a connected shell.
+    pub(crate) fn has_files_open(&self) -> bool {
+        matches!(&self.stage, Stage::Connected(live) if live.files.is_some())
+    }
+
     /// Puts the session into the connected stage without a server.
     #[cfg(test)]
     pub(crate) fn connect_for_test(&mut self) -> tokio::sync::mpsc::Receiver<ShellInput> {
         let (input, typed) = tokio::sync::mpsc::channel(4);
         self.stage = Stage::Connected(Box::new(Live::new(input, None, &self.connection.name)));
         typed
+    }
+
+    /// Opens an empty file pane on a connected session, without a server.
+    #[cfg(test)]
+    pub(crate) fn open_files_for_test(&mut self) {
+        if let Stage::Connected(live) = &mut self.stage {
+            live.files = Some(crate::files_pane::State::empty());
+        }
     }
 
     /// Whether the form of the asking stage wants a key passphrase rather than a password.

@@ -143,6 +143,15 @@ impl State {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
     }
 
+    /// The id of the tab in front when it is a session with its file pane open.
+    pub fn front_with_files(&self) -> Option<u64> {
+        let tab = self.tabs.get(self.active)?;
+        match &tab.content {
+            Content::Session(session) if session.has_files_open() => Some(tab.id),
+            _ => None,
+        }
+    }
+
     /// Whether a connected remote desktop (RDP or VNC) is in front.
     pub fn front_is_desktop(&self) -> bool {
         match self.tabs.get(self.active).map(|tab| &tab.content) {

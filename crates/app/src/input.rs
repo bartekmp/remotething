@@ -4,6 +4,9 @@
 use iced::{Event, Task, keyboard, mouse, window};
 
 use crate::app::{Centre, Message, State};
+use crate::files_pane;
+use crate::session;
+use crate::tabs;
 
 /// The window's own key combinations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +64,21 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
     }
 }
 
+/// A file dropped on the window is uploaded when a session with its file pane
+/// open is in front. It goes the same way as a picked file, so a name that is
+/// already there asks before replacing it.
+pub(crate) fn on_file_dropped(state: &State, path: std::path::PathBuf) -> Task<Message> {
+    if state.centre != Centre::Sessions {
+        return Task::none();
+    }
+    let Some(tab) = state.tabs.front_with_files() else {
+        return Task::none();
+    };
+    let upload = files_pane::Message::UploadPicked(Some(path));
+    let message = tabs::Message::Session(tab, session::Message::Files(upload));
+    Task::done(Message::Tabs(message))
+}
+
 /// The window-wide events behind the context menu, dragging and Escape.
 pub(crate) fn window_event(
     event: Event,
@@ -71,6 +89,7 @@ pub(crate) fn window_event(
         Event::Mouse(mouse::Event::CursorMoved { position }) => {
             Some(Message::PointerMoved(position))
         }
+        Event::Window(window::Event::FileDropped(path)) => Some(Message::FileDropped(path)),
         Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
             Some(Message::PointerReleased)
         }
@@ -97,5 +116,20 @@ pub(crate) fn window_event(
         Event::Window(window::Event::Opened { size, .. })
         | Event::Window(window::Event::Resized(size)) => Some(Message::WindowResized(size)),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_file_dropped_on_the_window_becomes_a_message_with_its_path() {
+        let path = std::path::PathBuf::from("/tmp/report.pdf");
+        let event = Event::Window(window::Event::FileDropped(path.clone()));
+
+        let message = window_event(event, iced::event::Status::Ignored, window::Id::unique());
+
+        assert!(matches!(message, Some(Message::FileDropped(dropped)) if dropped == path));
     }
 }

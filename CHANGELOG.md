@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.37.0 - 2026-11-16
+
+- File pane: drop files or folders on the window to upload them (not on a native Wayland window, where the toolkit gives no drop events).
+
 ## 0.36.0 - 2026-11-16
 
 - File pane: a right-click menu on rows with rename, delete (asks first), new folder, copy path, preview and download.
