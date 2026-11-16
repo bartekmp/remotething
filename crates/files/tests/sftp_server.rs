@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use remotething_files::{EntryKind, SftpFs, join};
+use remotething_files::{EntryKind, RemoteFs, SftpFs, join};
 use remotething_remote::ssh::{Auth, Endpoint, Error, TerminalSize, open_shell};
 use remotething_secrets::KnownHosts;
 
@@ -58,7 +58,11 @@ async fn a_file_goes_up_is_listed_and_comes_back_the_same() {
     let remote = join(&home, "remotething-test-upload.txt");
 
     assert!(!files.exists(&remote).await.unwrap());
-    let sent = files.upload(&local, &remote).await.unwrap();
+    let sent = files
+        .upload_tracked(&local, &remote, false, &mut |_| {})
+        .await
+        .unwrap()
+        .bytes;
     assert!(files.exists(&remote).await.unwrap());
     assert_eq!(sent, content.len() as u64);
 
@@ -77,7 +81,11 @@ async fn a_file_goes_up_is_listed_and_comes_back_the_same() {
     );
 
     let back = directory.path().join("down.txt");
-    let received = files.download(&remote, &back).await.unwrap();
+    let received = files
+        .download_tracked(&remote, &back, false, &mut |_| {})
+        .await
+        .unwrap()
+        .bytes;
     assert_eq!(received, content.len() as u64);
     assert_eq!(std::fs::read_to_string(&back).unwrap(), content);
 
@@ -99,12 +107,12 @@ async fn a_cut_short_transfer_carries_on_where_it_stopped() {
     let part = directory.path().join("part.bin");
     std::fs::write(&part, &content[..100_000]).unwrap();
     files
-        .upload_tracked(&part, &remote, false, |_| {})
+        .upload_tracked(&part, &remote, false, &mut |_| {})
         .await
         .unwrap();
     let mut seen = Vec::new();
     let sent = files
-        .upload_tracked(&whole, &remote, true, |progress| seen.push(progress))
+        .upload_tracked(&whole, &remote, true, &mut |progress| seen.push(progress))
         .await
         .unwrap();
     assert_eq!(sent.resumed_from, 100_000);
@@ -116,7 +124,7 @@ async fn a_cut_short_transfer_carries_on_where_it_stopped() {
     let back = directory.path().join("back.bin");
     std::fs::write(&back, &content[..150_000]).unwrap();
     let received = files
-        .download_tracked(&remote, &back, true, |_| {})
+        .download_tracked(&remote, &back, true, &mut |_| {})
         .await
         .unwrap();
     assert_eq!(received.resumed_from, 150_000);
@@ -124,7 +132,7 @@ async fn a_cut_short_transfer_carries_on_where_it_stopped() {
 
     // Without resuming, the file is replaced from the start.
     let again = files
-        .download_tracked(&remote, &back, false, |_| {})
+        .download_tracked(&remote, &back, false, &mut |_| {})
         .await
         .unwrap();
     assert_eq!(again.resumed_from, 0);
@@ -143,11 +151,11 @@ async fn a_folder_tree_goes_up_and_is_walked_and_comes_back() {
     let local = directory.path().join("one.txt");
     std::fs::write(&local, "one").unwrap();
     files
-        .upload_tracked(&local, &join(&top, "a/b/one.txt"), false, |_| {})
+        .upload_tracked(&local, &join(&top, "a/b/one.txt"), false, &mut |_| {})
         .await
         .unwrap();
     files
-        .upload_tracked(&local, &join(&top, "two.txt"), false, |_| {})
+        .upload_tracked(&local, &join(&top, "two.txt"), false, &mut |_| {})
         .await
         .unwrap();
 
@@ -160,7 +168,7 @@ async fn a_folder_tree_goes_up_and_is_walked_and_comes_back() {
     // A download into folders that do not exist yet.
     let target = directory.path().join("x/y/one.txt");
     files
-        .download_tracked(&join(&top, "a/b/one.txt"), &target, false, |_| {})
+        .download_tracked(&join(&top, "a/b/one.txt"), &target, false, &mut |_| {})
         .await
         .unwrap();
     assert_eq!(std::fs::read_to_string(&target).unwrap(), "one");
@@ -176,7 +184,7 @@ async fn the_start_of_a_file_is_read_into_memory_and_a_longer_file_is_cut() {
     let local = directory.path().join("p.txt");
     std::fs::write(&local, "0123456789").unwrap();
     files
-        .upload_tracked(&local, &remote, false, |_| {})
+        .upload_tracked(&local, &remote, false, &mut |_| {})
         .await
         .unwrap();
 
@@ -209,11 +217,11 @@ async fn files_and_folders_are_made_renamed_and_deleted_and_nothing_is_overwritt
     let first = join(&top, "first.txt");
     let second = join(&top, "second.txt");
     files
-        .upload_tracked(&local, &first, false, |_| {})
+        .upload_tracked(&local, &first, false, &mut |_| {})
         .await
         .unwrap();
     files
-        .upload_tracked(&local, &second, false, |_| {})
+        .upload_tracked(&local, &second, false, &mut |_| {})
         .await
         .unwrap();
     assert!(

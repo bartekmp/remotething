@@ -192,7 +192,7 @@ enum Operation {
 
 /// Deletes a file, or a folder that is empty. A folder with files in it is refused by the server.
 async fn delete(
-    files: &Arc<remotething_files::SftpFs>,
+    files: &Arc<dyn remotething_files::RemoteFs>,
     path: &str,
     folder: bool,
 ) -> Result<(), String> {

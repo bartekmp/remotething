@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use iced::Task;
 use iced::futures::SinkExt;
 use iced::task::Handle;
-use remotething_files::{Progress, SftpFs};
+use remotething_files::{Progress, RemoteFs};
 
 use crate::files_pane::Message;
 use crate::transfer_queue::{Direction, Job};
@@ -15,7 +15,7 @@ use crate::transfer_queue::{Direction, Job};
 const REPORT_EVERY: Duration = Duration::from_millis(100);
 
 /// Starts `job`. The returned handle stops it.
-pub(crate) fn start(files: Arc<SftpFs>, job: &Job) -> (Task<Message>, Handle) {
+pub(crate) fn start(files: Arc<dyn RemoteFs>, job: &Job) -> (Task<Message>, Handle) {
     let id = job.id;
     let direction = job.direction;
     let local = job.local.clone();
@@ -25,7 +25,7 @@ pub(crate) fn start(files: Arc<SftpFs>, job: &Job) -> (Task<Message>, Handle) {
     let messages = iced::stream::channel(16, async move |mut output| {
         let mut progress_output = output.clone();
         let mut last_report: Option<Instant> = None;
-        let report = move |progress: Progress| {
+        let mut report = move |progress: Progress| {
             let due = last_report.is_none_or(|at| at.elapsed() >= REPORT_EVERY);
             // The end of the file is always reported by the result, so skipping a report is fine.
             if due
@@ -37,10 +37,14 @@ pub(crate) fn start(files: Arc<SftpFs>, job: &Job) -> (Task<Message>, Handle) {
             }
         };
         let result = match direction {
-            Direction::Upload => files.upload_tracked(&local, &remote, resume, report).await,
+            Direction::Upload => {
+                files
+                    .upload_tracked(&local, &remote, resume, &mut report)
+                    .await
+            }
             Direction::Download => {
                 files
-                    .download_tracked(&remote, &local, resume, report)
+                    .download_tracked(&remote, &local, resume, &mut report)
                     .await
             }
         };

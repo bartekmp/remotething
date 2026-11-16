@@ -10,6 +10,8 @@ workspace = true
 
 [dependencies]
 remotething-remote = { path = "../remote" }
+# Lets the file systems be used as trait objects.
+async-trait = "0.1"
 # The SFTP protocol, spoken over a channel of an SSH connection.
 russh-sftp = "3"
 thiserror = "2"

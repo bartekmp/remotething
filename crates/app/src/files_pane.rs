@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::Task;
-use remotething_files::{Entry, EntryKind, Progress, SftpFs, Transferred};
+use remotething_files::{Entry, EntryKind, Progress, RemoteFs, SftpFs, Transferred};
 use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
@@ -40,7 +40,7 @@ pub struct Row {
 
 pub struct State {
     /// `None` until the server's file service has started.
-    pub(crate) files: Option<Arc<SftpFs>>,
+    pub(crate) files: Option<Arc<dyn RemoteFs>>,
     /// The folder shown at the top of the tree.
     pub(crate) root: String,
     pub(crate) listings: HashMap<String, Listing>,
@@ -69,7 +69,7 @@ pub(crate) enum Status {
 /// The started file service on its way to the window.
 #[derive(Clone)]
 pub struct Ready {
-    files: Arc<SftpFs>,
+    files: Arc<dyn RemoteFs>,
     home: String,
 }
 
@@ -146,10 +146,8 @@ impl State {
                     .await
                     .map_err(|error| error.to_string())?;
                 let home = files.home().await.map_err(|error| error.to_string())?;
-                Ok(Ready {
-                    files: Arc::new(files),
-                    home,
-                })
+                let files: Arc<dyn RemoteFs> = Arc::new(files);
+                Ok(Ready { files, home })
             },
             Message::Opened,
         );

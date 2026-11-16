@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.37.1 - 2026-11-16
+
+- Internal: the file pane works through a backend interface, ready for FTP.
+
 ## 0.37.0 - 2026-11-16
 
 - File pane: drop files or folders on the window to upload them (not on a native Wayland window, where the toolkit gives no drop events).

@@ -1,12 +1,14 @@
 //! Remote file systems for Remotething: listing folders and moving files.
 //!
-//! SFTP is the only backend so far. A shared trait for backends comes with the second one.
+//! Every backend implements [`RemoteFs`]; SFTP is the first.
 
 mod entry;
+mod fs;
 mod sftp;
 mod transfer;
 
 pub use entry::{Entry, EntryKind, join, parent, sort};
+pub use fs::{OnProgress, RemoteFs};
 pub use sftp::SftpFs;
 pub use transfer::{Progress, Transferred};
 
