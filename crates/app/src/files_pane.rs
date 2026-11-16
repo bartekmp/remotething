@@ -11,6 +11,7 @@ use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
 use crate::file_preview::Content;
+use crate::files_dual;
 use crate::files_menu::{self, Action, Menu};
 use crate::files_preview::{self, Preview};
 use crate::files_queueing::{
@@ -61,6 +62,12 @@ pub struct State {
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
     pub(crate) status: Option<Status>,
+    /// The local pane shown beside this one, when there is one.
+    pub(crate) other: Option<Box<State>>,
+    /// Whether this pane is the local disk: it has no upload or download of its own.
+    pub(crate) is_local: bool,
+    /// A download ended since the other pane was last read again.
+    pub(crate) downloaded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -130,6 +137,14 @@ pub enum Message {
     /// "Clear" on the list of transfers.
     ClearPressed,
     ClosePressed,
+    /// The "This computer" button: show the local pane beside this one, or hide it.
+    LocalToggled,
+    /// A message for the local pane.
+    Other(Box<Message>),
+    /// "Copy to this computer": the selection here goes into the local folder.
+    CopyToLocalPressed,
+    /// "Copy to the server": the local selection goes into the folder here.
+    CopyToRemotePressed,
 }
 
 /// What the pane asks its session to do.
@@ -183,6 +198,9 @@ impl State {
             closable: true,
             pending_replace: None,
             status: None,
+            other: None,
+            is_local: false,
+            downloaded: false,
         }
     }
 
@@ -347,16 +365,28 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
                 .queue
                 .job(id)
                 .is_some_and(|job| job.direction == Direction::Upload && result.is_ok());
+            let was_download = state
+                .queue
+                .job(id)
+                .is_some_and(|job| job.direction == Direction::Download && result.is_ok());
             state.queue.ended(id, result);
             state.uploaded |= was_upload;
-            // Once the last transfer is over, the folders show what was uploaded.
-            let refresh = if state.uploaded && state.queue.is_idle() {
+            state.downloaded |= was_download;
+            // Once the last transfer is over, the folders show what was uploaded,
+            // and the local pane what was downloaded.
+            let mut refreshing = Vec::new();
+            if state.uploaded && state.queue.is_idle() {
                 state.uploaded = false;
-                refresh(state)
-            } else {
-                Task::none()
-            };
-            Task::batch([refresh, start_ready(state)])
+                refreshing.push(refresh(state));
+            }
+            if state.downloaded && state.queue.is_idle() {
+                state.downloaded = false;
+                if let Some(other) = state.other.as_mut() {
+                    refreshing.push(refresh(other).map(files_dual::wrap));
+                }
+            }
+            refreshing.push(start_ready(state));
+            Task::batch(refreshing)
         }
         Message::CancelPressed(id) => {
             state.queue.cancel(id);
@@ -371,6 +401,13 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             Task::none()
         }
         Message::ClosePressed => return (Task::none(), Some(Event::Close)),
+        Message::LocalToggled => files_dual::toggle(state),
+        Message::Other(inner) => match state.other.as_mut() {
+            Some(other) => update(other, *inner).0.map(files_dual::wrap),
+            None => Task::none(),
+        },
+        Message::CopyToLocalPressed => files_dual::copy_to_local(state),
+        Message::CopyToRemotePressed => files_dual::copy_to_remote(state),
     };
     (task, None)
 }

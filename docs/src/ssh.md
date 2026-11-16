@@ -120,6 +120,16 @@ A connected session has a **Browse files** button above the terminal. It opens a
 - Transfers go into a list under the tree, with a progress bar and the size done. Two run at the same time; the rest wait. **Cancel** stops one.
 - A failed or cancelled transfer has a **Retry** button. It carries on from what is already there: a shorter file on the other side is taken as the start and only the rest is sent. **Clear** forgets the transfers that are over.
 
+## Two panes: the server and this computer
+
+In a file browser (SFTP, FTP, FTPS or SMB tab, or the file pane beside a terminal) press **This computer**. A second pane opens beside the server's, showing your own disk.
+
+- Select something in one pane and press **Copy →** (server to this computer) or **← Copy** (this computer to the server). Folders copy with everything in them.
+- A copy goes into the folder selected on the other side, or the top folder of that pane when none is.
+- The copies use the same transfer queue as upload and download, with cancel, retry and resume.
+- **← Copy** asks before replacing a file on the server. **Copy →** never replaces a local file: it says so and stops.
+- **Hide this computer** closes the second pane.
+
 ## Not available yet
 
 | Feature | State |

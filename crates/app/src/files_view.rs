@@ -1,10 +1,11 @@
 //! How the file pane is drawn.
 
-use iced::alignment::Vertical;
+use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{button, column, container, mouse_area, row, scrollable, space, text};
 use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
+use crate::files_dual;
 use crate::files_menu_view;
 use crate::files_pane::{Listing, Message, Row, State, Status, format_size};
 use crate::files_preview_view;
@@ -16,13 +17,47 @@ use crate::theme;
 const INDENT: f32 = 14.0;
 const ARROW_WIDTH: f32 = 14.0;
 
+/// The pane, with the local pane and the copy buttons beside it when that is showing.
 pub fn view(state: &State) -> Element<'_, Message> {
-    let mut header = row![
-        text(fl!("files-title"))
-            .size(theme::TEXT_TITLE)
-            .width(Length::Fill),
+    let Some(other) = &state.other else {
+        return pane(state);
+    };
+    let copy = |label: String, message: Message, enabled: bool| {
+        button(text(label).size(theme::TEXT_SMALL))
+            .style(theme::pill)
+            .on_press_maybe(enabled.then_some(message))
+    };
+    let buttons = column![
+        copy(
+            fl!("files-copy-to-local"),
+            Message::CopyToLocalPressed,
+            files_dual::can_copy_to_local(state)
+        ),
+        copy(
+            fl!("files-copy-to-remote"),
+            Message::CopyToRemotePressed,
+            files_dual::can_copy_to_remote(state)
+        ),
     ]
-    .align_y(Vertical::Center);
+    .spacing(theme::GAP)
+    .align_x(Horizontal::Center);
+    row![
+        container(pane(state)).width(Length::FillPortion(1)),
+        container(buttons).center_y(Length::Fill),
+        container(pane(other).map(files_dual::wrap)).width(Length::FillPortion(1)),
+    ]
+    .spacing(theme::GAP)
+    .into()
+}
+
+fn pane(state: &State) -> Element<'_, Message> {
+    let title = if state.is_local {
+        fl!("files-title-local")
+    } else {
+        fl!("files-title")
+    };
+    let mut header =
+        row![text(title).size(theme::TEXT_TITLE).width(Length::Fill),].align_y(Vertical::Center);
     if state.closable {
         header = header.push(
             button(icons::view(icons::CLOSE, theme::TEXT_BODY))
@@ -43,28 +78,43 @@ pub fn view(state: &State) -> Element<'_, Message> {
             .on_press_maybe(message)
     };
     let ready = state.files.is_some();
-    let toolbar = row![
+    let mut toolbar = row![
         pill(fl!("files-up"), ready.then_some(Message::UpPressed)),
         pill(
             fl!("files-refresh"),
             ready.then_some(Message::RefreshPressed)
         ),
-        pill(fl!("files-upload"), ready.then_some(Message::UploadPressed)),
-        pill(
-            fl!("files-preview"),
-            (ready && state.selected_file().is_some()).then_some(Message::PreviewPressed)
-        ),
-        pill(
-            fl!("files-upload-folder"),
-            ready.then_some(Message::UploadFolderPressed)
-        ),
-        pill(
-            fl!("files-download"),
-            (ready && state.can_download()).then_some(Message::DownloadPressed)
-        ),
-    ]
-    .spacing(6)
-    .wrap();
+    ];
+    if !state.is_local {
+        toolbar = toolbar.push(pill(
+            fl!("files-upload"),
+            ready.then_some(Message::UploadPressed),
+        ));
+    }
+    toolbar = toolbar.push(pill(
+        fl!("files-preview"),
+        (ready && state.selected_file().is_some()).then_some(Message::PreviewPressed),
+    ));
+    if !state.is_local {
+        toolbar = toolbar
+            .push(pill(
+                fl!("files-upload-folder"),
+                ready.then_some(Message::UploadFolderPressed),
+            ))
+            .push(pill(
+                fl!("files-download"),
+                (ready && state.can_download()).then_some(Message::DownloadPressed),
+            ))
+            .push(pill(
+                if state.other.is_some() {
+                    fl!("files-local-hide")
+                } else {
+                    fl!("files-local-show")
+                },
+                ready.then_some(Message::LocalToggled),
+            ));
+    }
+    let toolbar = toolbar.spacing(6).wrap();
 
     let rows = state.rows();
     let list: Element<'_, Message> = match state.listings.get(&state.root) {
