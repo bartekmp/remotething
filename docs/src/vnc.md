@@ -42,10 +42,16 @@ A change applies the next time you connect.
 
 A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, CopyRect, Raw), the traffic totals and the time connected.
 
+## Signing in
+
+The app signs in with the plain VNC password, which is what almost every server offers. Servers that offer only the **Tight** security type (older TightVNC and some others) work too: the app does Tight's negotiation and then uses the password.
+
+Some servers offer only their own sign-in method with a user name and password, for example one called `SRP6DUAL`. Those are not supported. The tab says what the server offered; turn on **plain VNC password authentication** in the server's settings and connect again.
+
 ## Not available yet
 
 | Feature | State |
 | --- | --- |
 | The Tight encoding (it needs a JPEG decoder) | Planned |
 | Resizing the desktop with the tab | Planned (servers that allow it) |
-| View-only mode, Apple Remote Desktop sign-in | Not planned for now |
+| View-only mode, Apple Remote Desktop sign-in, user name and password sign-in methods (SRP, MS-Logon) | Not planned for now |

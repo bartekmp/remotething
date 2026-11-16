@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.41.0 - 2026-11-16
+
+- VNC: servers that offer only the Tight security type now work with a password. A server that offers only its own user name and password method is reported with what it offered and how to fix it.
+
 ## 0.40.1 - 2026-11-16
 
 - Remote Desktop: a progress bar over the status strip while files are received. Sending has none; Windows shows its own while it pastes.

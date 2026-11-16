@@ -136,16 +136,17 @@ pub async fn connect_over<S>(
     peer: Option<SocketAddr>,
 ) -> Result<Session>
 where
-    S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let counters = Counters::default();
     let password = password.map(|secret| secret.expose().to_string());
     let depth = quality.depth();
-    let mut connector = VncConnector::new(Counted::new(stream, counters.clone()))
-        .set_auth_method(async move { password.ok_or(VncError::NoPassword) })
-        .add_encoding(VncEncoding::Zrle)
-        .add_encoding(VncEncoding::CopyRect)
-        .add_encoding(VncEncoding::Raw);
+    let mut connector =
+        VncConnector::new(Counted::new(crate::tight::relay(stream), counters.clone()))
+            .set_auth_method(async move { password.ok_or(VncError::NoPassword) })
+            .add_encoding(VncEncoding::Zrle)
+            .add_encoding(VncEncoding::CopyRect)
+            .add_encoding(VncEncoding::Raw);
     if quality.shows_pointer() {
         connector = connector.add_encoding(VncEncoding::CursorPseudo);
     }

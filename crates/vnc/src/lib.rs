@@ -10,6 +10,7 @@ mod framebuffer;
 mod input;
 mod quality;
 mod session;
+mod tight;
 mod traffic;
 
 pub use error::{Error, Result};
