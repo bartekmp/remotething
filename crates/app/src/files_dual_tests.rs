@@ -121,3 +121,22 @@ async fn a_finished_download_marks_the_local_pane_for_reading_again() {
         Some(&crate::files_pane::Listing::Loading)
     );
 }
+
+#[tokio::test]
+async fn a_server_name_that_is_not_plain_is_not_copied() {
+    let directory = tempfile::tempdir().unwrap();
+    let folder = directory.path().to_string_lossy().replace('\\', "/");
+    for (path, kind) in [
+        ("/srv/..", EntryKind::File),
+        ("/srv/..", EntryKind::Folder),
+        ("/srv/", EntryKind::File),
+    ] {
+        let mut state = dual(&folder);
+        state.selected = Some((path.to_string(), kind));
+
+        let _ = copy_to_local(&mut state);
+
+        assert!(state.queue.jobs.is_empty(), "{path:?} was queued");
+        assert!(matches!(state.status, Some(Status::Failed(_))), "{path:?}");
+    }
+}

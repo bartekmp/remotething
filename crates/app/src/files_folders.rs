@@ -71,7 +71,7 @@ pub(crate) fn downloads(
 }
 
 /// A single name, with no way up and no separator of this system in it.
-fn is_plain_name(part: &str) -> bool {
+pub(crate) fn is_plain_name(part: &str) -> bool {
     let mut components = Path::new(part).components();
     matches!(
         (components.next(), components.next()),

@@ -8,6 +8,7 @@ use std::sync::Arc;
 use iced::Task;
 use remotething_files::{EntryKind, LocalFs, RemoteFs};
 
+use crate::files_folders::is_plain_name;
 use crate::files_pane::{Message, State, Status};
 use crate::files_queueing::{check_upload, download_folder, start_download};
 
@@ -35,6 +36,17 @@ pub(crate) fn copy_to_local(state: &mut State) -> Task<Message> {
         return Task::none();
     };
     let folder = other.upload_folder();
+    // The name comes from the server, so it must be a plain name before it is joined to a local path.
+    let selected = state.selected_file().or(state.selected_folder());
+    let name = selected.and_then(|path| path.rsplit('/').next());
+    if name.is_some_and(|name| !is_plain_name(name)) {
+        let shown = selected.unwrap_or_default().to_string();
+        state.status = Some(Status::Failed(crate::i18n::fl!(
+            "files-unsafe-name",
+            name = shown
+        )));
+        return Task::none();
+    }
     if let Some(path) = state.selected_file() {
         let name = path.rsplit('/').next().unwrap_or(path);
         let local = PathBuf::from(remotething_files::join(&folder, name));

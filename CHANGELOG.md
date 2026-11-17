@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.48.1 - 2026-11-17
+
+- Copying from the server to this computer refuses a file or folder name that would lead outside the chosen local folder.
+
 ## 0.48.0 - 2026-11-16
 
 - File browsers can show your own disk in a second pane beside the server's, with copy buttons between them.
