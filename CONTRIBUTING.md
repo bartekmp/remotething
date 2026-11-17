@@ -108,4 +108,4 @@ RT_SMB_HOST=127.0.0.1 RT_SMB_PORT=4450 RT_SMB_USER=$USER RT_SMB_PASSWORD=... RT_
   cargo test -p remotething-files --test smb_server -- --ignored
 ```
 
-Do not run it with `-i`: that serves one connection at a time and the tests open several. The FTP and SFTP tests are described at the top of `crates/files/tests/ftp_server.rs` and `sftp_server.rs`.
+Do not run it with `-i`: that serves one connection at a time and the tests open several. The FTP, SFTP and SCP tests are described at the top of `crates/files/tests/ftp_server.rs`, `sftp_server.rs` and `scp_server.rs`. For SCP, run `sshd` as yourself on a spare port with a config that has no `Subsystem sftp` line.

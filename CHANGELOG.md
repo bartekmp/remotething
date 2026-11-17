@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.53.0 - 2026-11-17
+
+- The file browser works on SSH servers that have no SFTP, using SCP and shell commands. Transfers there cannot resume.
+
 ## 0.52.0 - 2026-11-17
 
 - F1 shows a list of the keyboard shortcuts.

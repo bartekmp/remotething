@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::Task;
-use remotething_files::{Entry, EntryKind, Progress, RemoteFs, SftpFs, Transferred};
+use remotething_files::{Entry, EntryKind, Progress, RemoteFs, ScpFs, SftpFs, Transferred};
 use remotething_remote::ssh::Connection;
 
 use crate::file_dialog;
@@ -159,10 +159,14 @@ impl State {
     /// Starts the file service on the session's connection.
     pub fn open(connection: Connection) -> (Self, Task<Message>) {
         Self::open_with(async move {
-            let files = SftpFs::open(&connection)
-                .await
-                .map_err(|error| error.to_string())?;
-            let files: Arc<dyn RemoteFs> = Arc::new(files);
+            // A server without SFTP is still reachable with scp and shell commands.
+            let files: Arc<dyn RemoteFs> = match SftpFs::open(&connection).await {
+                Ok(files) => Arc::new(files),
+                Err(sftp_error) => match ScpFs::open(&connection).await {
+                    Ok(files) => Arc::new(files),
+                    Err(_) => return Err(sftp_error.to_string()),
+                },
+            };
             Ok(files)
         })
     }

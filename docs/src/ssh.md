@@ -94,6 +94,14 @@ A WSL tab is a terminal like an SSH one: search, recording, screenshots and copy
 
 Choose the protocol **SFTP** for a connection to get just the files: no terminal, no shell is started. The tab is the file browser, filling the whole area, and it signs in exactly like SSH (passwords, keys, agent, one-time codes, jump hosts, host-key check). The actions below work the same. Typing `sftp://user@host` in the new-tab box opens one too.
 
+### Servers without SFTP
+
+When a server has no SFTP service, the file browser falls back to SCP by itself; nothing to choose. Folders are read and changed with shell commands, and files move with `scp` on the server. The server needs a POSIX shell with `ls`, `test`, `mkdir`, `mv`, `rm`, `rmdir`, `wc`, `head` and `scp`.
+
+- A transfer that stopped starts again from the beginning: SCP cannot continue.
+- The listing has no modification times.
+- A name with a line break in it cannot be listed, and device files are not shown.
+
 ## Files beside a terminal
 
 A connected session has a **Browse files** button above the terminal. It opens a file pane on the right, beside the terminal, using the same SSH connection (SFTP), so there is no second sign-in.

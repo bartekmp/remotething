@@ -7,7 +7,7 @@ use russh::{Channel, ChannelMsg};
 use tokio::sync::mpsc;
 
 use super::host_key::{Handler, Learned};
-use super::{Details, Result, Shell, ShellEvent, ShellInput};
+use super::{Details, Error, Result, Shell, ShellEvent, ShellInput};
 
 /// The byte stream of an SFTP channel.
 pub type SftpStream = russh::ChannelStream<Msg>;
@@ -40,9 +40,78 @@ impl Connection {
 
     /// Opens a channel on this connection and starts the server's SFTP service on it.
     pub async fn open_sftp(&self) -> Result<SftpStream> {
-        let channel = self.0.target.channel_open_session().await?;
+        let mut channel = self.0.target.channel_open_session().await?;
         channel.request_subsystem(true, "sftp").await?;
+        accepted(&mut channel, "the SFTP service").await?;
         Ok(channel.into_stream())
+    }
+
+    /// Runs one command on the server and waits for it to end.
+    pub async fn exec(&self, command: &str) -> Result<Output> {
+        let mut channel = self.0.target.channel_open_session().await?;
+        channel.exec(true, command).await?;
+        let mut output = Output::default();
+        while let Some(message) = channel.wait().await {
+            match message {
+                ChannelMsg::Data { data } => output.stdout.extend_from_slice(&data),
+                ChannelMsg::ExtendedData { data, .. } => output.stderr.extend_from_slice(&data),
+                ChannelMsg::ExitStatus { exit_status } => output.status = Some(exit_status),
+                _ => {}
+            }
+        }
+        Ok(output)
+    }
+
+    /// Starts a command on the server and returns its input and output as one stream.
+    pub async fn exec_stream(&self, command: &str) -> Result<SftpStream> {
+        let mut channel = self.0.target.channel_open_session().await?;
+        channel.exec(true, command).await?;
+        accepted(&mut channel, "the command").await?;
+        Ok(channel.into_stream())
+    }
+}
+
+/// Waits for the server's answer to a request made with a reply wanted.
+async fn accepted(channel: &mut Channel<Msg>, what: &str) -> Result<()> {
+    while let Some(message) = channel.wait().await {
+        match message {
+            ChannelMsg::Success => return Ok(()),
+            ChannelMsg::Failure => {
+                return Err(Error::Protocol(format!("the server refused {what}")));
+            }
+            _ => {}
+        }
+    }
+    Err(Error::Protocol(format!(
+        "the server closed before starting {what}"
+    )))
+}
+
+/// What a command printed and how it ended.
+#[derive(Debug, Default, Clone)]
+pub struct Output {
+    /// The exit status, when the server reported one.
+    pub status: Option<u32>,
+    /// What the command wrote to standard output.
+    pub stdout: Vec<u8>,
+    /// What the command wrote to standard error.
+    pub stderr: Vec<u8>,
+}
+
+impl Output {
+    /// Whether the command ended with status 0.
+    pub fn succeeded(&self) -> bool {
+        self.status == Some(0)
+    }
+
+    /// Standard error as text, trimmed; or the exit status when nothing was said.
+    pub fn complaint(&self) -> String {
+        let said = String::from_utf8_lossy(&self.stderr).trim().to_string();
+        match (said.is_empty(), self.status) {
+            (false, _) => said,
+            (true, Some(status)) => format!("exit status {status}"),
+            (true, None) => "the command did not finish".to_string(),
+        }
     }
 }
 
