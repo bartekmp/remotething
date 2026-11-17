@@ -120,6 +120,25 @@ A connected session has a **Browse files** button above the terminal. It opens a
 - Transfers go into a list under the tree, with a progress bar and the size done. Two run at the same time; the rest wait. **Cancel** stops one.
 - A failed or cancelled transfer has a **Retry** button. It carries on from what is already there: a shorter file on the other side is taken as the start and only the rest is sent. **Clear** forgets the transfers that are over.
 
+## Keyboard in a file browser
+
+In a file-only tab (SFTP, FTP, FTPS, SMB) the keys work on the files:
+
+| Key | Does |
+| --- | --- |
+| **Down**, **Up**, **Home**, **End** | Move the selection |
+| **Right** | Unfold a folder; on an open one, move into it |
+| **Left** | Fold an open folder; otherwise move to the folder that holds the row |
+| **Enter** | Fold or unfold a folder; preview a file |
+| **Backspace** | Go up one folder |
+| **F5** | Read the folders again |
+| **F2** | Rename the selected row |
+| **Delete** | Delete it, after a question; **Enter** confirms, **Esc** cancels |
+| **Esc** | Close a menu or the preview |
+| **Tab** | With two panes showing, switch between them. The title of the pane that has the keys is the darker one |
+
+Clicking a row gives its pane the keys. Beside a terminal the keys stay with the terminal.
+
 ## Two panes: the server and this computer
 
 In a file browser (SFTP, FTP, FTPS or SMB tab, or the file pane beside a terminal) press **This computer**. A second pane opens beside the server's, showing your own disk.

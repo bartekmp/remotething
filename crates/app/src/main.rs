@@ -22,6 +22,7 @@ mod file_dialog;
 mod file_preview;
 mod files_dual;
 mod files_folders;
+mod files_keys;
 mod files_menu;
 mod files_menu_view;
 mod files_pane;

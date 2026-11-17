@@ -523,6 +523,11 @@ impl State {
 
     /// A key press for the terminal. Ctrl+Shift+V pastes.
     pub fn key(&mut self, key: &Key, modifiers: Modifiers, text: Option<&str>) -> Task<Message> {
+        // A file-only tab has no terminal: the keys move around the files.
+        if let Stage::Browsing(browser) = &mut self.stage {
+            return crate::files_keys::on_key(&mut browser.files, key, modifiers)
+                .map(Message::Files);
+        }
         let Stage::Connected(live) = &mut self.stage else {
             return Task::none();
         };

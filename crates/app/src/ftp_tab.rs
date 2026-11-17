@@ -136,6 +136,20 @@ impl State {
         self.stage = Stage::Browsing(Box::new(files));
     }
 
+    /// A key in the files, when they are showing.
+    pub(crate) fn key(
+        &mut self,
+        key: &iced::keyboard::Key,
+        modifiers: iced::keyboard::Modifiers,
+    ) -> Task<Message> {
+        match &mut self.stage {
+            Stage::Browsing(pane) => {
+                crate::files_keys::on_key(pane, key, modifiers).map(Message::Files)
+            }
+            _ => Task::none(),
+        }
+    }
+
     fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
         let credential = self.connection.credential.as_ref().and_then(|id| {
             context

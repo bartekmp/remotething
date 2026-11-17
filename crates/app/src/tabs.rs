@@ -366,13 +366,16 @@ impl State {
         let Some(tab) = self.tabs.get_mut(self.active) else {
             return Task::none();
         };
-        let Content::Session(session) = &mut tab.content else {
-            return Task::none();
-        };
         let id = tab.id;
-        session
-            .key(key, modifiers, text)
-            .map(move |message| Message::Session(id, message))
+        match &mut tab.content {
+            Content::Session(session) => session
+                .key(key, modifiers, text)
+                .map(move |message| Message::Session(id, message)),
+            Content::Ftp(ftp) => ftp
+                .key(key, modifiers)
+                .map(move |message| Message::Ftp(id, message)),
+            _ => Task::none(),
+        }
     }
 
     fn confirm_close(&mut self) {

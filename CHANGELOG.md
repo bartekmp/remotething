@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.50.0 - 2026-11-17
+
+- File browsers can be driven from the keyboard: arrows, Enter, Backspace, F2 to rename, Delete, F5, and Tab to switch between the two panes.
+
 ## 0.49.0 - 2026-11-17
 
 - Command palette (Ctrl+Shift+P): jump to a connection or action by typing, with arrow keys and Enter. Ctrl+Tab and Ctrl+Shift+Tab cycle tabs, Alt+1 to Alt+9 pick one.

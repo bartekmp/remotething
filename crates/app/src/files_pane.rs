@@ -68,6 +68,8 @@ pub struct State {
     pub(crate) is_local: bool,
     /// A download ended since the other pane was last read again.
     pub(crate) downloaded: bool,
+    /// Whether the keyboard is in the local pane rather than this one.
+    pub(crate) focus_other: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -201,6 +203,7 @@ impl State {
             other: None,
             is_local: false,
             downloaded: false,
+            focus_other: false,
         }
     }
 
@@ -225,7 +228,20 @@ impl State {
     }
 }
 
+/// Whether a message is the user picking something in a pane, which gives that pane the keyboard.
+fn is_a_pick(message: &Message) -> bool {
+    matches!(
+        message,
+        Message::Selected(..) | Message::FolderToggled(_) | Message::MenuOpened(..)
+    )
+}
+
 pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Event>) {
+    match &message {
+        Message::Other(inner) if is_a_pick(inner) => state.focus_other = true,
+        message if is_a_pick(message) => state.focus_other = false,
+        _ => {}
+    }
     let task = match message {
         Message::Opened(Ok(ready)) => {
             state.files = Some(ready.files);

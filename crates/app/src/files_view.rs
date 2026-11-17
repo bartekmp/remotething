@@ -6,6 +6,7 @@ use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
 use crate::files_dual;
+use crate::files_keys;
 use crate::files_menu_view;
 use crate::files_pane::{Listing, Message, Row, State, Status, format_size};
 use crate::files_preview_view;
@@ -20,7 +21,7 @@ const ARROW_WIDTH: f32 = 14.0;
 /// The pane, with the local pane and the copy buttons beside it when that is showing.
 pub fn view(state: &State) -> Element<'_, Message> {
     let Some(other) = &state.other else {
-        return pane(state);
+        return pane(state, None);
     };
     let copy = |label: String, message: Message, enabled: bool| {
         button(text(label).size(theme::TEXT_SMALL))
@@ -42,22 +43,29 @@ pub fn view(state: &State) -> Element<'_, Message> {
     .spacing(theme::GAP)
     .align_x(Horizontal::Center);
     row![
-        container(pane(state)).width(Length::FillPortion(1)),
+        container(pane(state, Some(!state.focus_other))).width(Length::FillPortion(1)),
         container(buttons).center_y(Length::Fill),
-        container(pane(other).map(files_dual::wrap)).width(Length::FillPortion(1)),
+        container(pane(other, Some(state.focus_other)).map(files_dual::wrap))
+            .width(Length::FillPortion(1)),
     ]
     .spacing(theme::GAP)
     .into()
 }
 
-fn pane(state: &State) -> Element<'_, Message> {
+/// One pane. With two showing, `focus` says whether this one has the keyboard.
+fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
     let title = if state.is_local {
         fl!("files-title-local")
     } else {
         fl!("files-title")
     };
-    let mut header =
-        row![text(title).size(theme::TEXT_TITLE).width(Length::Fill),].align_y(Vertical::Center);
+    let mut title = text(title).size(theme::TEXT_TITLE).width(Length::Fill);
+    title = match focus {
+        Some(true) => title.style(text::base),
+        Some(false) => title.style(theme::secondary_text),
+        None => title,
+    };
+    let mut header = row![title].align_y(Vertical::Center);
     if state.closable {
         header = header.push(
             button(icons::view(icons::CLOSE, theme::TEXT_BODY))
@@ -123,7 +131,9 @@ fn pane(state: &State) -> Element<'_, Message> {
             text(fl!("files-empty")).style(theme::secondary_text).into()
         }
         Some(Listing::Loaded(_)) => {
-            scrollable(column(rows.into_iter().map(|row| view_row(state, row)))).into()
+            scrollable(column(rows.into_iter().map(|row| view_row(state, row))))
+                .id(files_keys::list_id(state))
+                .into()
         }
         _ if state.status.is_some() => space().into(),
         _ => text(fl!("files-loading"))
