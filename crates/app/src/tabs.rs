@@ -50,8 +50,8 @@ pub struct State {
     pub(crate) split: Option<u64>,
     /// Whether the panes of a split are stacked, one above the other, instead of side by side.
     pub(crate) split_stacked: bool,
-    /// The window size to show over the tab while the window is being resized.
-    pub(crate) size_badge: Option<(u32, u32)>,
+    /// Whether the size of the view shows over the tab, while the window is being resized.
+    pub(crate) size_badge: bool,
     /// How much of the split the first pane (left, or top) takes, from 0 to 1.
     pub(crate) split_share: Option<f32>,
     /// Whether the divider is being dragged.
@@ -191,8 +191,8 @@ impl State {
     }
 
     /// The size to show while resizing, for the tabs where it means something: a terminal's
-    /// characters, an RDP desktop's pixels as it will be asked for, and the window's pixels
-    /// over a VNC picture, which is scaled to fit. Other tabs show nothing.
+    /// characters, and an RDP desktop's pixels as it will be asked for. Other tabs show nothing;
+    /// a VNC picture is only scaled to fit, so it has no size to aim for.
     pub fn front_view_size(&self) -> Option<ViewSize> {
         match &self.tabs.get(self.active)?.content {
             Content::Session(session) => session
@@ -200,9 +200,6 @@ impl State {
                 .map(|(columns, lines)| ViewSize::Characters(columns, lines)),
             Content::Desktop(desktop) => desktop
                 .target_size()
-                .map(|(width, height)| ViewSize::Pixels(width, height)),
-            Content::Vnc(vnc) if vnc.is_connected() => self
-                .size_badge
                 .map(|(width, height)| ViewSize::Pixels(width, height)),
             _ => None,
         }

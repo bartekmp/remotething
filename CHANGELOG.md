@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.65.4 - 2026-11-17
+
+- The size shown while resizing is no longer shown over VNC.
+
 ## 0.65.3 - 2026-11-17
 
 - The size shown while resizing appears only over SSH terminals, RDP and VNC.

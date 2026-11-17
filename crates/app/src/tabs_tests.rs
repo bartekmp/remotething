@@ -675,7 +675,7 @@ fn a_new_tab_in_a_split_takes_the_pane_of_the_tab_in_front() {
 #[test]
 fn the_size_shown_while_resizing_is_only_for_terminals_and_desktops() {
     let mut fixture = Fixture::with_tabs(&["a"]);
-    fixture.state.size_badge = Some((900, 700));
+    fixture.state.size_badge = true;
 
     // A desktop that is not connected yet, a launcher, a file tab: nothing to show.
     assert_eq!(fixture.state.front_view_size(), None);

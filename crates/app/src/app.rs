@@ -441,11 +441,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
             state.window = size;
             state.size_shown = true;
-            let scale = display::scale();
-            state.tabs.size_badge = Some((
-                (size.width * scale).round() as u32,
-                (size.height * scale).round() as u32,
-            ));
+            state.tabs.size_badge = true;
             state.resize_count += 1;
             let count = state.resize_count;
             return Task::perform(
@@ -456,7 +452,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         Message::ResizeSettled(count) => {
             if count == state.resize_count {
                 state.size_shown = false;
-                state.tabs.size_badge = None;
+                state.tabs.size_badge = false;
             }
         }
         Message::FileDropped(path) => return input::on_file_dropped(state, path),

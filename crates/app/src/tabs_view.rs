@@ -102,7 +102,7 @@ fn view_sized<'a>(
     };
     // Over the remote view itself, so it is seen where the eyes are while resizing.
     let body = match (state.size_badge, state.front_view_size()) {
-        (Some(_), Some(size)) => stack![body, size_badge(size, state.front_has_toolbar())].into(),
+        (true, Some(size)) => stack![body, size_badge(size, state.front_has_toolbar())].into(),
         _ => body,
     };
     let page = column![bar, body]
