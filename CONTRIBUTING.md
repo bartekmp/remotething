@@ -94,6 +94,7 @@ A nightly run on Jenkins needs the three variables as credentials bound to the j
 
 - Work on a short-lived `wp-<id>-<name>` branch and merge by pull request with squash.
 - `main` is protected; Jenkins must be green before a merge.
+- Jenkins is not reachable from the internet, so GitHub's webhook goes through a smee.io channel to a small relay on the Jenkins machine (a user service, `smee-jenkins`), which signs the event again with the secret set in Jenkins and posts it to `/github-webhook/`. Jenkins also scans every 5 minutes if the relay is down.
 - Commit messages are one short line.
 
 ## SMB, FTP and SFTP against a real server
