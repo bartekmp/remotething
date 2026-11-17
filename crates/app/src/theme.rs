@@ -183,6 +183,43 @@ pub fn tab(is_active: bool) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
+/// The tab being carried: raised above the bar with a shadow and an accent edge.
+pub fn carried_tab(theme: &Theme) -> container::Style {
+    let tokens = tokens(theme);
+    container::Style {
+        text_color: Some(tokens.selected_text),
+        background: Some(tokens.selected.into()),
+        border: Border {
+            color: tokens.accent,
+            width: 1.0,
+            radius: RADIUS_CONTROL.into(),
+        },
+        shadow: Shadow {
+            color: tokens.shadow,
+            offset: Vector::new(0.0, 3.0),
+            blur_radius: 8.0,
+        },
+        ..container::Style::default()
+    }
+}
+
+/// A tab that was just dropped: its accent edge fades out as `glow` goes from 1 to 0.
+pub fn glowing_tab(is_active: bool, glow: f32) -> impl Fn(&Theme) -> container::Style {
+    move |theme| {
+        let tokens = tokens(theme);
+        let mut style = tab(is_active)(theme);
+        style.border = Border {
+            color: Color {
+                a: glow.clamp(0.0, 1.0),
+                ..tokens.accent
+            },
+            width: 2.0,
+            radius: RADIUS_CONTROL.into(),
+        };
+        style
+    }
+}
+
 /// The row a dragged item would be dropped on.
 pub fn drop_target(theme: &Theme) -> container::Style {
     let tokens = tokens(theme);

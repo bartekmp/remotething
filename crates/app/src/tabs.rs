@@ -29,6 +29,8 @@ pub struct State {
     pub(crate) dragged: Option<u64>,
     /// The position in the bar under the pointer.
     pub(crate) hovered: Option<usize>,
+    /// A tab that was just dropped in a new place, and how its glow fades.
+    pub(crate) glowing: Option<(u64, crate::motion::Tween)>,
     /// Whether the list of tabs that do not fit is showing.
     pub(crate) overflow_open: bool,
     /// The tab whose right-click menu is showing.
@@ -327,7 +329,9 @@ impl State {
     }
 
     /// The mouse button went up somewhere in the window: drop a carried tab where it is.
-    pub fn release(&mut self) {
+    ///
+    /// With `animate`, the tab that moved glows for a moment so the eye finds it.
+    pub fn release(&mut self, animate: bool) {
         let (Some(id), Some(target)) = (self.dragged.take(), self.hovered) else {
             return;
         };
@@ -341,6 +345,30 @@ impl State {
         self.tabs.insert(target, tab);
         // The carried tab was brought to the front when it was pressed.
         self.active = target;
+        if animate {
+            let glow = crate::motion::Tween::between(
+                1.0,
+                0.0,
+                std::time::Instant::now(),
+                crate::motion::GLOW,
+            );
+            self.glowing = Some((id, glow));
+        }
+    }
+
+    /// How brightly a tab glows at `now`, from 0 (not at all) to 1.
+    pub fn glow_of(&self, id: u64, now: std::time::Instant) -> f32 {
+        match &self.glowing {
+            Some((glowing, tween)) if *glowing == id => tween.value(now),
+            _ => 0.0,
+        }
+    }
+
+    /// Whether a tab is still glowing at `now`.
+    pub fn is_glowing(&self, now: std::time::Instant) -> bool {
+        self.glowing
+            .as_ref()
+            .is_some_and(|(_, tween)| tween.is_running(now))
     }
 
     /// A key press that no text field took. A pending close question gets it

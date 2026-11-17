@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Preferences {
     #[serde(default)]
     pub theme: ThemeChoice,
@@ -17,12 +17,33 @@ pub struct Preferences {
     /// What the tab bar does when the tabs do not fit on one line.
     #[serde(default)]
     pub tab_layout: TabLayout,
+    /// Whether panels slide and tabs light up as they land. On unless switched off.
+    #[serde(default = "yes")]
+    pub animations: bool,
     /// The optional features, which are all off until switched on.
     #[serde(default, skip_serializing_if = "Features::is_empty")]
     pub features: Features,
     /// Where screenshots and recordings go, when not in the default folders.
     #[serde(default, skip_serializing_if = "Folders::is_empty")]
     pub folders: Folders,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            theme: ThemeChoice::default(),
+            language: None,
+            tree_collapsed: false,
+            tab_layout: TabLayout::default(),
+            animations: true,
+            features: Features::default(),
+            folders: Folders::default(),
+        }
+    }
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Folders the user chose for what the optional features write. `None` is the default
@@ -192,6 +213,18 @@ mod tests {
     }
 
     #[test]
+    fn animations_are_on_unless_the_file_says_otherwise() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+
+        std::fs::write(&path, "theme = \"dark\"\n").unwrap();
+        assert!(load(&path).unwrap().animations);
+
+        std::fs::write(&path, "animations = false\n").unwrap();
+        assert!(!load(&path).unwrap().animations);
+    }
+
+    #[test]
     fn saved_preferences_load_back_the_same() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("new").join("settings.toml");
@@ -200,6 +233,7 @@ mod tests {
             language: Some("en".to_string()),
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
+            animations: false,
             features: Features {
                 screenshots: true,
                 console_recording: true,

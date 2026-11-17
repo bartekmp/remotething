@@ -68,6 +68,7 @@ pub enum Message {
     /// A page of the settings was picked.
     PagePicked(Tab),
     TabLayoutPicked(TabLayoutOption),
+    AnimationsToggled(bool),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
     ScreenshotsToggled(bool),
@@ -156,6 +157,10 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         Message::PagePicked(tab) => Event::PageChanged(tab),
         Message::TabLayoutPicked(option) => {
             preferences.tab_layout = option.0;
+            Event::Changed
+        }
+        Message::AnimationsToggled(on) => {
+            preferences.animations = on;
             Event::Changed
         }
         Message::ThemePicked(option) => {
@@ -270,7 +275,13 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(2);
 
-    column![theme, language, tabs].spacing(16).into()
+    let animations = checkbox(preferences.animations)
+        .label(fl!("settings-animations"))
+        .on_toggle(Message::AnimationsToggled);
+
+    column![theme, language, tabs, animations]
+        .spacing(16)
+        .into()
 }
 
 /// Exporting and importing the connections.

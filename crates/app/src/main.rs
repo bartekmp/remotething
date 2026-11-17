@@ -50,6 +50,7 @@ mod keysym;
 mod launcher;
 mod menu;
 mod meter;
+mod motion;
 mod note;
 mod organise;
 mod palette;

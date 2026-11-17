@@ -31,47 +31,14 @@ const COLLAPSE_ICON_SIZE: f32 = 18.0;
 const CARRIED_OFFSET: f32 = 14.0;
 
 pub fn view(state: &State) -> Element<'_, Message> {
-    let tree = if state.preferences.tree_collapsed {
-        // Folded: the button that brings the tree back, and settings at the bottom.
-        let settings = button(icons::view(icons::SETTINGS, COLLAPSE_ICON_SIZE))
-            .padding(8)
-            .style(look::pill)
-            .on_press(Message::SettingsPressed);
-        let expand = icon_button(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled);
-        container(column![expand, space::vertical(), settings].align_x(Horizontal::Center))
-            .height(Length::Fill)
-            .padding(look::GAP)
-            .style(look::panel)
-            .into()
-    } else {
-        let header = row![
-            text(fl!("tree-title"))
-                .size(look::TEXT_TITLE)
-                .width(Length::Fill),
-            icon_button(icons::PANEL_LEFT_CLOSE, Message::TreeCollapseToggled),
-        ]
-        .align_y(Vertical::Center);
-        let content = tree::view(&state.tree, &state.store).map(Message::Tree);
-        let settings_label = row![
-            icons::view(icons::SETTINGS, look::TEXT_BODY),
-            text(fl!("tree-settings")).size(look::TEXT_SMALL),
-        ]
-        .spacing(6)
-        .align_y(Vertical::Center);
-        let settings = button(settings_label)
-            .style(look::pill)
-            .on_press(Message::SettingsPressed);
-        side_panel(
-            column![header, content, settings].spacing(look::GAP),
-            TREE_WIDTH,
-        )
-    };
+    let tree = tree_panel(state);
     let centre = match (&state.vault, state.centre) {
         // The prompt covers the sessions; credentials and settings stay reachable.
         (Some(prompt), Centre::Sessions) => vault::view(prompt).map(Message::Vault),
         (_, Centre::Sessions) => {
             let layout = state.preferences.tab_layout;
-            tabs_view::view(&state.tabs, &state.store, &state.recent, layout).map(Message::Tabs)
+            tabs_view::view(&state.tabs, &state.store, &state.recent, layout, state.now)
+                .map(Message::Tabs)
         }
         (_, Centre::Credentials) => {
             credentials::view(&state.credentials, &state.store).map(Message::Credentials)
@@ -112,7 +79,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
         None => column![body],
     };
     let mut layers = stack![container(content).padding(look::GAP)];
-    if state.properties_open {
+    if state.properties_open || state.properties_slide.is_running(state.now) {
         layers = layers.push(properties_panel(state, has_message));
     }
     if let Some(label) = carried_label(state) {
@@ -129,6 +96,74 @@ pub fn view(state: &State) -> Element<'_, Message> {
         layers = layers.push(folder_removal::view(question).map(Message::Removal));
     }
     layers.into()
+}
+
+/// The width of the folded tree: a rail with one button above and one below.
+const RAIL_WIDTH: f32 = 56.0;
+/// Narrower than this, a sliding tree shows the rail instead of a squeezed panel.
+const RAIL_UNTIL: f32 = 150.0;
+
+/// The connection tree: a panel, a rail, or while it moves a panel of in-between width.
+fn tree_panel(state: &State) -> Element<'_, Message> {
+    let unfolded = state.tree_slide.value(state.now);
+    if !state.tree_slide.is_running(state.now) {
+        return if state.preferences.tree_collapsed {
+            rail(None)
+        } else {
+            expanded_tree(state)
+        };
+    }
+    let width = RAIL_WIDTH + (TREE_WIDTH - RAIL_WIDTH) * unfolded;
+    if width < RAIL_UNTIL {
+        return rail(Some(width));
+    }
+    // The panel is cut off by the edge of its box instead of being squeezed into it.
+    container(expanded_tree(state))
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .clip(true)
+        .into()
+}
+
+/// The folded tree: the button that brings it back, and settings at the bottom.
+fn rail<'a>(width: Option<f32>) -> Element<'a, Message> {
+    let settings = button(icons::view(icons::SETTINGS, COLLAPSE_ICON_SIZE))
+        .padding(8)
+        .style(look::pill)
+        .on_press(Message::SettingsPressed);
+    let expand = icon_button(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled);
+    let rail = container(column![expand, space::vertical(), settings].align_x(Horizontal::Center))
+        .height(Length::Fill)
+        .padding(look::GAP)
+        .style(look::panel);
+    match width {
+        Some(width) => rail.width(Length::Fixed(width)).into(),
+        None => rail.into(),
+    }
+}
+
+fn expanded_tree(state: &State) -> Element<'_, Message> {
+    let header = row![
+        text(fl!("tree-title"))
+            .size(look::TEXT_TITLE)
+            .width(Length::Fill),
+        icon_button(icons::PANEL_LEFT_CLOSE, Message::TreeCollapseToggled),
+    ]
+    .align_y(Vertical::Center);
+    let content = tree::view(&state.tree, &state.store).map(Message::Tree);
+    let settings_label = row![
+        icons::view(icons::SETTINGS, look::TEXT_BODY),
+        text(fl!("tree-settings")).size(look::TEXT_SMALL),
+    ]
+    .spacing(6)
+    .align_y(Vertical::Center);
+    let settings = button(settings_label)
+        .style(look::pill)
+        .on_press(Message::SettingsPressed);
+    side_panel(
+        column![header, content, settings].spacing(look::GAP),
+        TREE_WIDTH,
+    )
 }
 
 /// The properties of the selected item, floating over the right of the centre panel.
@@ -154,13 +189,24 @@ fn properties_panel(state: &State, below_banner: bool) -> Element<'_, Message> {
     } else {
         look::GAP * 2.0
     };
-    container(opaque(panel))
-        .align_right(Length::Fill)
-        .height(Length::Fill)
-        .padding(iced::Padding {
-            top,
-            ..iced::Padding::new(look::GAP * 2.0)
-        })
+    let slid_in = state.properties_slide.value(state.now);
+    if !state.properties_slide.is_running(state.now) {
+        return container(opaque(panel))
+            .align_right(Length::Fill)
+            .height(Length::Fill)
+            .padding(iced::Padding {
+                top,
+                ..iced::Padding::new(look::GAP * 2.0)
+            })
+            .into();
+    }
+    // Sliding: the panel is placed by hand, from past the right edge to its place.
+    let edge = look::GAP * 2.0;
+    let resting = state.window.width - PROPERTIES_WIDTH - edge;
+    let x = state.window.width + (resting - state.window.width) * slid_in;
+    let height = (state.window.height - top - edge).max(0.0);
+    pin(opaque(panel.height(Length::Fixed(height))))
+        .position(Point::new(x, top))
         .into()
 }
 

@@ -56,6 +56,12 @@ pub struct State {
     pub(crate) properties_open: bool,
     /// The command palette, while it is open.
     pub(crate) palette: Option<crate::palette::State>,
+    /// How far the connection tree is unfolded: 0 is the narrow rail, 1 the whole panel.
+    pub(crate) tree_slide: crate::motion::Tween,
+    /// How far the properties panel has slid in: 0 is out of sight, 1 in place.
+    pub(crate) properties_slide: crate::motion::Tween,
+    /// The time of the latest frame, which animations are drawn at.
+    pub(crate) now: std::time::Instant,
     pub(crate) credentials: credentials::State,
     pub(crate) putty: putty_import::State,
     pub(crate) wsl: wsl_import::State,
@@ -140,6 +146,8 @@ pub enum Message {
     PointerMoved(Point),
     /// The left mouse button went up, anywhere in the window.
     PointerReleased,
+    /// A frame is being drawn, while something is moving.
+    Frame(std::time::Instant),
     KeyPressed {
         key: keyboard::Key,
         /// The key by its place on the keyboard, for remote desktops.
@@ -206,6 +214,9 @@ impl State {
             draft: None,
             properties_open: false,
             palette: None,
+            tree_slide: crate::motion::Tween::at(1.0),
+            properties_slide: crate::motion::Tween::at(0.0),
+            now: std::time::Instant::now(),
             credentials: credentials::State::default(),
             putty: putty_import::State::default(),
             wsl: wsl_import::State::default(),
@@ -236,7 +247,39 @@ impl State {
     pub fn with_preferences(mut self, preferences: Preferences) -> Self {
         self.preferences = preferences;
         features::apply(&self.preferences, &self.path);
+        let unfolded = if self.preferences.tree_collapsed {
+            0.0
+        } else {
+            1.0
+        };
+        self.tree_slide = crate::motion::Tween::at(unfolded);
         self
+    }
+
+    /// Sends the sliding panels where the state says they belong. Called after every message,
+    /// so whatever changed `tree_collapsed` or `properties_open` is animated the same way.
+    fn sync_motion(&mut self) {
+        let now = std::time::Instant::now();
+        let animate = self.preferences.animations;
+        let unfolded = if self.preferences.tree_collapsed {
+            0.0
+        } else {
+            1.0
+        };
+        if self.tree_slide.target() != unfolded {
+            self.tree_slide.retarget(unfolded, now, animate);
+        }
+        let shown = if self.properties_open { 1.0 } else { 0.0 };
+        if self.properties_slide.target() != shown {
+            self.properties_slide.retarget(shown, now, animate);
+        }
+    }
+
+    /// Whether something is moving, so frames are wanted.
+    fn is_animating(&self) -> bool {
+        self.tree_slide.is_running(self.now)
+            || self.properties_slide.is_running(self.now)
+            || self.tabs.is_glowing(self.now)
     }
 
     pub(crate) fn save_preferences(&mut self) {
@@ -304,14 +347,21 @@ impl State {
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
+    let task = handle(state, message);
+    state.sync_motion();
+    task
+}
+
+fn handle(state: &mut State, message: Message) -> Task<Message> {
     match message {
+        Message::Frame(now) => state.now = now,
         Message::Tree(message) => {
             if let Some(event) = tree::update(&mut state.tree, message) {
                 return tree_actions::on_tree_event(state, event);
             }
         }
         Message::PointerReleased => {
-            state.tabs.release();
+            state.tabs.release(state.preferences.animations);
             if let Some(event) = state.tree.release() {
                 return tree_actions::on_tree_event(state, event);
             }
@@ -612,7 +662,14 @@ pub fn subscription(state: &State) -> Subscription<Message> {
     } else {
         Subscription::none()
     };
+    // Frames only come while something is moving.
+    let frames = if state.is_animating() {
+        iced::window::frames().map(Message::Frame)
+    } else {
+        Subscription::none()
+    };
     Subscription::batch([
+        frames,
         iced::system::theme_changes().map(Message::SystemModeChanged),
         iced::event::listen_with(input::window_event),
         clipboard,

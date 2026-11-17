@@ -4,6 +4,7 @@ use super::*;
 use crate::credential_actions::apply_secret;
 use crate::credentials::SecretAction;
 use crate::palette;
+use crate::tabs;
 use remotething_secrets::{MemoryStore, Secret};
 
 const ONE_CONNECTION: &str = r#"
@@ -713,4 +714,85 @@ fn tab_keys_switch_tabs_and_bring_the_sessions_back() {
 
     assert_eq!(state.centre, Centre::Sessions);
     assert_eq!(state.tabs.active, 0);
+}
+
+#[test]
+fn folding_the_tree_glides_and_unfolding_glides_back() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    assert!(!state.is_animating());
+
+    let _ = update(&mut state, Message::TreeCollapseToggled);
+
+    assert_eq!(state.tree_slide.target(), 0.0);
+    // The first frame has not come yet, so it is still running and the panel is nearly full.
+    assert!(state.is_animating());
+    assert!(state.tree_slide.value(state.now) > 0.5);
+
+    state.now = std::time::Instant::now() + crate::motion::DURATION;
+    assert!(!state.is_animating());
+    assert_eq!(state.tree_slide.value(state.now), 0.0);
+
+    let _ = update(&mut state, Message::TreeCollapseToggled);
+    assert_eq!(state.tree_slide.target(), 1.0);
+}
+
+#[test]
+fn with_animations_off_the_panels_jump() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.preferences.animations = false;
+
+    let _ = update(&mut state, Message::TreeCollapseToggled);
+    state.properties_open = true;
+    let later = std::time::Instant::now() + crate::motion::DURATION;
+    let _ = update(&mut state, Message::Frame(later));
+
+    assert_eq!(state.tree_slide.value(state.now), 0.0);
+    assert_eq!(state.properties_slide.value(state.now), 1.0);
+    assert!(!state.is_animating());
+}
+
+#[test]
+fn the_properties_panel_slides_in_and_out_with_its_flag() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(&mut state, tree::Message::NewConnectionPressed);
+    assert!(state.properties_open);
+    assert_eq!(state.properties_slide.target(), 1.0);
+
+    let _ = update(&mut state, Message::PropertiesClosed);
+    assert_eq!(state.properties_slide.target(), 0.0);
+}
+
+#[test]
+fn a_tab_dropped_in_a_new_place_glows_and_fades() {
+    let mut tabs = tabs::State::default();
+    let _ = tabs.open_launcher();
+    let _ = tabs.open_launcher();
+    let moved = tabs.tabs[0].id;
+    tabs.dragged = Some(moved);
+    tabs.hovered = Some(1);
+
+    tabs.release(true);
+
+    let now = std::time::Instant::now();
+    assert!(tabs.glow_of(moved, now) > 0.5);
+    assert_eq!(tabs.glow_of(tabs.tabs[0].id.wrapping_add(99), now), 0.0);
+    assert!(tabs.is_glowing(now));
+    assert!(!tabs.is_glowing(now + crate::motion::GLOW));
+}
+
+#[test]
+fn a_drop_without_animations_does_not_glow() {
+    let mut tabs = tabs::State::default();
+    let _ = tabs.open_launcher();
+    let _ = tabs.open_launcher();
+    tabs.dragged = Some(tabs.tabs[0].id);
+    tabs.hovered = Some(1);
+
+    tabs.release(false);
+
+    assert!(!tabs.is_glowing(std::time::Instant::now()));
 }

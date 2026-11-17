@@ -212,7 +212,7 @@ fn a_tab_dropped_on_another_takes_its_place() {
     fixture.send(Message::TabPressed(0));
     fixture.send(Message::TabEntered(2));
     fixture.send(Message::TabExited(0));
-    fixture.state.release();
+    fixture.state.release(false);
 
     assert_eq!(fixture.titles(), ["b", "c", "a"]);
     assert_eq!(fixture.active(), "a");
@@ -223,8 +223,8 @@ fn a_click_on_a_tab_moves_nothing() {
     let mut fixture = Fixture::with_tabs(&["a", "b"]);
 
     fixture.send(Message::TabPressed(0));
-    fixture.state.release();
-    fixture.state.release();
+    fixture.state.release(false);
+    fixture.state.release(false);
 
     assert_eq!(fixture.titles(), ["a", "b"]);
 }

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.51.0 - 2026-11-17
+
+- The connection tree and the properties panel slide in and out, a carried tab lifts off the bar, and a dropped tab glows for a moment. Settings has a switch to turn animations off.
+
 ## 0.50.0 - 2026-11-17
 
 - File browsers can be driven from the keyboard: arrows, Enter, Backspace, F2 to rename, Delete, F5, and Tab to switch between the two panes.

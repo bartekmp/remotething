@@ -386,3 +386,4 @@ palette-nothing = Nothing matches
 palette-new-tab = New tab
 palette-credentials = Credentials
 palette-settings = Settings
+settings-animations = Animate panels and tabs

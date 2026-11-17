@@ -17,6 +17,8 @@ use crate::launcher;
 use crate::preferences::TabLayout;
 use crate::recent::Recent;
 use crate::session_view;
+use std::time::Instant;
+
 use crate::tab_bar;
 use crate::tabs::{Content, Message, State, Tab};
 use crate::theme;
@@ -27,6 +29,7 @@ pub fn view<'a>(
     store: &'a Store,
     recent: &'a Recent,
     layout: TabLayout,
+    now: Instant,
 ) -> Element<'a, Message> {
     if state.tabs.is_empty() {
         return container(text(fl!("tabs-empty")).style(theme::secondary_text))
@@ -34,7 +37,7 @@ pub fn view<'a>(
             .into();
     }
     // The bar depends on the width it gets, which is only known at layout time.
-    responsive(move |size| view_sized(state, store, recent, layout, size.width)).into()
+    responsive(move |size| view_sized(state, store, recent, layout, now, size.width)).into()
 }
 
 fn view_sized<'a>(
@@ -42,6 +45,7 @@ fn view_sized<'a>(
     store: &'a Store,
     recent: &'a Recent,
     layout: TabLayout,
+    now: Instant,
     width: f32,
 ) -> Element<'a, Message> {
     let count = state.tabs.len();
@@ -63,7 +67,8 @@ fn view_sized<'a>(
         TabLayout::SingleLine => {
             let shown = tab_bar::single_line(count, state.active, width);
             let hidden: Vec<usize> = (0..count).filter(|index| !shown.contains(index)).collect();
-            let mut line = row(shown.map(|index| view_tab(state, index))).spacing(tab_bar::GAP);
+            let mut line =
+                row(shown.map(|index| view_tab(state, index, now))).spacing(tab_bar::GAP);
             if !hidden.is_empty() {
                 let more = button(text(format!("+{}", hidden.len())).size(theme::TEXT_SMALL))
                     .height(Length::Fixed(tab_bar::TAB_HEIGHT))
@@ -74,7 +79,7 @@ fn view_sized<'a>(
             (line.push(new_tab).align_y(Vertical::Center).into(), hidden)
         }
         TabLayout::Wrap => {
-            let tabs = (0..count).map(|index| view_tab(state, index));
+            let tabs = (0..count).map(|index| view_tab(state, index, now));
             let wrapped = row(tabs.chain(std::iter::once(new_tab)))
                 .spacing(tab_bar::GAP)
                 .wrap();
@@ -118,7 +123,7 @@ fn view_sized<'a>(
     layers.into()
 }
 
-fn view_tab(state: &State, index: usize) -> Element<'_, Message> {
+fn view_tab(state: &State, index: usize, now: Instant) -> Element<'_, Message> {
     let tab = &state.tabs[index];
     let is_active = index == state.active;
     let is_drop_target = state.hovered == Some(index)
@@ -142,8 +147,15 @@ fn view_tab(state: &State, index: usize) -> Element<'_, Message> {
         .padding([0, 10])
         .align_y(Vertical::Center)
         .clip(true);
+    // The tab being carried lifts off the bar once the pointer has left it.
+    let is_carried = state.dragged == Some(tab.id) && state.hovered != Some(index);
+    let glow = state.glow_of(tab.id, now);
     let tab_box = if is_drop_target {
         tab_box.style(theme::drop_target)
+    } else if is_carried {
+        tab_box.style(theme::carried_tab)
+    } else if glow > 0.0 {
+        tab_box.style(theme::glowing_tab(is_active, glow))
     } else {
         tab_box.style(theme::tab(is_active))
     };

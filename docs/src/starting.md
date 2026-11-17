@@ -48,7 +48,7 @@ A folder cannot be dropped into itself or into one of its own sub-folders. Folde
 | Switch tabs | **Ctrl+Tab** and **Ctrl+Shift+Tab** go to the next and the previous tab, wrapping round. **Alt+1** to **Alt+8** go to that tab; **Alt+9** goes to the last one |
 | Search the connections | **Ctrl+F** opens a search field above the connection tree. It shows connections whose name or host contains what you type, each under its folders. **Enter** opens the first match and **Esc** closes the search. In a connected terminal or a remote desktop the key belongs to that session, so use the tree's search by clicking out of it first |
 | Close the tab in front | **Ctrl+Shift+W**, the **x** on the tab, or a click with the middle mouse button on the tab. **Ctrl+W** works too, except in a connected terminal, where the shell uses it to delete a word |
-| Reorder | Drag a tab onto another tab |
+| Reorder | Drag a tab onto another tab. The carried tab lifts off the bar, the tab under it is outlined, and the tab that landed glows briefly (with animations on) |
 | Long titles | A title too long for its tab ends with an ellipsis; hover over the tab to see the whole title |
 
 ### Connecting without saving
@@ -117,6 +117,7 @@ Press **Settings** at the bottom of the connection tree; with the tree folded it
 | Theme | Follow the system, Light, Dark | Follow the system |
 | Language | Follow the system, or a shipped language | Follow the system |
 | When tabs do not fit on one line | Keep one line and list the rest under a button; use more lines | Keep one line |
+| Animate panels and tabs | On or off | On |
 
 A theme change applies at once. A language change applies the next time you start the app. Only English is shipped so far.
 
