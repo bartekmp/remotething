@@ -55,6 +55,9 @@ pub struct TerminalLook {
     /// The text size in points.
     #[serde(default = "default_font_size")]
     pub font_size: u8,
+    /// The name of an installed monospace font. `None` is the bundled one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
 }
 
 impl Default for TerminalLook {
@@ -62,6 +65,7 @@ impl Default for TerminalLook {
         Self {
             theme: None,
             font_size: default_font_size(),
+            font_family: None,
         }
     }
 }
@@ -199,6 +203,7 @@ mod tests {
 
         preferences.terminal.theme = Some("gruvbox".to_string());
         preferences.terminal.font_size = 18;
+        preferences.terminal.font_family = Some("Fira Code".to_string());
         let text = toml::to_string_pretty(&preferences).unwrap();
 
         let loaded: Preferences = toml::from_str(&text).unwrap();
@@ -288,6 +293,7 @@ mod tests {
             terminal: TerminalLook {
                 theme: Some("gruvbox".to_string()),
                 font_size: 18,
+                font_family: Some("DejaVu Sans Mono".to_string()),
             },
             features: Features {
                 screenshots: true,

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.59.0 - 2026-11-17
+
+- Terminal font: Settings → Terminal takes the name of an installed monospace font.
+
 ## 0.58.0 - 2026-11-17
 
 - Split view: Ctrl+Shift+R stacks or unstacks the panes, and a double-click on the divider makes them equal.

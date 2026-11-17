@@ -3,7 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
-use iced::widget::{button, column, container, rich_text, row, scrollable, slider, span, text};
+use iced::widget::{
+    button, column, container, rich_text, row, scrollable, slider, span, text, text_input,
+};
 use iced::{Element, Font, Length, font};
 
 use crate::i18n::fl;
@@ -25,6 +27,8 @@ pub struct State {
     pub(crate) previewed: Option<String>,
     /// What the last import said, good or bad.
     pub(crate) notice: Option<String>,
+    /// The font name being typed, until Enter applies it. `None` shows the applied one.
+    pub(crate) font_draft: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +44,10 @@ pub enum Message {
     /// "Delete" on the previewed theme.
     DeletePressed,
     FontSizeChanged(u8),
+    /// The font name box was typed in.
+    FontEdited(String),
+    /// Enter in the font name box: use that font.
+    FontSubmitted,
 }
 
 /// What changed, for the window to act on.
@@ -116,6 +124,14 @@ pub fn update(
             preferences.terminal.font_size = size;
             outcome.preferences_changed = true;
         }
+        Message::FontEdited(name) => state.font_draft = Some(name),
+        Message::FontSubmitted => {
+            if let Some(name) = state.font_draft.take() {
+                let name = name.trim();
+                preferences.terminal.font_family = (!name.is_empty()).then(|| name.to_string());
+                outcome.preferences_changed = true;
+            }
+        }
     }
     outcome
 }
@@ -154,6 +170,22 @@ pub fn view<'a>(
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
         slider(FONT_SIZES, size, Message::FontSizeChanged).width(Length::Fixed(240.0)),
+    ]
+    .spacing(2);
+
+    let family = state
+        .font_draft
+        .as_deref()
+        .or(preferences.terminal.font_family.as_deref())
+        .unwrap_or_default();
+    let font_family = column![
+        text(fl!("terminal-font-family"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        text_input(&fl!("terminal-font-family-hint"), family)
+            .on_input(Message::FontEdited)
+            .on_submit(Message::FontSubmitted)
+            .width(Length::Fixed(240.0)),
     ]
     .spacing(2);
 
@@ -204,7 +236,9 @@ pub fn view<'a>(
     .width(Length::Fixed(240.0));
 
     let mut page = column![
-        font_size,
+        row![font_size, font_family]
+            .spacing(theme::GAP * 2.0)
+            .wrap(),
         row![left, preview(&palette)]
             .spacing(theme::GAP * 2.0)
             .wrap()

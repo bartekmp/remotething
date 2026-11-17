@@ -11,7 +11,8 @@ impl State {
     /// Makes terminals use the chosen theme and text size, and redraws the open ones.
     pub(crate) fn apply_terminal_look(&mut self) {
         let palette = self.terminal_themes.applied_palette(&self.preferences);
-        terminal_view::set_look(palette, self.preferences.terminal.font_size);
+        let terminal = &self.preferences.terminal;
+        terminal_view::set_look(palette, terminal.font_size, terminal.font_family.as_deref());
         self.tabs.terminal_look_changed();
     }
 

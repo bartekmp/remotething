@@ -24,6 +24,7 @@ const WHEEL_LINES: f32 = 3.0;
 /// How big the characters are, and so how much room each takes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Metrics {
+    font: Font,
     font_size: f32,
     /// The bundled font is 0.6 em wide, so every character takes exactly this much.
     cell_width: f32,
@@ -34,10 +35,15 @@ impl Metrics {
     fn new(font_size: u8) -> Self {
         let font_size = f32::from(font_size);
         Self {
+            font: FONT,
             font_size,
             cell_width: font_size * 0.6,
             cell_height: (font_size * 4.0 / 3.0).round(),
         }
+    }
+
+    fn with_font(self, font: Font) -> Self {
+        Self { font, ..self }
     }
 
     /// How far below the top of a line an underline goes.
@@ -52,28 +58,54 @@ struct Look {
     /// `None` follows the light or dark theme of the app.
     palette: Option<Palette>,
     font_size: u8,
+    font: Font,
 }
 
-static LOOK: std::sync::RwLock<Look> = std::sync::RwLock::new(Look {
+const DEFAULT_LOOK: Look = Look {
     palette: None,
     font_size: DEFAULT_FONT_SIZE,
-});
+    font: FONT,
+};
+
+static LOOK: std::sync::RwLock<Look> = std::sync::RwLock::new(DEFAULT_LOOK);
+
+/// Font names handed to iced, which wants them for as long as the program runs. Each
+/// distinct name is kept once.
+static FONT_NAMES: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+
+/// The font of an installed family, or the bundled one when `family` is `None` or blank.
+/// A family that is not installed is drawn in whatever font the system falls back to.
+pub(crate) fn font_named(family: Option<&str>) -> Font {
+    let Some(family) = family.map(str::trim).filter(|name| !name.is_empty()) else {
+        return FONT;
+    };
+    let Ok(mut names) = FONT_NAMES.lock() else {
+        return FONT;
+    };
+    let name = match names.iter().find(|known| **known == family) {
+        Some(known) => *known,
+        None => {
+            let leaked: &'static str = Box::leak(family.to_string().into_boxed_str());
+            names.push(leaked);
+            leaked
+        }
+    };
+    Font::with_name(name)
+}
 
 /// Sets how terminals look. Drawings made before need clearing to show it.
-pub(crate) fn set_look(palette: Option<Palette>, font_size: u8) {
+pub(crate) fn set_look(palette: Option<Palette>, font_size: u8, font_family: Option<&str>) {
     if let Ok(mut look) = LOOK.write() {
         *look = Look {
             palette,
             font_size: font_size.clamp(*FONT_SIZES.start(), *FONT_SIZES.end()),
+            font: font_named(font_family),
         };
     }
 }
 
 fn look() -> Look {
-    LOOK.read().map(|look| *look).unwrap_or(Look {
-        palette: None,
-        font_size: DEFAULT_FONT_SIZE,
-    })
+    LOOK.read().map(|look| *look).unwrap_or(DEFAULT_LOOK)
 }
 
 /// The colours of a terminal: defaults and the 16 a program can ask for by number.
@@ -211,7 +243,7 @@ pub fn view<'a, Message: 'a>(
         screen,
         cache,
         on_event,
-        metrics: Metrics::new(look().font_size),
+        metrics: Metrics::new(look().font_size).with_font(look().font),
     };
     let canvas = canvas::Canvas::new(program)
         .width(Length::Fill)
@@ -492,7 +524,10 @@ fn draw_run(frame: &mut canvas::Frame, palette: &Palette, run: &Run, metrics: Me
         color,
         size: metrics.font_size.into(),
         line_height: iced::widget::text::LineHeight::Absolute(metrics.cell_height.into()),
-        font: Font { weight, ..FONT },
+        font: Font {
+            weight,
+            ..metrics.font
+        },
         ..canvas::Text::default()
     });
     if run.underline {
@@ -507,6 +542,7 @@ mod tests {
     use super::*;
 
     const METRICS: Metrics = Metrics {
+        font: FONT,
         font_size: 15.0,
         cell_width: 9.0,
         cell_height: 20.0,

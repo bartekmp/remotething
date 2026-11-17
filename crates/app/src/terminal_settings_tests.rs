@@ -139,6 +139,28 @@ fn the_text_size_is_a_preference_and_the_import_button_asks_for_a_file() {
 }
 
 #[test]
+fn a_font_name_is_applied_on_enter_and_a_blank_one_restores_the_bundled_font() {
+    let mut fixture = Fixture::new();
+
+    assert!(
+        !fixture
+            .send(Message::FontEdited("Fira Code".into()))
+            .preferences_changed
+    );
+    assert_eq!(fixture.preferences.terminal.font_family, None);
+
+    assert!(fixture.send(Message::FontSubmitted).preferences_changed);
+    assert_eq!(
+        fixture.preferences.terminal.font_family.as_deref(),
+        Some("Fira Code")
+    );
+
+    fixture.send(Message::FontEdited("  ".into()));
+    fixture.send(Message::FontSubmitted);
+    assert_eq!(fixture.preferences.terminal.font_family, None);
+}
+
+#[test]
 fn the_preview_uses_every_colour_of_the_palette_and_lines_up_the_logo() {
     let lines = fastfetch();
 
