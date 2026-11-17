@@ -21,6 +21,7 @@ The same commands run locally and in Jenkins. Pull requests run lint, tests and 
 | `cargo xtask package linux` | `.deb` and `.rpm` in `dist/`, from the Linux build |
 | `cargo xtask package windows` | Portable zip in `dist/`, from the Windows build |
 | `cargo xtask bump minor` or `patch` | Raises the version; see below |
+| `cargo xtask prune` | Deletes old build outputs of our crates, keeping the newest; `bump` runs it too |
 | `mdbook build docs` | The user guide |
 
 `Taskfile.yml` wraps these for everyday use: `task run`, `task test`, `task check` (lint, then tests). Run `task` for the list. It needs [Task](https://taskfile.dev).

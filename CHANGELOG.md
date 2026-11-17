@@ -5,6 +5,8 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.61.2 - 2026-11-17
+
 ## 0.61.1 - 2026-11-17
 
 - The window opens at the same size on screen at any interface size.

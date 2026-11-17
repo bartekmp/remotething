@@ -1,11 +1,12 @@
 //! Build helper: the same commands locally and in Jenkins.
 
+mod prune;
 mod version;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows | bump major|minor|patch | version-check <git ref>>";
+const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows | bump major|minor|patch | prune | version-check <git ref>>";
 
 const LINUX_TARGET: &str = "x86_64-unknown-linux-gnu";
 const WINDOWS_TARGET: &str = "x86_64-pc-windows-msvc";
@@ -29,6 +30,7 @@ fn main() -> ExitCode {
         ["package", "linux"] => package_linux(),
         ["package", "windows"] => package_windows(),
         ["bump", part] => bump(part),
+        ["prune"] => prune_builds(),
         ["version-check", base] => version_check(base),
         _ => {
             eprintln!("{USAGE}");
@@ -41,6 +43,13 @@ fn main() -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+/// Deletes old build outputs of the workspace's crates, keeping the newest of each.
+fn prune_builds() -> bool {
+    let freed = prune::prune(&workspace_root().join("target"));
+    println!("removed up to {} MB of old builds", freed / 1_000_000);
+    true
 }
 
 fn lint() -> bool {
@@ -159,6 +168,8 @@ fn bump(part: &str) -> bool {
         return false;
     }
     println!("version {next}");
+    // Each release builds new binaries; the old ones are no use any more.
+    prune_builds();
     // The lockfile repeats the version of every crate in the workspace.
     cargo(&["update", "--workspace", "--quiet"])
 }
