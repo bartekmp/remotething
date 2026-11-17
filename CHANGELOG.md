@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.61.1 - 2026-11-17
+
+- The window opens at the same size on screen at any interface size.
+
 ## 0.61.0 - 2026-11-17
 
 - Settings → General: Interface size, to draw the whole window up to twice as big.

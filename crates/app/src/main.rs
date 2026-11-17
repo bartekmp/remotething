@@ -112,9 +112,12 @@ const KEYRING_OPEN_TIMEOUT: Duration = Duration::from_secs(5);
 const KEYRING_CALL_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// The main window: the logo as its icon, and the name desktops match with the launcher entry.
-fn window_settings() -> iced::window::Settings {
+/// The window opens as big on screen whatever the interface size, so a bigger interface
+/// does not make a window that no longer fits.
+fn window_settings(interface_scale: u16) -> iced::window::Settings {
     let mut settings = iced::window::Settings {
         icon: branding::window_icon(),
+        size: scaled_window_size(interface_scale),
         ..iced::window::Settings::default()
     };
     #[cfg(target_os = "linux")]
@@ -122,6 +125,13 @@ fn window_settings() -> iced::window::Settings {
         settings.platform_specific.application_id = "remotething".to_string();
     }
     settings
+}
+
+const WINDOW_SIZE: iced::Size = iced::Size::new(1024.0, 768.0);
+
+fn scaled_window_size(interface_scale: u16) -> iced::Size {
+    let factor = f32::from(interface_scale.clamp(50, 300)) / 100.0;
+    iced::Size::new(WINDOW_SIZE.width / factor, WINDOW_SIZE.height / factor)
 }
 
 fn main() -> Result<()> {
@@ -144,6 +154,8 @@ fn main() -> Result<()> {
     picture::detect_gpu();
     let keyring = open_keyring();
     let vault_file = vault::path_beside(&path);
+
+    let interface_scale = preferences.interface_scale;
 
     let boot = move || {
         let state = match &keyring {
@@ -177,7 +189,7 @@ fn main() -> Result<()> {
         .theme(app::theme)
         .scale_factor(app::scale_factor)
         .subscription(app::subscription)
-        .window(window_settings())
+        .window(window_settings(interface_scale))
         .settings(iced::Settings {
             default_text_size: theme::TEXT_BODY.into(),
             default_font: theme::FONT,
@@ -263,6 +275,13 @@ fn load_store(path: &Path) -> Result<Store, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_window_keeps_its_size_on_screen_at_any_interface_size() {
+        assert_eq!(scaled_window_size(100), iced::Size::new(1024.0, 768.0));
+        assert_eq!(scaled_window_size(200), iced::Size::new(512.0, 384.0));
+        assert_eq!(scaled_window_size(0), iced::Size::new(2048.0, 1536.0));
+    }
 
     fn arguments(list: &[&str]) -> Vec<String> {
         list.iter().map(|argument| argument.to_string()).collect()
