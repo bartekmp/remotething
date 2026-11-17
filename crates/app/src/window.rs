@@ -121,6 +121,10 @@ pub fn view(state: &State) -> Element<'_, Message> {
     if let Some(menu) = &state.menu {
         layers = layers.push(menu::view(menu, &state.store, state.window).map(Message::Menu));
     }
+    if let Some(palette) = &state.palette {
+        let entries = crate::palette::entries(&state.store, state.recent.ids(), palette.query());
+        layers = layers.push(crate::palette::view(palette, entries).map(Message::Palette));
+    }
     if let Some(question) = &state.removal {
         layers = layers.push(folder_removal::view(question).map(Message::Removal));
     }

@@ -51,6 +51,7 @@ mod menu;
 mod meter;
 mod note;
 mod organise;
+mod palette;
 mod paste;
 mod picture;
 mod preferences;

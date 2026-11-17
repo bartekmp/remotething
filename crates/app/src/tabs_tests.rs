@@ -427,3 +427,41 @@ fn the_close_question_takes_the_keys_until_it_is_answered() {
         .key(&Key::Named(Named::Escape), Modifiers::empty(), None);
     assert!(!fixture.state.has_question());
 }
+
+#[test]
+fn cycling_wraps_round_the_ends_in_both_directions() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+    assert_eq!(fixture.active(), "c");
+
+    fixture.state.cycle(true);
+    assert_eq!(fixture.active(), "a");
+    fixture.state.cycle(false);
+    assert_eq!(fixture.active(), "c");
+}
+
+#[test]
+fn cycling_with_one_tab_or_none_changes_nothing() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+    fixture.state.cycle(true);
+    assert_eq!(fixture.active(), "a");
+
+    let mut empty = Fixture::new();
+    empty.state.cycle(true);
+    assert_eq!(empty.state.active, 0);
+}
+
+#[test]
+fn a_tab_number_picks_that_tab_and_nine_is_the_last() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+
+    fixture.state.activate_number(1);
+    assert_eq!(fixture.active(), "a");
+    fixture.state.activate_number(2);
+    assert_eq!(fixture.active(), "b");
+    fixture.state.activate_number(9);
+    assert_eq!(fixture.active(), "c");
+    // A number past the tabs there are leaves the front tab where it is.
+    fixture.state.activate_number(1);
+    fixture.state.activate_number(5);
+    assert_eq!(fixture.active(), "a");
+}

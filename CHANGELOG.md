@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.49.0 - 2026-11-17
+
+- Command palette (Ctrl+Shift+P): jump to a connection or action by typing, with arrow keys and Enter. Ctrl+Tab and Ctrl+Shift+Tab cycle tabs, Alt+1 to Alt+9 pick one.
+
 ## 0.48.1 - 2026-11-17
 
 - Copying from the server to this computer refuses a file or folder name that would lead outside the chosen local folder.

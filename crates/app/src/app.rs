@@ -54,6 +54,8 @@ pub struct State {
     /// Whether the properties panel floats over the centre. It opens for a
     /// new item or on "Edit", and closes on save.
     pub(crate) properties_open: bool,
+    /// The command palette, while it is open.
+    pub(crate) palette: Option<crate::palette::State>,
     pub(crate) credentials: credentials::State,
     pub(crate) putty: putty_import::State,
     pub(crate) wsl: wsl_import::State,
@@ -110,6 +112,7 @@ pub enum Message {
     Tree(tree::Message),
     Tabs(tabs::Message),
     Properties(properties::Message),
+    Palette(crate::palette::Message),
     Credentials(credentials::Message),
     /// The secret store finished a save or delete.
     SecretStored(Result<(), String>),
@@ -202,6 +205,7 @@ impl State {
             tabs: tabs::State::default(),
             draft: None,
             properties_open: false,
+            palette: None,
             credentials: credentials::State::default(),
             putty: putty_import::State::default(),
             wsl: wsl_import::State::default(),
@@ -377,11 +381,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             text,
             captured,
         } => {
+            if state.palette.is_some() {
+                return input::on_palette_key(state, &key, modifiers);
+            }
             // A remote desktop in front gets every key except the app's own tab shortcuts.
-            let app_shortcut = matches!(
-                input::Shortcut::of(&key, modifiers),
-                Some(input::Shortcut::NewTab | input::Shortcut::CloseTab)
-            );
+            let app_shortcut =
+                input::Shortcut::of(&key, modifiers).is_some_and(input::Shortcut::beats_a_desktop);
             if !captured && !app_shortcut && state.desktop_has_keys() {
                 state
                     .tabs
@@ -428,6 +433,21 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 state.save_typed_connection(tab, &target);
             }
             return task;
+        }
+        Message::Palette(message) => {
+            let Some(palette) = &mut state.palette else {
+                return Task::none();
+            };
+            let entries =
+                crate::palette::entries(&state.store, state.recent.ids(), palette.query());
+            match crate::palette::update(palette, message, &entries) {
+                Some(crate::palette::Event::Chosen(item)) => {
+                    state.palette = None;
+                    return input::open_palette_item(state, item);
+                }
+                Some(crate::palette::Event::Close) => state.palette = None,
+                None => {}
+            }
         }
         Message::Properties(message) => {
             let Some(draft) = &mut state.draft else {

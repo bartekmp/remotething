@@ -44,6 +44,8 @@ A folder cannot be dropped into itself or into one of its own sub-folders. Folde
 | Action | How |
 | --- | --- |
 | New tab | **Ctrl+Shift+T**, or the **+** at the end of the tab bar. It lists your recent connections; type to search all of them, press Enter for the first match |
+| Go to anything | **Ctrl+Shift+P** opens the command palette over the window. Type a few letters of a connection's name or host, or of an action (New tab, Credentials, Settings). **Up** and **Down** move, **Enter** or a click chooses, **Esc** or the same keys again close it. With nothing typed it lists your recent connections |
+| Switch tabs | **Ctrl+Tab** and **Ctrl+Shift+Tab** go to the next and the previous tab, wrapping round. **Alt+1** to **Alt+8** go to that tab; **Alt+9** goes to the last one |
 | Search the connections | **Ctrl+F** opens a search field above the connection tree. It shows connections whose name or host contains what you type, each under its folders. **Enter** opens the first match and **Esc** closes the search. In a connected terminal or a remote desktop the key belongs to that session, so use the tree's search by clicking out of it first |
 | Close the tab in front | **Ctrl+Shift+W**, the **x** on the tab, or a click with the middle mouse button on the tab. **Ctrl+W** works too, except in a connected terminal, where the shell uses it to delete a word |
 | Reorder | Drag a tab onto another tab |

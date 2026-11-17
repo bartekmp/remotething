@@ -3,6 +3,7 @@
 use super::*;
 use crate::credential_actions::apply_secret;
 use crate::credentials::SecretAction;
+use crate::palette;
 use remotething_secrets::{MemoryStore, Secret};
 
 const ONE_CONNECTION: &str = r#"
@@ -629,4 +630,87 @@ fn saving_a_connection_with_a_typed_password_adds_its_credential_to_the_file() {
             .unwrap()
             .contains("s3cret")
     );
+}
+
+fn key(state: &mut State, key: keyboard::Key, modifiers: keyboard::Modifiers) {
+    let _ = update(
+        state,
+        Message::KeyPressed {
+            key,
+            physical: keyboard::key::Physical::Unidentified(
+                keyboard::key::NativeCode::Unidentified,
+            ),
+            modifiers,
+            text: None,
+            captured: false,
+        },
+    );
+}
+
+#[test]
+fn the_palette_opens_with_its_shortcut_and_closes_with_escape_or_the_shortcut() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let ctrl_shift = keyboard::Modifiers::CTRL | keyboard::Modifiers::SHIFT;
+    let escape = keyboard::Key::Named(keyboard::key::Named::Escape);
+
+    key(&mut state, keyboard::Key::Character("p".into()), ctrl_shift);
+    assert!(state.palette.is_some());
+    key(&mut state, escape, keyboard::Modifiers::empty());
+    assert!(state.palette.is_none());
+
+    key(&mut state, keyboard::Key::Character("p".into()), ctrl_shift);
+    key(&mut state, keyboard::Key::Character("p".into()), ctrl_shift);
+    assert!(state.palette.is_none());
+}
+
+#[test]
+fn choosing_a_connection_in_the_palette_opens_it_and_closes_the_palette() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.centre = Centre::Settings;
+    state.palette = Some(palette::State::default());
+
+    let _ = update(
+        &mut state,
+        Message::Palette(palette::Message::Typed("web".into())),
+    );
+    let _ = update(&mut state, Message::Palette(palette::Message::Submitted));
+
+    assert!(state.palette.is_none());
+    assert_eq!(state.tabs.open_ids(), ["web-01"]);
+    assert_eq!(state.centre, Centre::Sessions);
+}
+
+#[test]
+fn choosing_settings_in_the_palette_shows_the_settings() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.palette = Some(palette::State::default());
+
+    let _ = update(
+        &mut state,
+        Message::Palette(palette::Message::Typed("settings".into())),
+    );
+    let _ = update(&mut state, Message::Palette(palette::Message::Submitted));
+
+    assert_eq!(state.centre, Centre::Settings);
+}
+
+#[test]
+fn tab_keys_switch_tabs_and_bring_the_sessions_back() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let _ = state.tabs.open_launcher();
+    let _ = state.tabs.open_launcher();
+    state.centre = Centre::Settings;
+
+    key(
+        &mut state,
+        keyboard::Key::Character("1".into()),
+        keyboard::Modifiers::ALT,
+    );
+
+    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.tabs.active, 0);
 }

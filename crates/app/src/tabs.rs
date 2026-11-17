@@ -264,6 +264,34 @@ impl State {
         }
     }
 
+    /// Brings the next tab, or the previous one, to the front, wrapping round the ends.
+    pub fn cycle(&mut self, forward: bool) {
+        let count = self.tabs.len();
+        if count < 2 {
+            return;
+        }
+        self.active = if forward {
+            (self.active + 1) % count
+        } else {
+            (self.active + count - 1) % count
+        };
+        self.dragged = None;
+    }
+
+    /// Brings the tab with this number (from 1) to the front. 9 is always the last tab, as in browsers.
+    pub fn activate_number(&mut self, number: usize) {
+        let last = self.tabs.len().saturating_sub(1);
+        let index = if number >= 9 {
+            last
+        } else {
+            number.saturating_sub(1)
+        };
+        if index < self.tabs.len() {
+            self.active = index;
+            self.dragged = None;
+        }
+    }
+
     /// Closes the tab in front, after a question when it holds a live session.
     pub fn close_front(&mut self) {
         self.request_close(self.active);

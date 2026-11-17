@@ -2,7 +2,7 @@ app-title = Remotething
 
 tree-empty = No connections yet.
 
-tabs-empty = Double-click a connection to open it, or press Ctrl+Shift+T for recent ones.
+tabs-empty = Double-click a connection to open it, press Ctrl+Shift+P to go to one by name, or Ctrl+Shift+T for recent ones.
 
 
 protocol-ssh = SSH
@@ -381,3 +381,8 @@ files-local-hide = Hide this computer
 files-copy-to-local = Copy →
 files-copy-to-remote = ← Copy
 files-copy-exists = { $file } already exists here; it was not replaced.
+palette-search = Go to a connection or action
+palette-nothing = Nothing matches
+palette-new-tab = New tab
+palette-credentials = Credentials
+palette-settings = Settings
