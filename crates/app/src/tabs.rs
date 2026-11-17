@@ -190,22 +190,22 @@ impl State {
         connection.name = name.to_string();
     }
 
-    /// The size to show while resizing: a terminal's characters, a desktop's pixels as it will
-    /// be asked for, or else the window's pixels.
+    /// The size to show while resizing, for the tabs where it means something: a terminal's
+    /// characters, an RDP desktop's pixels as it will be asked for, and the window's pixels
+    /// over a VNC picture, which is scaled to fit. Other tabs show nothing.
     pub fn front_view_size(&self) -> Option<ViewSize> {
-        let shown = match &self.tabs.get(self.active)?.content {
+        match &self.tabs.get(self.active)?.content {
             Content::Session(session) => session
                 .terminal_size()
                 .map(|(columns, lines)| ViewSize::Characters(columns, lines)),
             Content::Desktop(desktop) => desktop
                 .target_size()
                 .map(|(width, height)| ViewSize::Pixels(width, height)),
+            Content::Vnc(vnc) if vnc.is_connected() => self
+                .size_badge
+                .map(|(width, height)| ViewSize::Pixels(width, height)),
             _ => None,
-        };
-        shown.or_else(|| {
-            self.size_badge
-                .map(|(width, height)| ViewSize::Pixels(width, height))
-        })
+        }
     }
 
     /// Whether the tab in front is a terminal, which has a row of buttons above its screen.
