@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.60.1 - 2026-11-17
+
+- Ctrl+mouse wheel changes the terminal text size by one step per notch on X11, not two.
+
 ## 0.60.0 - 2026-11-17
 
 - Terminal text size: Ctrl+Plus, Ctrl+Minus and Ctrl+mouse wheel.

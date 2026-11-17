@@ -18,6 +18,8 @@ pub const DEFAULT_FONT_SIZE: u8 = 15;
 /// The smallest and largest text size to choose.
 pub const FONT_SIZES: std::ops::RangeInclusive<u8> = 10..=24;
 const PADDING: f32 = 8.0;
+/// Wheel events closer together than this count as one notch.
+const ZOOM_DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(30);
 /// Lines scrolled per notch of the mouse wheel.
 const WHEEL_LINES: f32 = 3.0;
 
@@ -272,6 +274,8 @@ struct Dragging {
     held: bool,
     /// Whether Ctrl is down, which makes the wheel change the text size.
     ctrl: bool,
+    /// When the wheel last changed the size. X11 can report one notch twice.
+    last_zoom: Option<Instant>,
     /// The last press, to tell a double or triple click.
     last_click: Option<Press>,
 }
@@ -322,7 +326,12 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
                     if dragging.ctrl {
                         let steps = zoom_steps(*delta);
-                        if steps != 0 {
+                        let now = Instant::now();
+                        let repeat = dragging
+                            .last_zoom
+                            .is_some_and(|at| now.duration_since(at) < ZOOM_DEBOUNCE);
+                        if steps != 0 && !repeat {
+                            dragging.last_zoom = Some(now);
                             return publish(Event::Zoomed(steps)).map(Action::and_capture);
                         }
                         return None;
