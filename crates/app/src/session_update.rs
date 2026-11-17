@@ -379,6 +379,8 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                     live.send(ShellInput::Resize(size));
                 }
                 terminal_view::Event::Scrolled(lines) => live.screen.scroll(lines),
+                // The window changes the text size; see `State::zoom_terminal`.
+                terminal_view::Event::Zoomed(_) => {}
                 terminal_view::Event::SelectionStarted {
                     column,
                     line,

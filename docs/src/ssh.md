@@ -55,7 +55,7 @@ If a trusted host later shows a different key, the tab warns you before anything
 ## The terminal
 
 - 16, 256 and true colours, bold and underline. The colours follow the app's light or dark theme.
-- **Settings → Terminal** sets the text size (10 to 24 pt) and the colour theme. Open terminals change at once. The font is the bundled Noto Sans Mono unless you type the name of an installed monospace font there and press Enter; a name that is not installed falls back to the system's choice. Fonts about 0.6 em wide, like most, line up best.
+- **Ctrl+Plus** and **Ctrl+Minus**, or **Ctrl** with the mouse wheel, change the text size of terminals. **Settings → Terminal** sets the text size (10 to 24 pt) and the colour theme. Open terminals change at once. The font is the bundled Noto Sans Mono unless you type the name of an installed monospace font there and press Enter; a name that is not installed falls back to the system's choice. Fonts about 0.6 em wide, like most, line up best.
 - The terminal resizes with the window, and the remote programs are told.
 - The mouse wheel, or **Shift+Page Up** and **Shift+Page Down**, looks back through up to 10,000 lines. Typing returns to the newest line.
 - Drag over text to select it. Double-click selects a word and triple-click a line; dragging after that grows the selection by words or lines. On Linux the selection is copied at once for middle-click paste; **Ctrl+Shift+C** copies it to the clipboard.

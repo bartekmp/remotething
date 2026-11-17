@@ -421,3 +421,4 @@ shortcuts-other-pane = Keyboard to the other pane
 tabs-menu-stack = Stack the panes
 tabs-menu-side-by-side = Put the panes side by side
 shortcuts-rotate = Stack or unstack the split panes
+shortcuts-text-size = Terminal text size (also Ctrl+mouse wheel)

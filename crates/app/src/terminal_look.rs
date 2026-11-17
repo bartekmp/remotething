@@ -16,6 +16,19 @@ impl State {
         self.tabs.terminal_look_changed();
     }
 
+    /// Makes the terminal text bigger or smaller by `steps` points, within the limits.
+    pub(crate) fn zoom_terminal(&mut self, steps: i32) {
+        let limits = terminal_view::FONT_SIZES;
+        let current = i32::from(self.preferences.terminal.font_size);
+        let size = (current + steps).clamp(i32::from(*limits.start()), i32::from(*limits.end()));
+        if size == current {
+            return;
+        }
+        self.preferences.terminal.font_size = size as u8;
+        self.save_preferences();
+        self.apply_terminal_look();
+    }
+
     /// Handles a message of the Terminal page of the settings.
     pub(crate) fn terminal_message(
         &mut self,

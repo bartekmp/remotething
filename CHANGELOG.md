@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.60.0 - 2026-11-17
+
+- Terminal text size: Ctrl+Plus, Ctrl+Minus and Ctrl+mouse wheel.
+
 ## 0.59.0 - 2026-11-17
 
 - Terminal font: Settings → Terminal takes the name of an installed monospace font.

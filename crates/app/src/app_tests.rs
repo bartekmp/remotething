@@ -813,3 +813,24 @@ fn f1_shows_the_shortcuts_and_escape_or_f1_hides_them() {
     key(&mut state, f1, keyboard::Modifiers::empty());
     assert!(!state.shortcuts_open);
 }
+
+#[test]
+fn zooming_the_terminal_changes_the_saved_size_within_the_limits() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+    let start = state.preferences.terminal.font_size;
+
+    state.zoom_terminal(1);
+    assert_eq!(state.preferences.terminal.font_size, start + 1);
+
+    state.zoom_terminal(100);
+    assert_eq!(
+        state.preferences.terminal.font_size,
+        *crate::terminal_view::FONT_SIZES.end()
+    );
+    state.zoom_terminal(-100);
+    assert_eq!(
+        state.preferences.terminal.font_size,
+        *crate::terminal_view::FONT_SIZES.start()
+    );
+}

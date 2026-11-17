@@ -218,6 +218,8 @@ pub enum Event {
     Resized(TerminalSize),
     /// The wheel turned, by this many lines back.
     Scrolled(i32),
+    /// The wheel turned with Ctrl held: 1 for a bigger text size, -1 for a smaller.
+    Zoomed(i32),
     /// The mouse button went down on this character.
     SelectionStarted {
         column: usize,
@@ -268,6 +270,8 @@ struct Program<'a, Message> {
 #[derive(Default)]
 struct Dragging {
     held: bool,
+    /// Whether Ctrl is down, which makes the wheel change the text size.
+    ctrl: bool,
     /// The last press, to tell a double or triple click.
     last_click: Option<Press>,
 }
@@ -310,9 +314,19 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
     ) -> Option<Action<Message>> {
         let publish = |event: Event| Some(Action::publish((self.on_event)(event)));
 
+        if let iced::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) = event {
+            dragging.ctrl = modifiers.control();
+        }
         if let iced::Event::Mouse(mouse_event) = event {
             match mouse_event {
                 mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
+                    if dragging.ctrl {
+                        let steps = zoom_steps(*delta);
+                        if steps != 0 {
+                            return publish(Event::Zoomed(steps)).map(Action::and_capture);
+                        }
+                        return None;
+                    }
                     let lines = wheel_lines(*delta, self.metrics);
                     if lines != 0 {
                         return publish(Event::Scrolled(lines)).map(Action::and_capture);
@@ -437,6 +451,18 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         } else {
             mouse::Interaction::default()
         }
+    }
+}
+
+/// Wheel movement as a text size step: 1 for up, -1 for down, whatever the distance.
+fn zoom_steps(delta: mouse::ScrollDelta) -> i32 {
+    let (mouse::ScrollDelta::Lines { y, .. } | mouse::ScrollDelta::Pixels { y, .. }) = delta;
+    if y > 0.0 {
+        1
+    } else if y < 0.0 {
+        -1
+    } else {
+        0
     }
 }
 
@@ -600,6 +626,15 @@ mod tests {
         let size = size_for(Size::new(3.0, 3.0), METRICS);
 
         assert_eq!((size.columns, size.lines), (2, 1));
+    }
+
+    #[test]
+    fn the_wheel_zooms_one_step_up_or_down() {
+        let notch = |y| mouse::ScrollDelta::Lines { x: 0.0, y };
+
+        assert_eq!(zoom_steps(notch(3.0)), 1);
+        assert_eq!(zoom_steps(notch(-0.2)), -1);
+        assert_eq!(zoom_steps(notch(0.0)), 0);
     }
 
     #[test]

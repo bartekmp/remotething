@@ -24,6 +24,10 @@ pub(crate) enum Shortcut {
     Rotate,
     /// Ctrl+Shift+O: the keyboard goes to the other pane of a split view.
     OtherPane,
+    /// Ctrl+Plus or Ctrl+=: a bigger terminal text size.
+    TextBigger,
+    /// Ctrl+Minus: a smaller terminal text size.
+    TextSmaller,
     /// F1: the list of shortcuts.
     Help,
     /// Ctrl+Tab.
@@ -68,6 +72,8 @@ impl Shortcut {
             ("s", true) => Some(Shortcut::Split),
             ("o", true) => Some(Shortcut::OtherPane),
             ("r", true) => Some(Shortcut::Rotate),
+            ("+" | "=", _) => Some(Shortcut::TextBigger),
+            ("-" | "_", _) => Some(Shortcut::TextSmaller),
             ("w", false) => Some(Shortcut::CloseTabUnlessTerminal),
             ("f", false) => Some(Shortcut::SearchConnections),
             _ => None,
@@ -79,7 +85,10 @@ impl Shortcut {
     pub(crate) fn beats_a_desktop(self) -> bool {
         !matches!(
             self,
-            Shortcut::CloseTabUnlessTerminal | Shortcut::SearchConnections
+            Shortcut::CloseTabUnlessTerminal
+                | Shortcut::SearchConnections
+                | Shortcut::TextBigger
+                | Shortcut::TextSmaller
         )
     }
 }
@@ -117,6 +126,16 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::NextTab | Shortcut::PreviousTab => {
             state.centre = Centre::Sessions;
             state.tabs.cycle(shortcut == Shortcut::NextTab);
+            Task::none()
+        }
+        Shortcut::TextBigger | Shortcut::TextSmaller => {
+            if state.centre == Centre::Sessions && state.tabs.front_is_terminal() {
+                state.zoom_terminal(if shortcut == Shortcut::TextBigger {
+                    1
+                } else {
+                    -1
+                });
+            }
             Task::none()
         }
         Shortcut::GoToTab(number) => {
@@ -310,6 +329,14 @@ mod tests {
             Some(Shortcut::OtherPane)
         );
         assert_eq!(pressed(character("R"), ctrl_shift), Some(Shortcut::Rotate));
+        let ctrl = keyboard::Modifiers::CTRL;
+        assert_eq!(pressed(character("="), ctrl), Some(Shortcut::TextBigger));
+        assert_eq!(
+            pressed(character("+"), ctrl_shift),
+            Some(Shortcut::TextBigger)
+        );
+        assert_eq!(pressed(character("-"), ctrl), Some(Shortcut::TextSmaller));
+        assert!(!Shortcut::TextBigger.beats_a_desktop());
         assert!(Shortcut::Rotate.beats_a_desktop());
         assert_eq!(pressed(character("s"), keyboard::Modifiers::CTRL), None);
         assert!(Shortcut::Split.beats_a_desktop() && Shortcut::OtherPane.beats_a_desktop());

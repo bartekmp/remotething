@@ -27,6 +27,7 @@ use crate::recent::{self, Recent};
 use crate::session;
 use crate::settings;
 use crate::tabs;
+use crate::terminal_view;
 use crate::theme as look;
 use crate::tree::{self, Selection};
 use crate::tree_actions;
@@ -487,6 +488,10 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 .key(&key, modifiers, text.as_deref())
                 .map(Message::Tabs);
         }
+        Message::Tabs(tabs::Message::Session(
+            _,
+            session::Message::Terminal(terminal_view::Event::Zoomed(steps)),
+        )) => state.zoom_terminal(steps),
         Message::Tabs(message) => {
             let mut context = session::Context {
                 store: &state.store,

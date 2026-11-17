@@ -33,6 +33,10 @@ pub fn lines() -> Vec<(String, String)> {
         ("Ctrl+Shift+S".to_string(), fl!("shortcuts-split")),
         ("Ctrl+Shift+O".to_string(), fl!("shortcuts-other-pane")),
         ("Ctrl+Shift+R".to_string(), fl!("shortcuts-rotate")),
+        (
+            "Ctrl+Plus, Ctrl+Minus".to_string(),
+            fl!("shortcuts-text-size"),
+        ),
         ("Ctrl+F".to_string(), fl!("shortcuts-search")),
         ("↑ ↓ ← → Enter".to_string(), fl!("shortcuts-files-move")),
         ("Tab".to_string(), fl!("shortcuts-files-pane")),
