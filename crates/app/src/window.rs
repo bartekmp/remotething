@@ -92,6 +92,9 @@ pub fn view(state: &State) -> Element<'_, Message> {
         let entries = crate::palette::entries(&state.store, state.recent.ids(), palette.query());
         layers = layers.push(crate::palette::view(palette, entries).map(Message::Palette));
     }
+    if state.shortcuts_open {
+        layers = layers.push(crate::shortcuts::view().map(Message::Shortcuts));
+    }
     if let Some(question) = &state.removal {
         layers = layers.push(folder_removal::view(question).map(Message::Removal));
     }

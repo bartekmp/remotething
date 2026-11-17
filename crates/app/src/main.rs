@@ -71,6 +71,7 @@ mod session_strip;
 mod session_update;
 mod session_view;
 mod settings;
+mod shortcuts;
 mod status_bar;
 mod tab_bar;
 mod tabs;

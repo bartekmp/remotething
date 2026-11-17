@@ -18,6 +18,8 @@ pub(crate) enum Shortcut {
     SearchConnections,
     /// Ctrl+Shift+P: the command palette.
     Palette,
+    /// F1: the list of shortcuts.
+    Help,
     /// Ctrl+Tab.
     NextTab,
     /// Ctrl+Shift+Tab.
@@ -28,6 +30,9 @@ pub(crate) enum Shortcut {
 
 impl Shortcut {
     pub(crate) fn of(key: &keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Self> {
+        if *key == keyboard::Key::Named(keyboard::key::Named::F1) && modifiers.is_empty() {
+            return Some(Shortcut::Help);
+        }
         if *key == keyboard::Key::Named(keyboard::key::Named::Tab)
             && modifiers.control()
             && !modifiers.alt()
@@ -83,6 +88,10 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::Palette => {
             state.palette = Some(crate::palette::State::default());
             iced::widget::operation::focus(crate::palette::INPUT)
+        }
+        Shortcut::Help => {
+            state.shortcuts_open = true;
+            Task::none()
         }
         Shortcut::NextTab | Shortcut::PreviousTab => {
             state.centre = Centre::Sessions;
@@ -156,6 +165,16 @@ pub(crate) fn on_palette_key(
         _ => {}
     }
     Task::none()
+}
+
+/// The keys while the shortcuts list is open: Escape or F1 close it, and nothing reaches
+/// the terminal or desktop behind it.
+pub(crate) fn on_shortcuts_key(state: &mut State, key: &keyboard::Key) {
+    let escape = *key == keyboard::Key::Named(keyboard::key::Named::Escape);
+    let help = Shortcut::of(key, keyboard::Modifiers::empty()) == Some(Shortcut::Help);
+    if escape || help {
+        state.shortcuts_open = false;
+    }
 }
 
 /// Does what a chosen line of the palette stands for.
@@ -258,6 +277,18 @@ mod tests {
             pressed(character("3"), keyboard::Modifiers::ALT),
             Some(Shortcut::GoToTab(3))
         );
+    }
+
+    #[test]
+    fn f1_alone_opens_the_help_even_over_a_desktop() {
+        let f1 = keyboard::Key::Named(keyboard::key::Named::F1);
+
+        assert_eq!(
+            pressed(f1.clone(), keyboard::Modifiers::empty()),
+            Some(Shortcut::Help)
+        );
+        assert_eq!(pressed(f1, keyboard::Modifiers::CTRL), None);
+        assert!(Shortcut::Help.beats_a_desktop());
     }
 
     #[test]

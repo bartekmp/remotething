@@ -796,3 +796,20 @@ fn a_drop_without_animations_does_not_glow() {
 
     assert!(!tabs.is_glowing(std::time::Instant::now()));
 }
+
+#[test]
+fn f1_shows_the_shortcuts_and_escape_or_f1_hides_them() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let f1 = keyboard::Key::Named(keyboard::key::Named::F1);
+    let escape = keyboard::Key::Named(keyboard::key::Named::Escape);
+
+    key(&mut state, f1.clone(), keyboard::Modifiers::empty());
+    assert!(state.shortcuts_open);
+    key(&mut state, escape, keyboard::Modifiers::empty());
+    assert!(!state.shortcuts_open);
+
+    key(&mut state, f1.clone(), keyboard::Modifiers::empty());
+    key(&mut state, f1, keyboard::Modifiers::empty());
+    assert!(!state.shortcuts_open);
+}

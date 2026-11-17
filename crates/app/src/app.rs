@@ -56,6 +56,8 @@ pub struct State {
     pub(crate) properties_open: bool,
     /// The command palette, while it is open.
     pub(crate) palette: Option<crate::palette::State>,
+    /// Whether the list of shortcuts is showing.
+    pub(crate) shortcuts_open: bool,
     /// How far the connection tree is unfolded: 0 is the narrow rail, 1 the whole panel.
     pub(crate) tree_slide: crate::motion::Tween,
     /// How far the properties panel has slid in: 0 is out of sight, 1 in place.
@@ -119,6 +121,7 @@ pub enum Message {
     Tabs(tabs::Message),
     Properties(properties::Message),
     Palette(crate::palette::Message),
+    Shortcuts(crate::shortcuts::Message),
     Credentials(credentials::Message),
     /// The secret store finished a save or delete.
     SecretStored(Result<(), String>),
@@ -214,6 +217,7 @@ impl State {
             draft: None,
             properties_open: false,
             palette: None,
+            shortcuts_open: false,
             tree_slide: crate::motion::Tween::at(1.0),
             properties_slide: crate::motion::Tween::at(0.0),
             now: std::time::Instant::now(),
@@ -431,6 +435,10 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             text,
             captured,
         } => {
+            if state.shortcuts_open {
+                input::on_shortcuts_key(state, &key);
+                return Task::none();
+            }
             if state.palette.is_some() {
                 return input::on_palette_key(state, &key, modifiers);
             }
@@ -484,6 +492,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
             return task;
         }
+        Message::Shortcuts(crate::shortcuts::Message::Dismissed) => state.shortcuts_open = false,
         Message::Palette(message) => {
             let Some(palette) = &mut state.palette else {
                 return Task::none();

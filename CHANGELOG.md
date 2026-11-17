@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.52.0 - 2026-11-17
+
+- F1 shows a list of the keyboard shortcuts.
+
 ## 0.51.0 - 2026-11-17
 
 - The connection tree and the properties panel slide in and out, a carried tab lifts off the bar, and a dropped tab glows for a moment. Settings has a switch to turn animations off.
