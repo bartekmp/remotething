@@ -418,3 +418,4 @@ shortcuts-split = Split the view, or go back to one tab
 shortcuts-other-pane = Keyboard to the other pane
 tabs-menu-stack = Stack the panes
 tabs-menu-side-by-side = Put the panes side by side
+shortcuts-rotate = Stack or unstack the split panes

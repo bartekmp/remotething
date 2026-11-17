@@ -626,3 +626,28 @@ fn a_press_on_the_divider_does_nothing_without_a_split() {
 
     assert!(!fixture.state.resizing);
 }
+
+#[test]
+fn a_double_click_on_the_divider_makes_the_panes_equal_again() {
+    let mut fixture = split_pair();
+    fixture.send(Message::DividerPressed);
+    fixture.send(Message::DividerMoved(0.3));
+
+    fixture.send(Message::DividerReset);
+
+    assert_eq!(fixture.state.share(), 0.5);
+    assert!(!fixture.state.resizing);
+}
+
+#[test]
+fn the_rotate_key_only_acts_on_a_split() {
+    let mut single = Fixture::with_tabs(&["a"]);
+    single.state.rotate_split();
+    assert!(!single.state.split_stacked);
+
+    let mut fixture = split_pair();
+    fixture.state.rotate_split();
+    assert!(fixture.state.split_stacked);
+    fixture.state.rotate_split();
+    assert!(!fixture.state.split_stacked);
+}

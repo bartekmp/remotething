@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.58.0 - 2026-11-17
+
+- Split view: Ctrl+Shift+R stacks or unstacks the panes, and a double-click on the divider makes them equal.
+
 ## 0.57.0 - 2026-11-17
 
 - Split view: drag the divider to resize the panes, and stack them one above the other from a tab's menu.

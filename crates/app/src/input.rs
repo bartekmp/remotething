@@ -20,6 +20,8 @@ pub(crate) enum Shortcut {
     Palette,
     /// Ctrl+Shift+S: split the view, or go back to one tab.
     Split,
+    /// Ctrl+Shift+R: stack the panes of a split view, or put them side by side.
+    Rotate,
     /// Ctrl+Shift+O: the keyboard goes to the other pane of a split view.
     OtherPane,
     /// F1: the list of shortcuts.
@@ -65,6 +67,7 @@ impl Shortcut {
             ("p", true) => Some(Shortcut::Palette),
             ("s", true) => Some(Shortcut::Split),
             ("o", true) => Some(Shortcut::OtherPane),
+            ("r", true) => Some(Shortcut::Rotate),
             ("w", false) => Some(Shortcut::CloseTabUnlessTerminal),
             ("f", false) => Some(Shortcut::SearchConnections),
             _ => None,
@@ -98,6 +101,10 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::Split => {
             state.centre = Centre::Sessions;
             state.tabs.toggle_split().map(Message::Tabs)
+        }
+        Shortcut::Rotate => {
+            state.tabs.rotate_split();
+            Task::none()
         }
         Shortcut::OtherPane => {
             state.tabs.focus_other_pane();
@@ -302,6 +309,8 @@ mod tests {
             pressed(character("O"), ctrl_shift),
             Some(Shortcut::OtherPane)
         );
+        assert_eq!(pressed(character("R"), ctrl_shift), Some(Shortcut::Rotate));
+        assert!(Shortcut::Rotate.beats_a_desktop());
         assert_eq!(pressed(character("s"), keyboard::Modifiers::CTRL), None);
         assert!(Shortcut::Split.beats_a_desktop() && Shortcut::OtherPane.beats_a_desktop());
     }

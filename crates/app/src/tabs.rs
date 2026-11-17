@@ -94,6 +94,8 @@ pub enum Message {
     MenuUnsplitPressed,
     /// "Stack the panes" or "Put the panes side by side" in a tab's menu.
     MenuRotatePressed,
+    /// A double-click on the divider: both panes take half again.
+    DividerReset,
     /// The mouse went down on the divider between the panes.
     DividerPressed,
     /// While the divider is dragged: the pointer is at this share of the split.
@@ -380,6 +382,13 @@ impl State {
         let task = self.open_launcher();
         self.split = Some(front);
         task
+    }
+
+    /// Stacks the panes of a split view, or puts them side by side again.
+    pub fn rotate_split(&mut self) {
+        if self.split.is_some() {
+            self.split_stacked = !self.split_stacked;
+        }
     }
 
     /// Gives the keyboard to the other pane of a split view.
@@ -681,6 +690,10 @@ pub fn update(
         Message::MenuRotatePressed => {
             state.menu = None;
             state.split_stacked = !state.split_stacked;
+        }
+        Message::DividerReset => {
+            state.resizing = false;
+            state.split_share = None;
         }
         Message::DividerPressed => state.resizing = state.split.is_some(),
         Message::DividerMoved(share) => {

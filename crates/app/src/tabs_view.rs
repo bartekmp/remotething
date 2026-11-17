@@ -296,6 +296,7 @@ fn split_sized<'a>(
     };
     let divider = mouse_area(divider_shape)
         .on_press(Message::DividerPressed)
+        .on_double_click(Message::DividerReset)
         .interaction(cursor);
     let panes: Element<'a, Message> = if state.split_stacked {
         column![first, divider, second].into()
