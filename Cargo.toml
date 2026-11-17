@@ -12,3 +12,7 @@ publish = false
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"
+
+# Full debug info made each test binary ~700 MB, and every rebuild left another behind.
+[profile.dev]
+debug = "line-tables-only"
