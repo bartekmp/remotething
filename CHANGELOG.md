@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.63.0 - 2026-11-17
+
+- The compact file pane beside a terminal has icon buttons and no "This computer"; zoomed, the buttons have labels too.
+
 ## 0.62.0 - 2026-11-17
 
 - The file pane beside a terminal shows only names and sizes, and has a Zoom button that fills the tab and shows permissions and dates.

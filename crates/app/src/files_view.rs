@@ -1,7 +1,7 @@
 //! How the file pane is drawn.
 
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{button, column, container, mouse_area, row, scrollable, space, text};
+use iced::widget::{button, column, container, mouse_area, row, scrollable, space, text, tooltip};
 use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
@@ -72,13 +72,24 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
     };
     let mut header = row![title].align_y(Vertical::Center);
     if state.closable {
-        let zoom = if state.zoomed {
-            fl!("files-unzoom")
+        let (icon, label) = if state.zoomed {
+            (icons::MINIMIZE, fl!("files-unzoom"))
         } else {
-            fl!("files-zoom")
+            (icons::MAXIMIZE, fl!("files-zoom"))
+        };
+        let content: Element<'_, Message> = if state.is_compact() {
+            icons::view(icon, theme::TEXT_BODY).into()
+        } else {
+            row![
+                icons::view(icon, theme::TEXT_SMALL),
+                text(label).size(theme::TEXT_SMALL)
+            ]
+            .spacing(6)
+            .align_y(Vertical::Center)
+            .into()
         };
         header = header.push(
-            button(text(zoom).size(theme::TEXT_SMALL))
+            button(content)
                 .style(theme::pill)
                 .on_press(Message::ZoomToggled),
         );
@@ -95,30 +106,61 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
         .style(theme::secondary_text)
         .wrapping(text::Wrapping::Glyph);
 
-    let pill = |label: String, message: Option<Message>| {
-        button(text(label).size(theme::TEXT_SMALL))
-            .style(theme::pill)
-            .on_press_maybe(message)
+    // Beside a terminal the pane is narrow, so the buttons are icons; filling the tab they
+    // have labels too.
+    let compact = state.is_compact();
+    let pill = |icon: icons::Icon, label: String, message: Option<Message>| {
+        let content: Element<'_, Message> = if compact {
+            icons::view(icon, theme::TEXT_BODY).into()
+        } else {
+            row![
+                icons::view(icon, theme::TEXT_SMALL),
+                text(label.clone()).size(theme::TEXT_SMALL)
+            ]
+            .spacing(6)
+            .align_y(Vertical::Center)
+            .into()
+        };
+        let pill = button(content).style(theme::pill).on_press_maybe(message);
+        if compact {
+            tooltip(
+                pill,
+                text(label).size(theme::TEXT_SMALL),
+                tooltip::Position::Bottom,
+            )
+            .style(theme::chip)
+            .into()
+        } else {
+            Element::from(pill)
+        }
     };
     let ready = state.files.is_some();
     let mut toolbar = row![
-        pill(fl!("files-up"), ready.then_some(Message::UpPressed)),
         pill(
+            icons::ARROW_UP,
+            fl!("files-up"),
+            ready.then_some(Message::UpPressed)
+        ),
+        pill(
+            icons::REFRESH,
             fl!("files-refresh"),
             ready.then_some(Message::RefreshPressed)
         ),
     ];
     if !state.is_local {
         toolbar = toolbar.push(pill(
+            icons::UPLOAD,
             fl!("files-upload"),
             ready.then_some(Message::UploadPressed),
         ));
     }
     toolbar = toolbar.push(pill(
+        icons::EYE,
         fl!("files-preview"),
         (ready && state.selected_file().is_some()).then_some(Message::PreviewPressed),
     ));
     toolbar = toolbar.push(pill(
+        icons::LIST,
         if state.details {
             fl!("files-details-hide")
         } else {
@@ -129,14 +171,19 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
     if !state.is_local {
         toolbar = toolbar
             .push(pill(
+                icons::FOLDER_UP,
                 fl!("files-upload-folder"),
                 ready.then_some(Message::UploadFolderPressed),
             ))
             .push(pill(
+                icons::DOWNLOAD,
                 fl!("files-download"),
                 (ready && state.can_download()).then_some(Message::DownloadPressed),
-            ))
-            .push(pill(
+            ));
+        // A second pane has no room beside a terminal.
+        if !compact {
+            toolbar = toolbar.push(pill(
+                icons::HARD_DRIVE,
                 if state.other.is_some() {
                     fl!("files-local-hide")
                 } else {
@@ -144,6 +191,7 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
                 },
                 ready.then_some(Message::LocalToggled),
             ));
+        }
     }
     let toolbar = toolbar.spacing(6).wrap();
 

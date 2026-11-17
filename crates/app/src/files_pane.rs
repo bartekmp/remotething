@@ -164,6 +164,11 @@ pub enum Event {
 }
 
 impl State {
+    /// True for the narrow pane beside a terminal: icons for buttons, no second pane.
+    pub(crate) fn is_compact(&self) -> bool {
+        self.closable && !self.zoomed
+    }
+
     /// Starts the file service on the session's connection.
     pub fn open(connection: Connection) -> (Self, Task<Message>) {
         Self::open_with(async move {

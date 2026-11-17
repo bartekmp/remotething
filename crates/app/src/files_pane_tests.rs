@@ -476,3 +476,15 @@ fn zooming_shows_the_details_and_unzooming_takes_them_away() {
     let _ = update(&mut state, Message::ZoomToggled);
     assert!(!state.zoomed && !state.details);
 }
+
+#[test]
+fn only_the_pane_beside_a_terminal_is_compact_until_it_is_zoomed() {
+    let mut state = loaded();
+    state.closable = false;
+    assert!(!state.is_compact());
+
+    state.closable = true;
+    assert!(state.is_compact());
+    let _ = update(&mut state, Message::ZoomToggled);
+    assert!(!state.is_compact());
+}

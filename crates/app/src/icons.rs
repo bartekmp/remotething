@@ -87,6 +87,16 @@ pub const FILE: Icon = icon("file", '\u{e0c4}');
 pub const INFO: Icon = icon("info", '\u{e0fe}');
 pub const KEY: Icon = icon("key", '\u{e4a7}');
 pub const PLUS: Icon = icon("plus", '\u{e140}');
+pub const ARROW_UP: Icon = icon("arrow-up", '\u{e04e}');
+pub const REFRESH: Icon = icon("refresh-cw", '\u{e148}');
+pub const UPLOAD: Icon = icon("upload", '\u{e19d}');
+pub const DOWNLOAD: Icon = icon("download", '\u{e0b6}');
+pub const FOLDER_UP: Icon = icon("folder-up", '\u{e340}');
+pub const EYE: Icon = icon("eye", '\u{e0be}');
+pub const LIST: Icon = icon("list", '\u{e10b}');
+pub const HARD_DRIVE: Icon = icon("hard-drive", '\u{e0f0}');
+pub const MAXIMIZE: Icon = icon("maximize-2", '\u{e116}');
+pub const MINIMIZE: Icon = icon("minimize-2", '\u{e11e}');
 pub const PANEL_LEFT_CLOSE: Icon = icon("panel-left-close", '\u{e21b}');
 pub const PANEL_LEFT_OPEN: Icon = icon("panel-left-open", '\u{e21c}');
 
