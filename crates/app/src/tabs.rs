@@ -132,13 +132,21 @@ impl State {
     /// Opens an empty tab that lists recent connections, with the keyboard in its search field.
     pub fn open_launcher(&mut self) -> Task<Message> {
         let id = self.new_id();
-        self.tabs.push(Tab {
+        let tab = Tab {
             id,
             title: fl!("tabs-new"),
             content: Content::Launcher(String::new()),
             unsaved: None,
-        });
-        self.active = self.tabs.len() - 1;
+        };
+        // In a split view the panes are in tab order, so the new tab goes right after the
+        // one in front to take over its pane rather than jump to the other side.
+        if self.split.is_some() && self.active < self.tabs.len() {
+            self.active += 1;
+            self.tabs.insert(self.active, tab);
+        } else {
+            self.tabs.push(tab);
+            self.active = self.tabs.len() - 1;
+        }
         iced::widget::operation::focus(launcher::SEARCH_INPUT)
     }
 

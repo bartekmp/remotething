@@ -88,6 +88,8 @@ async fn files_and_folders_go_up_are_listed_and_come_back_the_same() {
     assert_eq!(listing[0].name, "it's.bin");
     assert_eq!(listing[0].kind, EntryKind::File);
     assert_eq!(listing[0].size, Some(300_000));
+    // GNU ls on this server gives the time in seconds.
+    assert!(listing[0].modified.is_some());
     assert_eq!(
         files.files_under(&top).await.unwrap(),
         [("a/it's.bin".to_string(), 300_000)]

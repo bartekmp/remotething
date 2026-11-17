@@ -4,29 +4,33 @@ use super::*;
 
 #[test]
 fn a_listing_line_gives_name_size_kind_and_permissions() {
-    let file = parse_ls("-rw-r--r--  1 1000 1000    252 Nov 11 12:24 my notes.txt").unwrap();
+    let file = parse_ls(
+        "-rw-r--r--  1 1000 1000    252 Nov 11 12:24 my notes.txt",
+        3,
+    )
+    .unwrap();
     assert_eq!(file.name, "my notes.txt");
     assert_eq!(file.kind, EntryKind::File);
     assert_eq!(file.size, Some(252));
     assert_eq!(file.permissions, Some(0o644));
 
-    let folder = parse_ls("drwxr-xr-x 4 0 0 4096 Jun  8 2024 etc").unwrap();
+    let folder = parse_ls("drwxr-xr-x 4 0 0 4096 Jun  8 2024 etc", 3).unwrap();
     assert_eq!(folder.kind, EntryKind::Folder);
     assert_eq!(folder.permissions, Some(0o755));
 }
 
 #[test]
 fn a_link_is_listed_by_its_own_name() {
-    let link = parse_ls("lrwxrwxrwx 1 0 0 7 Jun  8 2024 lib -> usr/lib").unwrap();
+    let link = parse_ls("lrwxrwxrwx 1 0 0 7 Jun  8 2024 lib -> usr/lib", 3).unwrap();
     assert_eq!(link.name, "lib");
     assert_eq!(link.kind, EntryKind::Link);
 }
 
 #[test]
 fn the_total_line_and_devices_are_left_out() {
-    assert!(parse_ls("total 500").is_none());
-    assert!(parse_ls("crw-rw-rw- 1 0 0 1, 3 Jun  8 2024 null").is_none());
-    assert!(parse_ls("").is_none());
+    assert!(parse_ls("total 500", 3).is_none());
+    assert!(parse_ls("crw-rw-rw- 1 0 0 1, 3 Jun  8 2024 null", 3).is_none());
+    assert!(parse_ls("", 3).is_none());
 }
 
 #[test]
@@ -65,4 +69,14 @@ async fn an_answer_is_a_zero_byte_or_an_error_line() {
 
     let mut empty: &[u8] = &[];
     assert!(read_ack(&mut empty).await.is_err());
+}
+
+#[test]
+fn a_listing_with_epoch_seconds_gives_the_modification_time() {
+    let file = parse_ls("-rw-r--r-- 1 1000 1000 252 1731320640 my notes.txt", 1).unwrap();
+
+    assert_eq!(file.name, "my notes.txt");
+    assert_eq!(file.size, Some(252));
+    assert_eq!(file.modified, Some(1_731_320_640));
+    assert!(parse_ls("total 500", 1).is_none());
 }

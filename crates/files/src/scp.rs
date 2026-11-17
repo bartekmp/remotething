@@ -56,9 +56,21 @@ impl RemoteFs for ScpFs {
 
     async fn list(&self, folder: &str) -> Result<Vec<Entry>> {
         // The slash makes `ls` look inside a link to a folder.
-        let command = format!("LC_ALL=C ls -lAn -- {}", quote(&format!("{folder}/")));
-        let output = self.run("cannot list", folder, command).await?;
-        let mut entries: Vec<Entry> = text(&output.stdout).lines().filter_map(parse_ls).collect();
+        let target = quote(&format!("{folder}/"));
+        // GNU ls can give the time as seconds since 1970; others refuse the option and
+        // are asked again without it, which leaves the entries without a time.
+        let with_time = format!("LC_ALL=C ls -lAn --time-style=+%s -- {target}");
+        let (output, date_fields) = match self.run("cannot list", folder, with_time).await {
+            Ok(output) => (output, 1),
+            Err(_) => {
+                let plain = format!("LC_ALL=C ls -lAn -- {target}");
+                (self.run("cannot list", folder, plain).await?, 3)
+            }
+        };
+        let mut entries: Vec<Entry> = text(&output.stdout)
+            .lines()
+            .filter_map(|line| parse_ls(line, date_fields))
+            .collect();
         sort(&mut entries);
         Ok(entries)
     }
@@ -308,7 +320,9 @@ fn parse_header(line: &str) -> std::result::Result<Header, String> {
 }
 
 /// One line of `ls -lAn`, or nothing for the "total" line, devices and what is not understood.
-fn parse_ls(line: &str) -> Option<Entry> {
+/// `date_fields` is 1 when the time is seconds since 1970 (`--time-style=+%s`), and 3 for
+/// the usual "Jun 8 2024" or "Jun 8 12:24", which is not read.
+fn parse_ls(line: &str, date_fields: usize) -> Option<Entry> {
     let mode = line.get(..10)?;
     let kind = match mode.chars().next()? {
         '-' => EntryKind::File,
@@ -319,10 +333,10 @@ fn parse_ls(line: &str) -> Option<Entry> {
         'p' | 's' => EntryKind::Other,
         _ => return None,
     };
-    // Mode, links, owner, group, size, month, day, time or year, then the name.
+    // Mode, links, owner, group, size, the date, then the name.
     let mut rest = line;
     let mut fields = Vec::new();
-    for _ in 0..8 {
+    for _ in 0..5 + date_fields {
         rest = rest.trim_start();
         let end = rest.find(char::is_whitespace)?;
         fields.push(&rest[..end]);
@@ -336,11 +350,16 @@ fn parse_ls(line: &str) -> Option<Entry> {
     if name.is_empty() || name == "." || name == ".." {
         return None;
     }
+    let modified = if date_fields == 1 {
+        fields[5].parse::<u64>().ok()
+    } else {
+        None
+    };
     Some(Entry {
         name: name.to_string(),
         kind,
         size: fields[4].parse().ok(),
-        modified: None,
+        modified,
         permissions: Some(permissions(mode)),
     })
 }

@@ -68,10 +68,10 @@ If a trusted host later shows a different key, the tab warns you before anything
 
 ### Colour themes
 
-In **Settings → Terminal**, press **Import theme file…** and pick a theme of Alacritty (`.toml`), kitty (`.conf`) or Ghostty (a file with `palette = N=#rrggbb` lines). The theme is saved in `terminal-themes.toml` beside the settings and shows in the list. Click a theme to see it in the preview box, which draws a made-up `fastfetch` screen in its colours; **Use this theme** applies it, a ✓ marks the one in use, and **Delete** removes it. **Default** follows the app's light or dark theme.
+In **Settings → Terminal**, press **Import theme file…** and pick a theme of Alacritty (`.toml`, or the older `.yml`), kitty (`.conf`) or Ghostty (a file with `palette = N=#rrggbb` lines). The theme is saved in `terminal-themes.toml` beside the settings and shows in the list. Click a theme to see it in the preview box, which draws a made-up `fastfetch` screen in its colours; **Use this theme** applies it, a ✓ marks the one in use, and **Delete** removes it. **Default** follows the app's light or dark theme.
 
 - A theme needs a foreground, a background and some of the 16 colours; the ones it leaves out come from the default palette.
-- Alacritty's older YAML format is not read; convert it to TOML first. Colours other than these (cursor, tabs and so on) are ignored.
+- Colours other than these (cursor, tabs and so on) are ignored.
 
 ## Connection details
 
@@ -107,7 +107,7 @@ Choose the protocol **SFTP** for a connection to get just the files: no terminal
 When a server has no SFTP service, the file browser falls back to SCP by itself; nothing to choose. Folders are read and changed with shell commands, and files move with `scp` on the server. The server needs a POSIX shell with `ls`, `test`, `mkdir`, `mv`, `rm`, `rmdir`, `wc`, `head` and `scp`.
 
 - A transfer that stopped starts again from the beginning: SCP cannot continue.
-- The listing has no modification times.
+- The listing has modification times when the server's `ls` is GNU (most Linux servers); BusyBox and BSD servers show none.
 - A name with a line break in it cannot be listed, and device files are not shown.
 
 ## Files beside a terminal
@@ -124,7 +124,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | More actions | Right-click a row. A menu opens under it: **Preview**, **Download**, **Copy path**, **Rename**, **Delete**, and on a folder **New folder** inside it |
 | Upload by dragging | With the file pane open, drop files or folders on the window. They go the same way as **Upload** and **Upload folder**. Works on Windows, macOS and X11; not on a native Wayland window |
 | Zoom | Beside a terminal the pane is compact: its buttons are icons (hover for the name) and there is no **This computer**. **Zoom** in the header makes the pane fill the whole tab, hiding the terminal (it keeps running), with labelled buttons; **Unzoom** brings it back |
-| Details | Each row shows permissions (`rwxr-xr-x`), the modification time (UTC) and the size. They show when the pane fills the tab (a file-only tab, or zoomed); beside a terminal the pane shows names and sizes only. **Details** and **Hide details** in the toolbar override this. SCP servers give no times |
+| Details | Each row shows permissions (`rwxr-xr-x`), the modification time (UTC) and the size. They show when the pane fills the tab (a file-only tab, or zoomed); beside a terminal the pane shows names and sizes only. **Details** and **Hide details** in the toolbar override this. SCP servers show times only with a GNU `ls` |
 | Preview a file | Select it, press **Preview**. **Back** returns to the tree |
 | Upload a folder | **Upload folder**, then pick it. Every file in it is queued, keeping its place |
 | Download a folder | Select it, press **Download**, then pick where to put it. It is saved as a folder of the same name |

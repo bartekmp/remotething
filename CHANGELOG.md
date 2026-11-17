@@ -5,6 +5,12 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.64.0 - 2026-11-17
+
+- Split view: a new tab takes the place of the pane that has the keyboard.
+- Terminal themes: Alacritty's older YAML files can be imported.
+- SCP file browsing shows modification times on servers with a GNU `ls`.
+
 ## 0.63.0 - 2026-11-17
 
 - The compact file pane beside a terminal has icon buttons and no "This computer"; zoomed, the buttons have labels too.

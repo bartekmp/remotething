@@ -100,7 +100,13 @@ pub fn parse(file_name: &str, text: &str) -> Result<Theme, String> {
     let is_ghostty = text
         .lines()
         .any(|line| line.trim_start().starts_with("palette") && line.contains('='));
-    let found = if is_toml || text.contains("[colors") {
+    let is_yaml = path
+        .extension()
+        .is_some_and(|ext| ext == "yml" || ext == "yaml")
+        || text.lines().any(|line| line.trim_end() == "colors:");
+    let found = if is_yaml {
+        read_alacritty_yaml(text)
+    } else if is_toml || text.contains("[colors") {
         read_alacritty(text)?
     } else if is_ghostty {
         read_ghostty(text)
@@ -180,6 +186,67 @@ fn read_alacritty(text: &str) -> Result<Found, String> {
         found.ansi[index + 8] = color("bright", name);
     }
     Ok(found)
+}
+
+/// Alacritty's older YAML files: nested `key:` lines, found by their indentation. Only the
+/// colour entries are read, so this is not a general YAML reader.
+fn read_alacritty_yaml(text: &str) -> Found {
+    let mut found = Found::default();
+    // The sections above the current line, with the indentation of each.
+    let mut sections: Vec<(usize, String)> = Vec::new();
+    for line in text.lines() {
+        let content = line.trim();
+        if content.is_empty() || content.starts_with('#') {
+            continue;
+        }
+        let indent = line.len() - line.trim_start().len();
+        while sections.last().is_some_and(|(deeper, _)| *deeper >= indent) {
+            sections.pop();
+        }
+        let Some((key, value)) = content.split_once(':') else {
+            continue;
+        };
+        let key = key.trim().to_string();
+        let value = yaml_value(value);
+        if value.is_empty() {
+            sections.push((indent, key));
+            continue;
+        }
+        let path: Vec<&str> = sections
+            .iter()
+            .map(|(_, name)| name.as_str())
+            .chain([key.as_str()])
+            .collect();
+        let color = Rgb::parse(&value);
+        match path.as_slice() {
+            ["colors", "primary", "foreground"] => found.foreground = color,
+            ["colors", "primary", "background"] => found.background = color,
+            ["colors", "selection", "background"] => found.selection = color,
+            ["colors", group @ ("normal" | "bright"), name] => {
+                if let Some(index) = ALACRITTY_NAMES.iter().position(|known| known == name) {
+                    found.ansi[index + if *group == "bright" { 8 } else { 0 }] = color;
+                }
+            }
+            _ => {}
+        }
+    }
+    found
+}
+
+/// The text of a YAML value without its quotes or a trailing comment.
+fn yaml_value(value: &str) -> String {
+    let value = value.trim();
+    for quote in ['\'', '"'] {
+        if let Some(inner) = value.strip_prefix(quote) {
+            return inner.split(quote).next().unwrap_or_default().to_string();
+        }
+    }
+    value
+        .split(" #")
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
 
 /// `key value` lines; a line that starts with `#` is a comment.

@@ -151,3 +151,48 @@ fn a_broken_library_is_an_error_not_an_empty_list() {
 
     assert!(load(&path).is_err());
 }
+
+const ALACRITTY_YAML: &str = r##"
+# Gruvbox
+colors:
+  primary:
+    background: '0x282828'
+    foreground: "#ebdbb2"
+  selection:
+    background: '0x504945'
+  normal:
+    black:   '0x282828'
+    red:     '0xcc241d'   # a comment
+    green:   '0x98971a'
+    yellow:  '0xd79921'
+    blue:    '0x458588'
+    magenta: '0xb16286'
+    cyan:    '0x689d6a'
+    white:   '0xa89984'
+  bright:
+    black:   '0x928374'
+    red:     '0xfb4934'
+    green:   '0xb8bb26'
+    yellow:  '0xfabd2f'
+    blue:    '0x83a598'
+    magenta: '0xd3869b'
+    cyan:    '0x8ec07c'
+    white:   '0xebdbb2'
+"##;
+
+#[test]
+fn an_alacritty_yaml_file_gives_the_same_colours_as_the_toml_one() {
+    let theme = parse("gruvbox.yml", ALACRITTY_YAML).unwrap();
+    let from_toml = parse("gruvbox.toml", ALACRITTY).unwrap();
+
+    assert_eq!(theme.foreground, from_toml.foreground);
+    assert_eq!(theme.background, from_toml.background);
+    assert_eq!(theme.selection, from_toml.selection);
+    assert_eq!(theme.ansi, from_toml.ansi);
+    assert_eq!(theme.name, "gruvbox");
+}
+
+#[test]
+fn a_yaml_file_is_recognised_by_its_content_when_the_name_says_nothing() {
+    assert!(parse("theme.txt", ALACRITTY_YAML).is_ok());
+}

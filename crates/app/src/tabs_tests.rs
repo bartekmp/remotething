@@ -651,3 +651,23 @@ fn the_rotate_key_only_acts_on_a_split() {
     fixture.state.rotate_split();
     assert!(!fixture.state.split_stacked);
 }
+
+#[test]
+fn a_new_tab_in_a_split_takes_the_pane_of_the_tab_in_front() {
+    let mut fixture = split_pair();
+    let ids: Vec<u64> = fixture.state.tabs.iter().map(|tab| tab.id).collect();
+    // The second pane has the keyboard.
+    fixture.state.focus_other_pane();
+    let front_was_first = fixture.state.active < fixture.state.split_index().unwrap();
+
+    let _ = fixture.state.open_launcher();
+
+    let front = fixture.state.active;
+    let beside = fixture.state.split_index().unwrap();
+    assert!(matches!(
+        fixture.state.tabs[front].content,
+        Content::Launcher(_)
+    ));
+    assert_eq!(front < beside, front_was_first);
+    assert!(!ids.contains(&fixture.state.tabs[front].id));
+}
