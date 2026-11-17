@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.65.2 - 2026-11-17
+
+- The size shown while resizing is the remote desktop size that will be asked for, so it matches the status bar once it settles; a terminal shows only columns × lines.
+
 ## 0.65.1 - 2026-11-17
 
 - The size shown while resizing sits in the top right corner of the remote view itself, below its buttons.

@@ -20,7 +20,7 @@ use crate::session_view;
 use std::time::Instant;
 
 use crate::tab_bar;
-use crate::tabs::{Content, Message, State, Tab};
+use crate::tabs::{Content, Message, State, Tab, ViewSize};
 use crate::theme;
 use crate::vnc_view;
 
@@ -101,9 +101,9 @@ fn view_sized<'a>(
         _ => space().into(),
     };
     // Over the remote view itself, so it is seen where the eyes are while resizing.
-    let body = match state.size_badge {
-        Some(pixels) => stack![body, size_badge(pixels, state.front_terminal_size())].into(),
-        None => body,
+    let body = match (state.size_badge, state.front_view_size()) {
+        (Some(_), Some(size)) => stack![body, size_badge(size, state.front_has_toolbar())].into(),
+        _ => body,
     };
     let page = column![bar, body]
         .spacing(12)
@@ -426,22 +426,17 @@ fn close_question(title: &str) -> Element<'_, Message> {
 /// Height of the row with "Browse files" above a terminal, and the gap under it.
 const SESSION_TOOLBAR: f32 = 32.0;
 
-/// The size of the window in screen pixels, and of the terminal in front in characters.
-fn size_badge<'a>(pixels: (u32, u32), terminal: Option<(usize, usize)>) -> Element<'a, Message> {
-    let mut lines = column![text(format!("{} × {}", pixels.0, pixels.1)).size(theme::TEXT_TITLE)]
-        .align_x(iced::alignment::Horizontal::Right);
-    if let Some((columns, rows)) = terminal {
-        lines = lines.push(
-            text(format!("{columns} × {rows}"))
-                .size(theme::TEXT_BODY)
-                .style(theme::secondary_text),
-        );
-    }
-    let badge = container(lines)
+/// The size being resized to, in the top right corner of the view.
+fn size_badge<'a>(size: ViewSize, below_toolbar: bool) -> Element<'a, Message> {
+    let text_of = match size {
+        ViewSize::Characters(columns, lines) => format!("{columns} × {lines}"),
+        ViewSize::Pixels(width, height) => format!("{width} × {height}"),
+    };
+    let badge = container(text(text_of).size(theme::TEXT_TITLE))
         .padding(theme::GAP)
         .style(theme::size_badge);
     // A terminal has a row of buttons above it; the box sits below that, on the screen.
-    let top = if terminal.is_some() {
+    let top = if below_toolbar {
         SESSION_TOOLBAR + theme::GAP
     } else {
         theme::GAP

@@ -17,6 +17,15 @@ use crate::recent::Recent;
 use crate::session::{self, Context};
 use crate::vnc_tab;
 
+/// A size to show while the window is being resized.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewSize {
+    /// Columns and lines of a terminal.
+    Characters(usize, usize),
+    /// Pixels of a desktop or of the window.
+    Pixels(u32, u32),
+}
+
 #[derive(Default)]
 pub struct State {
     pub(crate) tabs: Vec<Tab>,
@@ -181,12 +190,30 @@ impl State {
         connection.name = name.to_string();
     }
 
-    /// The columns and lines of the terminal in front, if the tab in front is one.
-    pub fn front_terminal_size(&self) -> Option<(usize, usize)> {
-        match &self.tabs.get(self.active)?.content {
-            Content::Session(session) => session.terminal_size(),
+    /// The size to show while resizing: a terminal's characters, a desktop's pixels as it will
+    /// be asked for, or else the window's pixels.
+    pub fn front_view_size(&self) -> Option<ViewSize> {
+        let shown = match &self.tabs.get(self.active)?.content {
+            Content::Session(session) => session
+                .terminal_size()
+                .map(|(columns, lines)| ViewSize::Characters(columns, lines)),
+            Content::Desktop(desktop) => desktop
+                .target_size()
+                .map(|(width, height)| ViewSize::Pixels(width, height)),
             _ => None,
-        }
+        };
+        shown.or_else(|| {
+            self.size_badge
+                .map(|(width, height)| ViewSize::Pixels(width, height))
+        })
+    }
+
+    /// Whether the tab in front is a terminal, which has a row of buttons above its screen.
+    pub fn front_has_toolbar(&self) -> bool {
+        matches!(
+            self.tabs.get(self.active).map(|tab| &tab.content),
+            Some(Content::Session(session)) if session.terminal_size().is_some()
+        )
     }
 
     /// Whether the tab in front is a live terminal, which gets Ctrl+W for itself.

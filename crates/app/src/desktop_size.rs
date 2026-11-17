@@ -9,18 +9,26 @@ const MAX: f32 = 8192.0;
 /// A difference of this many pixels is not worth a new request.
 const TOLERANCE: u32 = 2;
 
+/// The size of the desktop that fills `area`, in screen pixels: what a resize would ask for.
+/// `None` when the area is too small to be a desktop.
+pub(crate) fn fitting(area: Size, scale: f32) -> Option<(u32, u32)> {
+    let (area_width, area_height) = (area.width * scale, area.height * scale);
+    if area_width < MIN || area_height < MIN {
+        return None;
+    }
+    Some((
+        (area_width.min(MAX) as u32) & !1,
+        area_height.min(MAX) as u32,
+    ))
+}
+
 /// The size to ask for, or `None` when the desktop already fits `area`.
 ///
 /// `area` is in logical pixels; the desktop is asked for real screen pixels, so
 /// `scale` of them make one logical pixel. The width is rounded down to an even
 /// number, which the protocol requires.
 pub(crate) fn wanted(area: Size, scale: f32, current: (u32, u32)) -> Option<(u16, u16)> {
-    let (area_width, area_height) = (area.width * scale, area.height * scale);
-    if area_width < MIN || area_height < MIN {
-        return None;
-    }
-    let width = (area_width.min(MAX) as u32) & !1;
-    let height = area_height.min(MAX) as u32;
+    let (width, height) = fitting(area, scale)?;
     let close = width.abs_diff(current.0) <= TOLERANCE && height.abs_diff(current.1) <= TOLERANCE;
     if close {
         return None;
@@ -31,6 +39,12 @@ pub(crate) fn wanted(area: Size, scale: f32, current: (u32, u32)) -> Option<(u16
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fitting_size_is_in_screen_pixels_with_an_even_width() {
+        assert_eq!(fitting(Size::new(1201.0, 800.0), 1.5), Some((1800, 1200)));
+        assert_eq!(fitting(Size::new(100.0, 800.0), 1.0), None);
+    }
 
     #[test]
     fn the_desktop_grows_to_the_room() {

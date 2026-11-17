@@ -671,3 +671,17 @@ fn a_new_tab_in_a_split_takes_the_pane_of_the_tab_in_front() {
     assert_eq!(front < beside, front_was_first);
     assert!(!ids.contains(&fixture.state.tabs[front].id));
 }
+
+#[test]
+fn the_size_shown_while_resizing_falls_back_to_the_window() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+    assert_eq!(fixture.state.front_view_size(), None);
+
+    fixture.state.size_badge = Some((900, 700));
+
+    // A desktop that is not connected yet has no size of its own to show.
+    assert_eq!(
+        fixture.state.front_view_size(),
+        Some(ViewSize::Pixels(900, 700))
+    );
+}

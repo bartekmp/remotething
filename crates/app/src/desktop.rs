@@ -219,6 +219,14 @@ impl State {
         matches!(&self.stage, Stage::Connected(live) if live.video.is_active())
     }
 
+    /// The size in pixels the desktop will have once it matches the room for it.
+    pub(crate) fn target_size(&self) -> Option<(u32, u32)> {
+        match &self.stage {
+            Stage::Connected(live) => desktop_size::fitting(live.area, display::scale()),
+            _ => None,
+        }
+    }
+
     /// Whether a desktop is showing, so closing the tab would cut it.
     pub(crate) fn is_connected(&self) -> bool {
         matches!(self.stage, Stage::Connected(_))
