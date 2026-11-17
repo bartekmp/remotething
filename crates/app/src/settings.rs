@@ -42,6 +42,8 @@ pub enum Tab {
     /// Theme, language and how the tab bar behaves.
     #[default]
     General,
+    /// Text size and colour themes of terminals.
+    Terminal,
     /// Moving connections to another copy of the app.
     ImportExport,
     /// The optional features and their folders.
@@ -50,12 +52,19 @@ pub enum Tab {
     About,
 }
 
-const TABS: [Tab; 4] = [Tab::General, Tab::ImportExport, Tab::Features, Tab::About];
+const TABS: [Tab; 5] = [
+    Tab::General,
+    Tab::Terminal,
+    Tab::ImportExport,
+    Tab::Features,
+    Tab::About,
+];
 
 impl Tab {
     fn label(self) -> String {
         match self {
             Tab::General => fl!("settings-tab-general"),
+            Tab::Terminal => fl!("settings-tab-terminal"),
             Tab::ImportExport => fl!("settings-tab-exchange"),
             Tab::Features => fl!("settings-tab-features"),
             Tab::About => fl!("settings-tab-about"),
@@ -67,6 +76,8 @@ impl Tab {
 pub enum Message {
     /// A page of the settings was picked.
     PagePicked(Tab),
+    /// Something on the Terminal page.
+    Terminal(crate::terminal_settings::Message),
     TabLayoutPicked(TabLayoutOption),
     AnimationsToggled(bool),
     ThemePicked(ThemeOption),
@@ -106,9 +117,11 @@ pub fn set_folder(preferences: &mut Preferences, kind: FolderKind, folder: Optio
 }
 
 /// What the screen asks the window to do.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     Changed,
+    /// Something on the Terminal page, which the window handles.
+    Terminal(crate::terminal_settings::Message),
     /// Another page was picked; the window remembers which.
     PageChanged(Tab),
     /// Ask which folder to use for this, then set it.
@@ -155,6 +168,7 @@ impl fmt::Display for LanguageOption {
 pub fn update(preferences: &mut Preferences, message: Message) -> Event {
     match message {
         Message::PagePicked(tab) => Event::PageChanged(tab),
+        Message::Terminal(message) => Event::Terminal(message),
         Message::TabLayoutPicked(option) => {
             preferences.tab_layout = option.0;
             Event::Changed
@@ -204,7 +218,12 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
     }
 }
 
-pub fn view(preferences: &Preferences, page: Tab) -> Element<'_, Message> {
+pub fn view<'a>(
+    preferences: &'a Preferences,
+    terminal: &'a crate::terminal_settings::State,
+    dark: bool,
+    page: Tab,
+) -> Element<'a, Message> {
     let header = row![
         text(fl!("settings-title"))
             .size(theme::TEXT_DISPLAY)
@@ -215,6 +234,9 @@ pub fn view(preferences: &Preferences, page: Tab) -> Element<'_, Message> {
     ];
     let content = match page {
         Tab::General => general(preferences),
+        Tab::Terminal => {
+            crate::terminal_settings::view(terminal, preferences, dark).map(Message::Terminal)
+        }
         Tab::ImportExport => import_export(),
         Tab::Features => features(preferences),
         Tab::About => about(),

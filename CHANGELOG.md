@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.55.0 - 2026-11-17
+
+- Settings → Terminal: text size, and colour themes imported from Alacritty, kitty or Ghostty files, with a preview before applying.
+
 ## 0.54.0 - 2026-11-17
 
 - File browser rows show permissions and modification time; a Details button hides them.

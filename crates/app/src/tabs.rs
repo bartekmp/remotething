@@ -206,6 +206,15 @@ impl State {
         }
     }
 
+    /// The terminal colours or text size changed: open terminals are drawn again.
+    pub fn terminal_look_changed(&mut self) {
+        for tab in &mut self.tabs {
+            if let Content::Session(session) = &mut tab.content {
+                session.redraw();
+            }
+        }
+    }
+
     /// The screen scaling changed; remote desktops follow.
     pub fn rescale_desktops(&mut self) {
         for tab in &mut self.tabs {

@@ -11,34 +11,89 @@ use crate::terminal::{Cell, Granularity, Paint, Screen};
 
 pub const FONT_REGULAR: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Regular.ttf");
 pub const FONT_BOLD: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Bold.ttf");
-const FONT: Font = Font::with_name("Noto Sans Mono");
+pub(crate) const FONT: Font = Font::with_name("Noto Sans Mono");
 
-const FONT_SIZE: f32 = 15.0;
-/// The bundled font is 0.6 em wide, so every character takes exactly this much.
-const CELL_WIDTH: f32 = 9.0;
-const CELL_HEIGHT: f32 = 20.0;
+/// The text size when the user has not chosen one.
+pub const DEFAULT_FONT_SIZE: u8 = 15;
+/// The smallest and largest text size to choose.
+pub const FONT_SIZES: std::ops::RangeInclusive<u8> = 10..=24;
 const PADDING: f32 = 8.0;
-const UNDERLINE_OFFSET: f32 = 17.0;
 /// Lines scrolled per notch of the mouse wheel.
 const WHEEL_LINES: f32 = 3.0;
 
-/// The colours of a terminal: defaults and the 16 a program can ask for by number.
-struct Palette {
-    foreground: Color,
-    background: Color,
-    /// Behind selected text.
-    selection: Color,
-    /// Behind the matches of a search, and behind the one the user is on.
-    found: Color,
-    found_current: Color,
-    ansi: [Color; 16],
+/// How big the characters are, and so how much room each takes.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Metrics {
+    font_size: f32,
+    /// The bundled font is 0.6 em wide, so every character takes exactly this much.
+    cell_width: f32,
+    cell_height: f32,
 }
 
-const fn rgb(hex: u32) -> Color {
+impl Metrics {
+    fn new(font_size: u8) -> Self {
+        let font_size = f32::from(font_size);
+        Self {
+            font_size,
+            cell_width: font_size * 0.6,
+            cell_height: (font_size * 4.0 / 3.0).round(),
+        }
+    }
+
+    /// How far below the top of a line an underline goes.
+    fn underline_offset(self) -> f32 {
+        (self.cell_height * 0.85).round()
+    }
+}
+
+/// What the user chose for terminals: colours and text size.
+#[derive(Debug, Clone, Copy)]
+struct Look {
+    /// `None` follows the light or dark theme of the app.
+    palette: Option<Palette>,
+    font_size: u8,
+}
+
+static LOOK: std::sync::RwLock<Look> = std::sync::RwLock::new(Look {
+    palette: None,
+    font_size: DEFAULT_FONT_SIZE,
+});
+
+/// Sets how terminals look. Drawings made before need clearing to show it.
+pub(crate) fn set_look(palette: Option<Palette>, font_size: u8) {
+    if let Ok(mut look) = LOOK.write() {
+        *look = Look {
+            palette,
+            font_size: font_size.clamp(*FONT_SIZES.start(), *FONT_SIZES.end()),
+        };
+    }
+}
+
+fn look() -> Look {
+    LOOK.read().map(|look| *look).unwrap_or(Look {
+        palette: None,
+        font_size: DEFAULT_FONT_SIZE,
+    })
+}
+
+/// The colours of a terminal: defaults and the 16 a program can ask for by number.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Palette {
+    pub(crate) foreground: Color,
+    pub(crate) background: Color,
+    /// Behind selected text.
+    pub(crate) selection: Color,
+    /// Behind the matches of a search, and behind the one the user is on.
+    pub(crate) found: Color,
+    pub(crate) found_current: Color,
+    pub(crate) ansi: [Color; 16],
+}
+
+pub(crate) const fn rgb(hex: u32) -> Color {
     Color::from_rgb8((hex >> 16) as u8, (hex >> 8) as u8, hex as u8)
 }
 
-const DARK: Palette = Palette {
+pub(crate) const DARK: Palette = Palette {
     foreground: rgb(0xD7DCE5),
     background: rgb(0x10141C),
     selection: rgb(0x2C4A7A),
@@ -64,7 +119,7 @@ const DARK: Palette = Palette {
     ],
 };
 
-const LIGHT: Palette = Palette {
+pub(crate) const LIGHT: Palette = Palette {
     foreground: rgb(0x1F2430),
     background: rgb(0xFFFFFF),
     selection: rgb(0xCFE0FF),
@@ -91,15 +146,19 @@ const LIGHT: Palette = Palette {
 };
 
 impl Palette {
-    fn of(theme: &Theme) -> &'static Palette {
-        if theme.extended_palette().is_dark {
-            &DARK
-        } else {
-            &LIGHT
-        }
+    /// The colours for a light or dark app theme.
+    pub(crate) fn default_for(dark: bool) -> Palette {
+        if dark { DARK } else { LIGHT }
     }
 
-    fn color(&self, paint: Paint) -> Color {
+    /// The colours chosen by the user, or else those that go with the app theme.
+    fn of(theme: &Theme) -> Palette {
+        look()
+            .palette
+            .unwrap_or_else(|| Palette::default_for(theme.extended_palette().is_dark))
+    }
+
+    pub(crate) fn color(&self, paint: Paint) -> Color {
         match paint {
             Paint::Foreground => self.foreground,
             Paint::Background => self.background,
@@ -110,9 +169,9 @@ impl Palette {
 }
 
 /// How many characters fit into a view of this size.
-pub fn size_for(area: Size) -> TerminalSize {
-    let columns = ((area.width - 2.0 * PADDING) / CELL_WIDTH).floor();
-    let lines = ((area.height - 2.0 * PADDING) / CELL_HEIGHT).floor();
+fn size_for(area: Size, metrics: Metrics) -> TerminalSize {
+    let columns = ((area.width - 2.0 * PADDING) / metrics.cell_width).floor();
+    let lines = ((area.height - 2.0 * PADDING) / metrics.cell_height).floor();
     TerminalSize {
         // A float-to-integer cast saturates, so absurd sizes stay in range.
         columns: columns.max(2.0) as u16,
@@ -152,6 +211,7 @@ pub fn view<'a, Message: 'a>(
         screen,
         cache,
         on_event,
+        metrics: Metrics::new(look().font_size),
     };
     let canvas = canvas::Canvas::new(program)
         .width(Length::Fill)
@@ -169,6 +229,7 @@ struct Program<'a, Message> {
     screen: &'a Screen,
     cache: &'a Cache,
     on_event: fn(Event) -> Message,
+    metrics: Metrics,
 }
 
 /// Whether the mouse button is held down from a press inside the view.
@@ -220,7 +281,7 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         if let iced::Event::Mouse(mouse_event) = event {
             match mouse_event {
                 mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
-                    let lines = wheel_lines(*delta);
+                    let lines = wheel_lines(*delta, self.metrics);
                     if lines != 0 {
                         return publish(Event::Scrolled(lines)).map(Action::and_capture);
                     }
@@ -228,7 +289,7 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     if let Some(position) = cursor.position_in(bounds) {
                         dragging.held = true;
-                        let (column, line) = cell_at(position);
+                        let (column, line) = cell_at(position, self.metrics);
                         let now = Instant::now();
                         let count = press_count(dragging.last_click, now, column, line);
                         let granularity = match count {
@@ -253,7 +314,7 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
                 mouse::Event::CursorMoved { .. } if dragging.held => {
                     // Outside the view the nearest character counts, so a drag can overshoot.
                     if let Some(position) = cursor.position_from(bounds.position()) {
-                        let (column, line) = cell_at(position);
+                        let (column, line) = cell_at(position, self.metrics);
                         return publish(Event::SelectionExtended { column, line });
                     }
                 }
@@ -268,7 +329,7 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
             }
         }
 
-        let fits = size_for(bounds.size());
+        let fits = size_for(bounds.size(), self.metrics);
         let has = (self.screen.columns(), self.screen.lines());
         if has == (usize::from(fits.columns), usize::from(fits.lines)) {
             return None;
@@ -284,41 +345,50 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
-        let palette = Palette::of(theme);
+        let palette = &Palette::of(theme);
+        let metrics = self.metrics;
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
-            let cell = Size::new(CELL_WIDTH, CELL_HEIGHT);
+            let cell = Size::new(metrics.cell_width, metrics.cell_height);
             let cells = self.screen.cells();
             for cell_drawn in &cells {
                 if cell_drawn.background != Paint::Background {
                     let color = palette.color(cell_drawn.background);
-                    frame.fill_rectangle(origin(cell_drawn.column, cell_drawn.line), cell, color);
+                    frame.fill_rectangle(
+                        origin(cell_drawn.column, cell_drawn.line, metrics),
+                        cell,
+                        color,
+                    );
                 }
             }
             for span in self.screen.selected_spans() {
-                let width = (span.end + 1 - span.start) as f32 * CELL_WIDTH;
-                let size = Size::new(width, CELL_HEIGHT);
-                frame.fill_rectangle(origin(span.start, span.line), size, palette.selection);
+                let width = (span.end + 1 - span.start) as f32 * metrics.cell_width;
+                let size = Size::new(width, metrics.cell_height);
+                frame.fill_rectangle(
+                    origin(span.start, span.line, metrics),
+                    size,
+                    palette.selection,
+                );
             }
             for found in self.screen.found_spans() {
                 let span = found.span;
-                let width = (span.end + 1 - span.start) as f32 * CELL_WIDTH;
+                let width = (span.end + 1 - span.start) as f32 * metrics.cell_width;
                 let color = if found.current {
                     palette.found_current
                 } else {
                     palette.found
                 };
-                let size = Size::new(width, CELL_HEIGHT);
-                frame.fill_rectangle(origin(span.start, span.line), size, color);
+                let size = Size::new(width, metrics.cell_height);
+                frame.fill_rectangle(origin(span.start, span.line, metrics), size, color);
             }
             for run in runs(&cells) {
-                draw_run(frame, palette, &run);
+                draw_run(frame, palette, &run, metrics);
             }
             if let Some((column, line)) = self.screen.cursor() {
                 let block = Color {
                     a: 0.5,
                     ..palette.foreground
                 };
-                frame.fill_rectangle(origin(column, line), cell, block);
+                frame.fill_rectangle(origin(column, line, metrics), cell, block);
             }
         });
         vec![geometry]
@@ -339,25 +409,29 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
 }
 
 /// Wheel movement as lines to scroll back: three per notch, or the distance a touchpad reports.
-fn wheel_lines(delta: mouse::ScrollDelta) -> i32 {
+fn wheel_lines(delta: mouse::ScrollDelta, metrics: Metrics) -> i32 {
     match delta {
         mouse::ScrollDelta::Lines { y, .. } => (y * WHEEL_LINES).round() as i32,
-        mouse::ScrollDelta::Pixels { y, .. } => (y / CELL_HEIGHT).round() as i32,
+        mouse::ScrollDelta::Pixels { y, .. } => (y / metrics.cell_height).round() as i32,
     }
 }
 
 /// The character under a position inside the view. Positions before the first
 /// character count as the first.
-fn cell_at(position: Point) -> (usize, usize) {
-    let column = ((position.x - PADDING) / CELL_WIDTH).floor().max(0.0);
-    let line = ((position.y - PADDING) / CELL_HEIGHT).floor().max(0.0);
+fn cell_at(position: Point, metrics: Metrics) -> (usize, usize) {
+    let column = ((position.x - PADDING) / metrics.cell_width)
+        .floor()
+        .max(0.0);
+    let line = ((position.y - PADDING) / metrics.cell_height)
+        .floor()
+        .max(0.0);
     (column as usize, line as usize)
 }
 
-fn origin(column: usize, line: usize) -> Point {
+fn origin(column: usize, line: usize, metrics: Metrics) -> Point {
     Point::new(
-        PADDING + column as f32 * CELL_WIDTH,
-        PADDING + line as f32 * CELL_HEIGHT,
+        PADDING + column as f32 * metrics.cell_width,
+        PADDING + line as f32 * metrics.cell_height,
     )
 }
 
@@ -404,9 +478,9 @@ fn runs(cells: &[Cell]) -> Vec<Run> {
     runs
 }
 
-fn draw_run(frame: &mut canvas::Frame, palette: &Palette, run: &Run) {
+fn draw_run(frame: &mut canvas::Frame, palette: &Palette, run: &Run, metrics: Metrics) {
     let color = palette.color(run.foreground);
-    let position = origin(run.column, run.line);
+    let position = origin(run.column, run.line, metrics);
     let weight = if run.bold {
         font::Weight::Bold
     } else {
@@ -416,14 +490,14 @@ fn draw_run(frame: &mut canvas::Frame, palette: &Palette, run: &Run) {
         content: run.text.clone(),
         position,
         color,
-        size: FONT_SIZE.into(),
-        line_height: iced::widget::text::LineHeight::Absolute(CELL_HEIGHT.into()),
+        size: metrics.font_size.into(),
+        line_height: iced::widget::text::LineHeight::Absolute(metrics.cell_height.into()),
         font: Font { weight, ..FONT },
         ..canvas::Text::default()
     });
     if run.underline {
-        let width = run.text.chars().count() as f32 * CELL_WIDTH;
-        let start = Point::new(position.x, position.y + UNDERLINE_OFFSET);
+        let width = run.text.chars().count() as f32 * metrics.cell_width;
+        let start = Point::new(position.x, position.y + metrics.underline_offset());
         frame.fill_rectangle(start, Size::new(width, 1.0), color);
     }
 }
@@ -431,6 +505,12 @@ fn draw_run(frame: &mut canvas::Frame, palette: &Palette, run: &Run) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const METRICS: Metrics = Metrics {
+        font_size: 15.0,
+        cell_width: 9.0,
+        cell_height: 20.0,
+    };
 
     fn cells(bytes: &[u8]) -> Vec<Cell> {
         let mut screen = Screen::new(40, 4);
@@ -471,14 +551,17 @@ mod tests {
 
     #[test]
     fn the_size_is_what_fits_inside_the_padding() {
-        let size = size_for(Size::new(2.0 * PADDING + 90.5, 2.0 * PADDING + 45.0));
+        let size = size_for(
+            Size::new(2.0 * PADDING + 90.5, 2.0 * PADDING + 45.0),
+            METRICS,
+        );
 
         assert_eq!((size.columns, size.lines), (10, 2));
     }
 
     #[test]
     fn a_tiny_view_still_has_a_usable_size() {
-        let size = size_for(Size::new(3.0, 3.0));
+        let size = size_for(Size::new(3.0, 3.0), METRICS);
 
         assert_eq!((size.columns, size.lines), (2, 1));
     }
@@ -488,16 +571,19 @@ mod tests {
         let up = mouse::ScrollDelta::Lines { x: 0.0, y: 1.0 };
         let down = mouse::ScrollDelta::Pixels { x: 0.0, y: -40.0 };
 
-        assert_eq!(wheel_lines(up), 3);
-        assert_eq!(wheel_lines(down), -2);
+        assert_eq!(wheel_lines(up, METRICS), 3);
+        assert_eq!(wheel_lines(down, METRICS), -2);
     }
 
     #[test]
     fn a_position_maps_to_the_character_under_it() {
-        let inside = Point::new(PADDING + 2.5 * CELL_WIDTH, PADDING + 1.2 * CELL_HEIGHT);
+        let inside = Point::new(
+            PADDING + 2.5 * METRICS.cell_width,
+            PADDING + 1.2 * METRICS.cell_height,
+        );
 
-        assert_eq!(cell_at(inside), (2, 1));
-        assert_eq!(cell_at(Point::new(-30.0, 1.0)), (0, 0));
+        assert_eq!(cell_at(inside, METRICS), (2, 1));
+        assert_eq!(cell_at(Point::new(-30.0, 1.0), METRICS), (0, 0));
     }
 
     #[test]
@@ -523,5 +609,28 @@ mod tests {
 
         let texts: Vec<&str> = runs.iter().map(|run| run.text.as_str()).collect();
         assert_eq!(texts, ["a", "→", "b"]);
+    }
+}
+
+#[cfg(test)]
+mod metrics_tests {
+    use super::*;
+
+    #[test]
+    fn the_default_size_keeps_the_cells_it_always_had() {
+        let metrics = Metrics::new(DEFAULT_FONT_SIZE);
+
+        assert_eq!((metrics.cell_width, metrics.cell_height), (9.0, 20.0));
+        assert_eq!(metrics.underline_offset(), 17.0);
+    }
+
+    #[test]
+    fn bigger_text_takes_more_room_and_fewer_characters_fit() {
+        let small = Metrics::new(12);
+        let big = Metrics::new(24);
+        let area = Size::new(800.0, 600.0);
+
+        assert!(big.cell_width > small.cell_width && big.cell_height > small.cell_height);
+        assert!(size_for(area, big).columns < size_for(area, small).columns);
     }
 }

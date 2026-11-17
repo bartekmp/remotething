@@ -84,6 +84,8 @@ pub struct State {
     pub(crate) menu: Option<menu::State>,
     /// The page of the settings screen that is showing.
     pub(crate) settings_page: settings::Tab,
+    /// The imported terminal themes and the preview on the Terminal page.
+    pub(crate) terminal_themes: crate::terminal_settings::State,
     /// A folder with content that waits for the user to confirm its removal.
     pub(crate) removal: Option<folder_removal::Question>,
     /// Where the pointer is, in window coordinates.
@@ -207,6 +209,10 @@ impl State {
                 KnownHosts::default()
             }
         };
+        let (terminal_themes, themes_problem) = crate::terminal_settings::State::load(&path);
+        if let Some(reason) = themes_problem {
+            error.get_or_insert(format!("{} {reason}", fl!("error-terminal-themes")));
+        }
         Self {
             path,
             store,
@@ -234,6 +240,7 @@ impl State {
             system_mode: Mode::None,
             menu: None,
             settings_page: settings::Tab::default(),
+            terminal_themes,
             removal: None,
             pointer: Point::ORIGIN,
             window: INITIAL_WINDOW,
@@ -251,6 +258,7 @@ impl State {
     pub fn with_preferences(mut self, preferences: Preferences) -> Self {
         self.preferences = preferences;
         features::apply(&self.preferences, &self.path);
+        self.apply_terminal_look();
         let unfolded = if self.preferences.tree_collapsed {
             0.0
         } else {
@@ -566,6 +574,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         }
         Message::Settings(message) => match settings::update(&mut state.preferences, message) {
             settings::Event::Changed => state.save_preferences(),
+            settings::Event::Terminal(message) => return state.terminal_message(message),
             settings::Event::Close => state.centre = Centre::Sessions,
             settings::Event::PageChanged(page) => state.settings_page = page,
             settings::Event::PickFolder(kind) => {

@@ -135,6 +135,13 @@ impl State {
         }
     }
 
+    /// The terminal is drawn again, with the colours and text size now in use.
+    pub(crate) fn redraw(&mut self) {
+        if let Stage::Connected(live) = &mut self.stage {
+            live.cache.clear();
+        }
+    }
+
     /// Whether the form of the asking stage wants a key passphrase rather than a password.
     pub(crate) fn asks_for_passphrase(&self) -> bool {
         matches!(self.method, Method::KeyFile { .. })

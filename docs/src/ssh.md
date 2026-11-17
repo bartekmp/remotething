@@ -55,6 +55,7 @@ If a trusted host later shows a different key, the tab warns you before anything
 ## The terminal
 
 - 16, 256 and true colours, bold and underline. The colours follow the app's light or dark theme.
+- **Settings → Terminal** sets the text size (10 to 24 pt) and the colour theme. Open terminals change at once. The font itself is the bundled Noto Sans Mono; other fonts are not supported yet.
 - The terminal resizes with the window, and the remote programs are told.
 - The mouse wheel, or **Shift+Page Up** and **Shift+Page Down**, looks back through up to 10,000 lines. Typing returns to the newest line.
 - Drag over text to select it. Double-click selects a word and triple-click a line; dragging after that grows the selection by words or lines. On Linux the selection is copied at once for middle-click paste; **Ctrl+Shift+C** copies it to the clipboard.
@@ -64,6 +65,13 @@ If a trusted host later shows a different key, the tab warns you before anything
 - Programs that ask for it (most shells and editors) are told that the text is a paste, so they do not run or indent it as if it was typed.
 - A closed session shows why it ended and a **Reconnect** button. Closing the tab closes the connection.
 - A keepalive is sent every 30 seconds so idle sessions are not dropped by firewalls.
+
+### Colour themes
+
+In **Settings → Terminal**, press **Import theme file…** and pick a theme of Alacritty (`.toml`), kitty (`.conf`) or Ghostty (a file with `palette = N=#rrggbb` lines). The theme is saved in `terminal-themes.toml` beside the settings and shows in the list. Click a theme to see it in the preview box, which draws a made-up `fastfetch` screen in its colours; **Use this theme** applies it, a ✓ marks the one in use, and **Delete** removes it. **Default** follows the app's light or dark theme.
+
+- A theme needs a foreground, a background and some of the 16 colours; the ones it leaves out come from the default palette.
+- Alacritty's older YAML format is not read; convert it to TOML first. Colours other than these (cursor, tabs and so on) are ignored.
 
 ## Connection details
 

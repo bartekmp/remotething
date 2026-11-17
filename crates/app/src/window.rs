@@ -43,14 +43,12 @@ pub fn view(state: &State) -> Element<'_, Message> {
         (_, Centre::Credentials) => {
             credentials::view(&state.credentials, &state.store).map(Message::Credentials)
         }
-        (_, Centre::Settings) => {
-            settings::view(&state.preferences, state.settings_page).map(Message::Settings)
-        }
+        (_, Centre::Settings) => settings_view(state),
         (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
         (_, Centre::Wsl) => wsl_import::view(&state.wsl).map(Message::Wsl),
         (_, Centre::Import) => match &state.import {
             Some(screen) => import_preview::view(screen).map(Message::Preview),
-            None => settings::view(&state.preferences, state.settings_page).map(Message::Settings),
+            None => settings_view(state),
         },
     };
     let tabs = container(centre)
@@ -242,4 +240,15 @@ fn icon_button<'a>(icon: Icon, on_press: Message) -> Element<'a, Message> {
         .style(look::entry(false))
         .on_press(on_press)
         .into()
+}
+
+fn settings_view(state: &State) -> Element<'_, Message> {
+    let dark = crate::app::theme(state).extended_palette().is_dark;
+    settings::view(
+        &state.preferences,
+        &state.terminal_themes,
+        dark,
+        state.settings_page,
+    )
+    .map(Message::Settings)
 }

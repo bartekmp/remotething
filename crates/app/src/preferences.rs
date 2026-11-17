@@ -20,6 +20,9 @@ pub struct Preferences {
     /// Whether panels slide and tabs light up as they land. On unless switched off.
     #[serde(default = "yes")]
     pub animations: bool,
+    /// How terminals look.
+    #[serde(default, skip_serializing_if = "TerminalLook::is_default")]
+    pub terminal: TerminalLook,
     /// The optional features, which are all off until switched on.
     #[serde(default, skip_serializing_if = "Features::is_empty")]
     pub features: Features,
@@ -36,10 +39,41 @@ impl Default for Preferences {
             tree_collapsed: false,
             tab_layout: TabLayout::default(),
             animations: true,
+            terminal: TerminalLook::default(),
             features: Features::default(),
             folders: Folders::default(),
         }
     }
+}
+
+/// The colours and text size of terminals.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalLook {
+    /// The name of an imported theme. `None` follows the light or dark theme of the app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
+    /// The text size in points.
+    #[serde(default = "default_font_size")]
+    pub font_size: u8,
+}
+
+impl Default for TerminalLook {
+    fn default() -> Self {
+        Self {
+            theme: None,
+            font_size: default_font_size(),
+        }
+    }
+}
+
+impl TerminalLook {
+    pub fn is_default(&self) -> bool {
+        *self == TerminalLook::default()
+    }
+}
+
+fn default_font_size() -> u8 {
+    crate::terminal_view::DEFAULT_FONT_SIZE
 }
 
 fn yes() -> bool {
@@ -155,6 +189,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_terminal_look_is_written_only_when_it_is_not_the_default() {
+        let mut preferences = Preferences::default();
+        assert!(
+            !toml::to_string_pretty(&preferences)
+                .unwrap()
+                .contains("terminal")
+        );
+
+        preferences.terminal.theme = Some("gruvbox".to_string());
+        preferences.terminal.font_size = 18;
+        let text = toml::to_string_pretty(&preferences).unwrap();
+
+        let loaded: Preferences = toml::from_str(&text).unwrap();
+        assert_eq!(loaded.terminal, preferences.terminal);
+    }
+
+    #[test]
     fn features_are_off_by_default_and_not_written_while_off() {
         let preferences = Preferences::default();
 
@@ -234,6 +285,10 @@ mod tests {
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
             animations: false,
+            terminal: TerminalLook {
+                theme: Some("gruvbox".to_string()),
+                font_size: 18,
+            },
             features: Features {
                 screenshots: true,
                 console_recording: true,
