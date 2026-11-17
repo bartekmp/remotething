@@ -20,6 +20,9 @@ pub struct Preferences {
     /// Whether panels slide and tabs light up as they land. On unless switched off.
     #[serde(default = "yes")]
     pub animations: bool,
+    /// How big the whole window is drawn, in percent. 100 is the normal size.
+    #[serde(default = "normal_scale", skip_serializing_if = "is_normal_scale")]
+    pub interface_scale: u16,
     /// How terminals look.
     #[serde(default, skip_serializing_if = "TerminalLook::is_default")]
     pub terminal: TerminalLook,
@@ -39,6 +42,7 @@ impl Default for Preferences {
             tree_collapsed: false,
             tab_layout: TabLayout::default(),
             animations: true,
+            interface_scale: normal_scale(),
             terminal: TerminalLook::default(),
             features: Features::default(),
             folders: Folders::default(),
@@ -78,6 +82,14 @@ impl TerminalLook {
 
 fn default_font_size() -> u8 {
     crate::terminal_view::DEFAULT_FONT_SIZE
+}
+
+fn normal_scale() -> u16 {
+    100
+}
+
+fn is_normal_scale(percent: &u16) -> bool {
+    *percent == 100
 }
 
 fn yes() -> bool {
@@ -290,6 +302,7 @@ mod tests {
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
             animations: false,
+            interface_scale: 150,
             terminal: TerminalLook {
                 theme: Some("gruvbox".to_string()),
                 font_size: 18,

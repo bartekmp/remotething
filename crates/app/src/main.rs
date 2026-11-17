@@ -175,6 +175,7 @@ fn main() -> Result<()> {
     iced::application(boot, app::update, window::view)
         .title(app::title)
         .theme(app::theme)
+        .scale_factor(app::scale_factor)
         .subscription(app::subscription)
         .window(window_settings())
         .settings(iced::Settings {

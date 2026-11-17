@@ -387,6 +387,7 @@ palette-new-tab = New tab
 palette-credentials = Credentials
 palette-settings = Settings
 settings-animations = Animate panels and tabs
+settings-interface-size = Interface size
 shortcuts-title = Keyboard shortcuts
 shortcuts-palette = Go to a connection or action
 shortcuts-new-tab = New tab

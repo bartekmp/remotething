@@ -14,8 +14,19 @@ pub(crate) fn set_scale(scale: f32) {
     }
 }
 
+/// How much bigger than normal the user chose to draw the window, in thousandths.
+static INTERFACE_MILLI: AtomicU32 = AtomicU32::new(1000);
+
+/// Sets the user's interface size, in percent. The window is drawn that much bigger, so
+/// a logical pixel takes that many more screen pixels.
+pub(crate) fn set_interface_percent(percent: u16) {
+    INTERFACE_MILLI.store(u32::from(percent) * 10, Ordering::Relaxed);
+}
+
+/// The screen pixels one logical pixel takes: the screen's own factor times the user's.
 pub(crate) fn scale() -> f32 {
-    SCALE_MILLI.load(Ordering::Relaxed) as f32 / 1000.0
+    let screen = SCALE_MILLI.load(Ordering::Relaxed) as f32 / 1000.0;
+    screen * INTERFACE_MILLI.load(Ordering::Relaxed) as f32 / 1000.0
 }
 
 /// The factor as the percentage RDP takes, kept to what the protocol allows.

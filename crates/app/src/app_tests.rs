@@ -834,3 +834,24 @@ fn zooming_the_terminal_changes_the_saved_size_within_the_limits() {
         *crate::terminal_view::FONT_SIZES.start()
     );
 }
+
+#[test]
+fn the_interface_size_is_saved_and_scales_the_window() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+    assert_eq!(scale_factor(&state), 1.0);
+
+    // Picking an option is a plain preference change; it is not sent through `update`,
+    // which would change the screen factor that other tests share.
+    let mut preferences = state.preferences.clone();
+    let event = settings::update(
+        &mut preferences,
+        settings::Message::InterfaceScalePicked(settings::ScaleOption::of(150)),
+    );
+    assert!(matches!(event, settings::Event::Changed));
+    state.preferences = preferences;
+    assert_eq!(scale_factor(&state), 1.5);
+
+    state.preferences.interface_scale = 0;
+    assert_eq!(scale_factor(&state), 0.5);
+}

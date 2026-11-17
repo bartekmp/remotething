@@ -260,6 +260,7 @@ impl State {
         self.preferences = preferences;
         features::apply(&self.preferences, &self.path);
         self.apply_terminal_look();
+        display::set_interface_percent(self.preferences.interface_scale);
         let unfolded = if self.preferences.tree_collapsed {
             0.0
         } else {
@@ -578,7 +579,11 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::Settings(message) => match settings::update(&mut state.preferences, message) {
-            settings::Event::Changed => state.save_preferences(),
+            settings::Event::Changed => {
+                state.save_preferences();
+                display::set_interface_percent(state.preferences.interface_scale);
+                state.tabs.rescale_desktops();
+            }
             settings::Event::Terminal(message) => return state.terminal_message(message),
             settings::Event::Close => state.centre = Centre::Sessions,
             settings::Event::PageChanged(page) => state.settings_page = page,
@@ -659,6 +664,11 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
 
 pub fn title(_state: &State) -> String {
     fl!("app-title")
+}
+
+/// How much bigger than normal the window is drawn.
+pub fn scale_factor(state: &State) -> f32 {
+    f32::from(state.preferences.interface_scale.clamp(50, 300)) / 100.0
 }
 
 /// The chosen theme, or the one matching the desktop for "follow the system".

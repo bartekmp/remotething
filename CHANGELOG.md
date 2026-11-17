@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.61.0 - 2026-11-17
+
+- Settings → General: Interface size, to draw the whole window up to twice as big.
+
 ## 0.60.1 - 2026-11-17
 
 - Ctrl+mouse wheel changes the terminal text size by one step per notch on X11, not two.

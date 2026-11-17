@@ -36,6 +36,31 @@ impl fmt::Display for TabLayoutOption {
     }
 }
 
+const INTERFACE_SCALES: [ScaleOption; 5] = [
+    ScaleOption(100),
+    ScaleOption(125),
+    ScaleOption(150),
+    ScaleOption(175),
+    ScaleOption(200),
+];
+
+/// A size of the whole window, in percent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScaleOption(u16);
+
+impl ScaleOption {
+    #[cfg(test)]
+    pub(crate) fn of(percent: u16) -> Self {
+        Self(percent)
+    }
+}
+
+impl fmt::Display for ScaleOption {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}%", self.0)
+    }
+}
+
 /// The pages of the settings screen.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Tab {
@@ -80,6 +105,7 @@ pub enum Message {
     Terminal(crate::terminal_settings::Message),
     TabLayoutPicked(TabLayoutOption),
     AnimationsToggled(bool),
+    InterfaceScalePicked(ScaleOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
     ScreenshotsToggled(bool),
@@ -175,6 +201,10 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::AnimationsToggled(on) => {
             preferences.animations = on;
+            Event::Changed
+        }
+        Message::InterfaceScalePicked(option) => {
+            preferences.interface_scale = option.0;
             Event::Changed
         }
         Message::ThemePicked(option) => {
@@ -297,11 +327,23 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
     ]
     .spacing(2);
 
+    let interface_size = column![
+        text(fl!("settings-interface-size"))
+            .size(theme::TEXT_SMALL)
+            .style(theme::secondary_text),
+        theme::pick(
+            INTERFACE_SCALES,
+            Some(ScaleOption(preferences.interface_scale)),
+            Message::InterfaceScalePicked
+        ),
+    ]
+    .spacing(2);
+
     let animations = checkbox(preferences.animations)
         .label(fl!("settings-animations"))
         .on_toggle(Message::AnimationsToggled);
 
-    column![theme, language, tabs, animations]
+    column![theme, language, interface_size, tabs, animations]
         .spacing(16)
         .into()
 }

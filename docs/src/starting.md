@@ -119,6 +119,7 @@ Press **Settings** at the bottom of the connection tree; with the tree folded it
 | Theme | Follow the system, Light, Dark | Follow the system |
 | Language | Follow the system, or a shipped language | Follow the system |
 | When tabs do not fit on one line | Keep one line and list the rest under a button; use more lines | Keep one line |
+| Interface size | 100% to 200%: draws the whole window bigger, for small text or high-resolution screens | 100% |
 | Animate panels and tabs | On or off | On |
 | Terminal text size, colour theme | 10 to 24 pt; imported themes, see [SSH](ssh.md) | 15 pt, follows the theme |
 
