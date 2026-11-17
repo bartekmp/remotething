@@ -42,12 +42,23 @@ pub fn view(state: &State) -> Element<'_, Message> {
             let body: Element<'_, Message> = match &live.files {
                 // The pane takes its own space beside the terminal; it does not cover it.
                 Some(pane) => {
+                    let zoomed = pane.zoomed;
+                    let width = if zoomed {
+                        Length::Fill
+                    } else {
+                        Length::Fixed(files_pane::WIDTH)
+                    };
                     let pane = container(files_view::view(pane).map(Message::Files))
-                        .width(Length::Fixed(files_pane::WIDTH))
+                        .width(width)
                         .height(Length::Fill)
                         .padding(theme::GAP)
                         .style(theme::chip);
-                    row![terminal, pane].spacing(theme::GAP).into()
+                    if zoomed {
+                        // The terminal stays alive behind it; only its view is left out.
+                        pane.into()
+                    } else {
+                        row![terminal, pane].spacing(theme::GAP).into()
+                    }
                 }
                 None if live.connection.is_some() => {
                     let browse = button(text(fl!("files-browse")).size(theme::TEXT_SMALL))

@@ -173,6 +173,8 @@ paste-no = Cancel
 
 files-browse = Browse files
 files-title = Files
+files-zoom = Zoom
+files-unzoom = Unzoom
 files-up = Up
 files-refresh = Refresh
 files-upload = Upload

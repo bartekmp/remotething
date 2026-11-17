@@ -58,6 +58,8 @@ pub struct State {
     pub(crate) menu: Option<Menu>,
     /// Whether the pane has a close button: not when it is the whole tab.
     pub(crate) closable: bool,
+    /// True when the pane fills the whole tab instead of sitting beside the terminal.
+    pub(crate) zoomed: bool,
     /// Whether rows show permissions and modification time.
     pub(crate) details: bool,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
@@ -141,6 +143,8 @@ pub enum Message {
     /// "Clear" on the list of transfers.
     ClearPressed,
     ClosePressed,
+    /// The "Zoom" button: fill the whole tab with the pane, or go back beside the terminal.
+    ZoomToggled,
     /// The "This computer" button: show the local pane beside this one, or hide it.
     LocalToggled,
     /// The "Details" button: show or hide permissions and modification time.
@@ -206,6 +210,7 @@ impl State {
             preview: None,
             menu: None,
             closable: true,
+            zoomed: false,
             details: true,
             pending_replace: None,
             status: None,
@@ -426,6 +431,12 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             Task::none()
         }
         Message::ClosePressed => return (Task::none(), Some(Event::Close)),
+        Message::ZoomToggled => {
+            // Room for the columns comes with the zoom; a narrow pane has none to spare.
+            state.zoomed = !state.zoomed;
+            state.details = state.zoomed;
+            Task::none()
+        }
         Message::DetailsToggled => {
             state.details = !state.details;
             Task::none()

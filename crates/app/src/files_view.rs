@@ -72,6 +72,16 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
     };
     let mut header = row![title].align_y(Vertical::Center);
     if state.closable {
+        let zoom = if state.zoomed {
+            fl!("files-unzoom")
+        } else {
+            fl!("files-zoom")
+        };
+        header = header.push(
+            button(text(zoom).size(theme::TEXT_SMALL))
+                .style(theme::pill)
+                .on_press(Message::ZoomToggled),
+        );
         header = header.push(
             button(icons::view(icons::CLOSE, theme::TEXT_BODY))
                 .padding(6)

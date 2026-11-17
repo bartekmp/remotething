@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.62.0 - 2026-11-17
+
+- The file pane beside a terminal shows only names and sizes, and has a Zoom button that fills the tab and shows permissions and dates.
+
 ## 0.61.2 - 2026-11-17
 
 ## 0.61.1 - 2026-11-17

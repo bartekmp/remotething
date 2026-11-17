@@ -418,7 +418,9 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             let Some(connection) = live.connection.clone() else {
                 return Task::none();
             };
-            let (pane, task) = files_pane::State::open(connection);
+            let (mut pane, task) = files_pane::State::open(connection);
+            // Beside the terminal the pane is narrow: names first, details when zoomed.
+            pane.details = false;
             live.files = Some(pane);
             task.map(Message::Files)
         }

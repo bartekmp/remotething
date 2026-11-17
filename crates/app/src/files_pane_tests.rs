@@ -464,3 +464,15 @@ fn details_are_shown_at_first_and_the_button_hides_and_shows_them() {
     let _ = update(&mut state, Message::DetailsToggled);
     assert!(state.details);
 }
+
+#[test]
+fn zooming_shows_the_details_and_unzooming_takes_them_away() {
+    let mut state = loaded();
+    state.details = false;
+
+    let _ = update(&mut state, Message::ZoomToggled);
+    assert!(state.zoomed && state.details);
+
+    let _ = update(&mut state, Message::ZoomToggled);
+    assert!(!state.zoomed && !state.details);
+}
