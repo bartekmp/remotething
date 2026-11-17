@@ -80,9 +80,6 @@ pub fn view(state: &State) -> Element<'_, Message> {
     if state.properties_open || state.properties_slide.is_running(state.now) {
         layers = layers.push(properties_panel(state, has_message));
     }
-    if state.size_shown {
-        layers = layers.push(size_badge(state));
-    }
     if let Some(label) = carried_label(state) {
         layers = layers.push(label);
     }
@@ -168,31 +165,6 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
         column![header, content, settings].spacing(look::GAP),
         TREE_WIDTH,
     )
-}
-
-/// The size of the window in screen pixels, and of the terminal in front in characters,
-/// in the top right corner while the window is being resized.
-fn size_badge(state: &State) -> Element<'_, Message> {
-    let scale = crate::display::scale();
-    let pixels = format!(
-        "{} × {}",
-        (state.window.width * scale).round() as u32,
-        (state.window.height * scale).round() as u32
-    );
-    let mut lines = column![text(pixels).size(look::TEXT_TITLE)].align_x(Horizontal::Right);
-    if let Some((columns, rows)) = state.tabs.front_terminal_size() {
-        lines = lines.push(
-            text(format!("{columns} × {rows}"))
-                .size(look::TEXT_BODY)
-                .style(look::secondary_text),
-        );
-    }
-    let badge = container(lines).padding(look::GAP).style(look::size_badge);
-    // Clicks go through it: it only informs.
-    container(badge)
-        .align_right(Length::Fill)
-        .padding(look::GAP * 2.0)
-        .into()
 }
 
 /// The properties of the selected item, floating over the right of the centre panel.

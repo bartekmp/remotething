@@ -100,6 +100,11 @@ fn view_sized<'a>(
         (Some(tab), None) => view_content(tab, store, recent),
         _ => space().into(),
     };
+    // Over the remote view itself, so it is seen where the eyes are while resizing.
+    let body = match state.size_badge {
+        Some(pixels) => stack![body, size_badge(pixels, state.front_terminal_size())].into(),
+        None => body,
+    };
     let page = column![bar, body]
         .spacing(12)
         .width(Length::Fill)
@@ -416,4 +421,38 @@ fn close_question(title: &str) -> Element<'_, Message> {
         .padding(theme::PANEL_PADDING)
         .style(theme::floating);
     opaque(container(dialog).center(Length::Fill))
+}
+
+/// Height of the row with "Browse files" above a terminal, and the gap under it.
+const SESSION_TOOLBAR: f32 = 32.0;
+
+/// The size of the window in screen pixels, and of the terminal in front in characters.
+fn size_badge<'a>(pixels: (u32, u32), terminal: Option<(usize, usize)>) -> Element<'a, Message> {
+    let mut lines = column![text(format!("{} × {}", pixels.0, pixels.1)).size(theme::TEXT_TITLE)]
+        .align_x(iced::alignment::Horizontal::Right);
+    if let Some((columns, rows)) = terminal {
+        lines = lines.push(
+            text(format!("{columns} × {rows}"))
+                .size(theme::TEXT_BODY)
+                .style(theme::secondary_text),
+        );
+    }
+    let badge = container(lines)
+        .padding(theme::GAP)
+        .style(theme::size_badge);
+    // A terminal has a row of buttons above it; the box sits below that, on the screen.
+    let top = if terminal.is_some() {
+        SESSION_TOOLBAR + theme::GAP
+    } else {
+        theme::GAP
+    };
+    // Clicks go through it: it only informs.
+    container(badge)
+        .align_right(Length::Fill)
+        .padding(iced::Padding {
+            top,
+            right: theme::GAP,
+            ..iced::Padding::ZERO
+        })
+        .into()
 }

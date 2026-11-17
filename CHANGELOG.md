@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.65.1 - 2026-11-17
+
+- The size shown while resizing sits in the top right corner of the remote view itself, below its buttons.
+
 ## 0.65.0 - 2026-11-17
 
 - Resizing the window shows its size in the top right corner, and the columns × lines of a terminal in front.

@@ -41,6 +41,8 @@ pub struct State {
     pub(crate) split: Option<u64>,
     /// Whether the panes of a split are stacked, one above the other, instead of side by side.
     pub(crate) split_stacked: bool,
+    /// The window size to show over the tab while the window is being resized.
+    pub(crate) size_badge: Option<(u32, u32)>,
     /// How much of the split the first pane (left, or top) takes, from 0 to 1.
     pub(crate) split_share: Option<f32>,
     /// Whether the divider is being dragged.
