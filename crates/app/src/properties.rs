@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use iced::widget::{button, column, row, scrollable, text};
+use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
 use remotething_core::{
     Credential, CredentialKind, Forward, Protocol, Quality, Settings, Store, format_forwards,
@@ -16,6 +16,9 @@ use crate::icons;
 use crate::quality_choice::{self, QualityChoice};
 use crate::theme;
 use crate::tree::{Selection, protocol_label};
+
+/// Space kept free beside the fields for the scrollbar of the panel.
+const SCROLLBAR_ROOM: f32 = 14.0;
 
 const PROTOCOLS: [ProtocolChoice; 8] = [
     ProtocolChoice(Protocol::Ssh),
@@ -399,7 +402,14 @@ pub fn view<'a>(
 
     // The fields scroll; the buttons stay in reach below them.
     column![
-        scrollable(fields.width(Length::Fill)).height(Length::Fill),
+        // Room on the right, so the scrollbar does not sit on the fields.
+        scrollable(
+            container(fields.width(Length::Fill)).padding(iced::Padding {
+                right: SCROLLBAR_ROOM,
+                ..iced::Padding::ZERO
+            })
+        )
+        .height(Length::Fill),
         buttons
     ]
     .spacing(theme::GAP)

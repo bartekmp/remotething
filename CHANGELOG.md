@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.64.1 - 2026-11-17
+
+- The properties panel is a little wider and keeps its fields clear of the scrollbar.
+
 ## 0.64.0 - 2026-11-17
 
 - Split view: a new tab takes the place of the pane that has the keyboard.

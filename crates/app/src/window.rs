@@ -25,7 +25,7 @@ use crate::wsl_import;
 /// The room the message bar takes above the panels: one line of text and its padding.
 const BANNER_HEIGHT: f32 = 44.0;
 const TREE_WIDTH: f32 = 280.0;
-const PROPERTIES_WIDTH: f32 = 320.0;
+const PROPERTIES_WIDTH: f32 = 360.0;
 const COLLAPSE_ICON_SIZE: f32 = 18.0;
 /// How far the dragged row's label trails the pointer, so it is never under it.
 const CARRIED_OFFSET: f32 = 14.0;
