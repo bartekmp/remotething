@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.65.0 - 2026-11-17
+
+- Resizing the window shows its size in the top right corner, and the columns × lines of a terminal in front.
+
 ## 0.64.1 - 2026-11-17
 
 - The properties panel is a little wider and keeps its fields clear of the scrollbar.

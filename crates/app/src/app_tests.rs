@@ -855,3 +855,25 @@ fn the_interface_size_is_saved_and_scales_the_window() {
     state.preferences.interface_scale = 0;
     assert_eq!(scale_factor(&state), 0.5);
 }
+
+#[test]
+fn the_window_size_shows_while_resizing_and_goes_when_the_resizing_stops() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+    assert!(!state.size_shown);
+
+    // The same size again is not a resize.
+    let same = state.window;
+    let _ = update(&mut state, Message::WindowResized(same));
+    assert!(!state.size_shown);
+
+    let _ = update(&mut state, Message::WindowResized(Size::new(900.0, 700.0)));
+    let _ = update(&mut state, Message::WindowResized(Size::new(910.0, 700.0)));
+    assert!(state.size_shown);
+
+    // The timer of the first resize is out of date: the second one is still going.
+    let _ = update(&mut state, Message::ResizeSettled(1));
+    assert!(state.size_shown);
+    let _ = update(&mut state, Message::ResizeSettled(2));
+    assert!(!state.size_shown);
+}

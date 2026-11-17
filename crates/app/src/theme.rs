@@ -165,6 +165,27 @@ pub fn floating(theme: &Theme) -> container::Style {
     }
 }
 
+/// The size shown while the window is resized: see-through, so what is behind shows.
+pub fn size_badge(theme: &Theme) -> container::Style {
+    let tokens = tokens(theme);
+    container::Style {
+        text_color: Some(tokens.text),
+        background: Some(
+            Color {
+                a: 0.8,
+                ..tokens.panel
+            }
+            .into(),
+        ),
+        border: Border {
+            color: tokens.panel_border,
+            width: 1.0,
+            radius: RADIUS_CONTROL.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
 /// A tab in the bar: tinted when it is the one in front, quiet otherwise.
 pub fn tab(is_active: bool) -> impl Fn(&Theme) -> container::Style {
     move |theme| {

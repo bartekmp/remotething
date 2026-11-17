@@ -99,6 +99,14 @@ impl State {
         matches!(self.stage, Stage::Connected(_) | Stage::Browsing(_))
     }
 
+    /// The columns and lines of the terminal, when a shell is running.
+    pub(crate) fn terminal_size(&self) -> Option<(usize, usize)> {
+        match &self.stage {
+            Stage::Connected(live) => Some((live.screen.columns(), live.screen.lines())),
+            _ => None,
+        }
+    }
+
     /// Whether the file pane is open, or is the whole tab.
     pub(crate) fn has_files_open(&self) -> bool {
         match &self.stage {

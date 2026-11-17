@@ -179,6 +179,14 @@ impl State {
         connection.name = name.to_string();
     }
 
+    /// The columns and lines of the terminal in front, if the tab in front is one.
+    pub fn front_terminal_size(&self) -> Option<(usize, usize)> {
+        match &self.tabs.get(self.active)?.content {
+            Content::Session(session) => session.terminal_size(),
+            _ => None,
+        }
+    }
+
     /// Whether the tab in front is a live terminal, which gets Ctrl+W for itself.
     pub fn front_is_terminal(&self) -> bool {
         self.tabs.get(self.active).is_some_and(Tab::is_live)

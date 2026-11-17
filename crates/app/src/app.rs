@@ -92,6 +92,10 @@ pub struct State {
     /// Where the pointer is, in window coordinates.
     pub(crate) pointer: Point,
     pub(crate) window: Size,
+    /// Whether the size of the window is shown, while it is being resized.
+    pub(crate) size_shown: bool,
+    /// Counts the resizes, so only the timer of the latest one hides the size.
+    resize_count: u64,
 }
 
 /// An unlocked secret store on its way from the worker thread to the window.
@@ -178,6 +182,8 @@ pub enum Message {
     /// The local clipboard picture, if it holds one and no text.
     ClipboardPictureRead(Option<remotething_rdp::Picture>),
     WindowResized(Size),
+    /// The window has not changed size for a moment: the number of the resize it follows.
+    ResizeSettled(u64),
     /// The window's scale factor, when it opens or moves to another screen.
     ScaleChanged(f32),
     /// The file chosen for an export, or `None` when the dialog was cancelled.
@@ -245,6 +251,8 @@ impl State {
             removal: None,
             pointer: Point::ORIGIN,
             window: INITIAL_WINDOW,
+            size_shown: false,
+            resize_count: 0,
         }
     }
 
@@ -427,7 +435,24 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 state.tabs.desktop_clipboard_picture(picture);
             }
         }
-        Message::WindowResized(size) => state.window = size,
+        Message::WindowResized(size) => {
+            if size == state.window {
+                return Task::none();
+            }
+            state.window = size;
+            state.size_shown = true;
+            state.resize_count += 1;
+            let count = state.resize_count;
+            return Task::perform(
+                async { tokio::time::sleep(SIZE_SHOWN_FOR).await },
+                move |()| Message::ResizeSettled(count),
+            );
+        }
+        Message::ResizeSettled(count) => {
+            if count == state.resize_count {
+                state.size_shown = false;
+            }
+        }
         Message::FileDropped(path) => return input::on_file_dropped(state, path),
         Message::ScaleChanged(scale) => {
             display::set_scale(scale);
@@ -665,6 +690,9 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
 pub fn title(_state: &State) -> String {
     fl!("app-title")
 }
+
+/// How long the size of the window stays on screen after the last resize.
+const SIZE_SHOWN_FOR: std::time::Duration = std::time::Duration::from_millis(900);
 
 /// How much bigger than normal the window is drawn.
 pub fn scale_factor(state: &State) -> f32 {
