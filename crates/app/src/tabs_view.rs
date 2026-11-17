@@ -123,7 +123,12 @@ fn view_sized<'a>(
         } else {
             SplitItem::Nothing
         };
-        layers = layers.push(tab_menu(&state.tabs[index], position, split));
+        layers = layers.push(tab_menu(
+            &state.tabs[index],
+            position,
+            split,
+            state.split_stacked,
+        ));
     }
     if let Some(tab) = state.confirming_close.and_then(|id| state.index_of(id)) {
         layers = layers.push(close_question(&state.tabs[tab].title));
@@ -212,8 +217,9 @@ fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Eleme
     }
 }
 
-/// Two tabs side by side. Each keeps its place, left or right, as in the bar; the one that
-/// has the keyboard has a frame, and the other takes the keyboard when it is clicked.
+/// Two tabs side by side, or stacked. Each keeps its place, first or second, as in the bar;
+/// the one that has the keyboard has a frame, and the other takes the keyboard when it is
+/// clicked. The divider between them can be dragged.
 fn split_body<'a>(
     state: &'a State,
     front: &'a Tab,
@@ -221,28 +227,97 @@ fn split_body<'a>(
     store: &'a Store,
     recent: &'a Recent,
 ) -> Element<'a, Message> {
-    let pane = |tab: &'a Tab, has_keyboard: bool| -> Element<'a, Message> {
+    responsive(move |size| split_sized(state, front, beside, store, recent, size)).into()
+}
+
+/// Width of the divider, which is also the gap between the panes.
+const DIVIDER: f32 = 8.0;
+
+fn split_sized<'a>(
+    state: &'a State,
+    front: &'a Tab,
+    beside: &'a Tab,
+    store: &'a Store,
+    recent: &'a Recent,
+    size: iced::Size,
+) -> Element<'a, Message> {
+    let pane = |tab: &'a Tab, has_keyboard: bool, portion: u16| -> Element<'a, Message> {
         let framed = container(view_content(tab, store, recent))
             .padding(3)
             .width(Length::Fill)
             .height(Length::Fill)
             .style(theme::pane_frame(has_keyboard));
-        if has_keyboard {
-            return framed.into();
+        let pane: Element<'a, Message> = if has_keyboard {
+            framed.into()
+        } else {
+            // A cover takes the first click, so it does not also press something in the pane.
+            let cover = mouse_area(space().width(Length::Fill).height(Length::Fill))
+                .on_press(Message::PaneFocused(tab.id));
+            stack![framed, opaque(cover)].into()
+        };
+        let sized = container(pane);
+        if state.split_stacked {
+            sized
+                .width(Length::Fill)
+                .height(Length::FillPortion(portion))
+        } else {
+            sized
+                .height(Length::Fill)
+                .width(Length::FillPortion(portion))
         }
-        // A cover takes the first click, so it does not also press something in the pane.
-        let cover = mouse_area(space().width(Length::Fill).height(Length::Fill))
-            .on_press(Message::PaneFocused(tab.id));
-        stack![framed, opaque(cover)].into()
+        .into()
     };
-    let front_is_left = state.active < state.split_index().unwrap_or(usize::MAX);
-    let (front, beside) = (pane(front, true), pane(beside, false));
-    let (left, right) = if front_is_left {
-        (front, beside)
+    let share = state.share();
+    let first_portion = (share * 1000.0).round() as u16;
+    let second_portion = 1000 - first_portion;
+    let front_is_first = state.active < state.split_index().unwrap_or(usize::MAX);
+    let (first, second) = if front_is_first {
+        (
+            pane(front, true, first_portion),
+            pane(beside, false, second_portion),
+        )
     } else {
-        (beside, front)
+        (
+            pane(beside, false, first_portion),
+            pane(front, true, second_portion),
+        )
     };
-    row![left, right].spacing(theme::GAP / 2.0).into()
+
+    let (divider_shape, cursor) = if state.split_stacked {
+        (
+            space().width(Length::Fill).height(Length::Fixed(DIVIDER)),
+            iced::mouse::Interaction::ResizingVertically,
+        )
+    } else {
+        (
+            space().width(Length::Fixed(DIVIDER)).height(Length::Fill),
+            iced::mouse::Interaction::ResizingHorizontally,
+        )
+    };
+    let divider = mouse_area(divider_shape)
+        .on_press(Message::DividerPressed)
+        .interaction(cursor);
+    let panes: Element<'a, Message> = if state.split_stacked {
+        column![first, divider, second].into()
+    } else {
+        row![first, divider, second].into()
+    };
+    if !state.resizing {
+        return panes;
+    }
+    // While dragging, a cover over everything reports where the pointer is, in this box.
+    let stacked = state.split_stacked;
+    let cover = mouse_area(space().width(Length::Fill).height(Length::Fill))
+        .on_move(move |point| {
+            let share = if stacked {
+                point.y / size.height.max(1.0)
+            } else {
+                point.x / size.width.max(1.0)
+            };
+            Message::DividerMoved(share)
+        })
+        .interaction(cursor);
+    stack![panes, opaque(cover)].into()
 }
 
 /// The tabs that do not fit on the line, as a list under the right end of the bar.
@@ -276,7 +351,7 @@ enum SplitItem {
 }
 
 /// The right-click menu of a tab, under the tab, with a catcher for clicks outside it.
-fn tab_menu(tab: &Tab, position: Point, split: SplitItem) -> Element<'_, Message> {
+fn tab_menu(tab: &Tab, position: Point, split: SplitItem, stacked: bool) -> Element<'_, Message> {
     let item = |label: String, message: Message| {
         button(text(label))
             .width(Length::Fill)
@@ -293,7 +368,16 @@ fn tab_menu(tab: &Tab, position: Point, split: SplitItem) -> Element<'_, Message
             items = items.push(item(fl!("tabs-menu-split"), Message::MenuSplitPressed));
         }
         SplitItem::Unsplit => {
-            items = items.push(item(fl!("tabs-menu-unsplit"), Message::MenuUnsplitPressed));
+            items = items
+                .push(item(fl!("tabs-menu-unsplit"), Message::MenuUnsplitPressed))
+                .push(item(
+                    if stacked {
+                        fl!("tabs-menu-side-by-side")
+                    } else {
+                        fl!("tabs-menu-stack")
+                    },
+                    Message::MenuRotatePressed,
+                ));
         }
         SplitItem::Nothing => {}
     }

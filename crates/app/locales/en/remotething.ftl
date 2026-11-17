@@ -416,3 +416,5 @@ tabs-menu-split = Show beside the front tab
 tabs-menu-unsplit = Back to one tab
 shortcuts-split = Split the view, or go back to one tab
 shortcuts-other-pane = Keyboard to the other pane
+tabs-menu-stack = Stack the panes
+tabs-menu-side-by-side = Put the panes side by side

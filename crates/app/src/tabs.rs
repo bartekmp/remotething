@@ -39,7 +39,16 @@ pub struct State {
     pub(crate) save_request: Option<(u64, QuickTarget)>,
     /// The tab shown beside the one in front, when the view is split. It is never the one in front.
     pub(crate) split: Option<u64>,
+    /// Whether the panes of a split are stacked, one above the other, instead of side by side.
+    pub(crate) split_stacked: bool,
+    /// How much of the split the first pane (left, or top) takes, from 0 to 1.
+    pub(crate) split_share: Option<f32>,
+    /// Whether the divider is being dragged.
+    pub(crate) resizing: bool,
 }
+
+/// The smallest and largest share of a split that a pane can have.
+const SHARE_LIMITS: (f32, f32) = (0.2, 0.8);
 
 pub(crate) struct Tab {
     pub(crate) id: u64,
@@ -83,6 +92,12 @@ pub enum Message {
     MenuSplitPressed,
     /// "Back to one tab" in a tab's menu.
     MenuUnsplitPressed,
+    /// "Stack the panes" or "Put the panes side by side" in a tab's menu.
+    MenuRotatePressed,
+    /// The mouse went down on the divider between the panes.
+    DividerPressed,
+    /// While the divider is dragged: the pointer is at this share of the split.
+    DividerMoved(f32),
     /// A click on the pane that does not have the keyboard: it gets it.
     PaneFocused(u64),
     Launcher(u64, launcher::Message),
@@ -331,6 +346,11 @@ impl State {
         self.active = index;
     }
 
+    /// How much of the split the first pane takes.
+    pub(crate) fn share(&self) -> f32 {
+        self.split_share.unwrap_or(0.5)
+    }
+
     /// The index of the tab shown beside the front one.
     pub(crate) fn split_index(&self) -> Option<usize> {
         self.split.and_then(|id| self.index_of(id))
@@ -345,6 +365,7 @@ impl State {
     /// the front one; with only one tab open, a new tab does.
     pub fn toggle_split(&mut self) -> Task<Message> {
         if self.split.take().is_some() {
+            self.resizing = false;
             return Task::none();
         }
         if self.tabs.len() >= 2 {
@@ -413,6 +434,7 @@ impl State {
     ///
     /// With `animate`, the tab that moved glows for a moment so the eye finds it.
     pub fn release(&mut self, animate: bool) {
+        self.resizing = false;
         let (Some(id), Some(target)) = (self.dragged.take(), self.hovered) else {
             return;
         };
@@ -654,6 +676,17 @@ pub fn update(
         Message::MenuUnsplitPressed => {
             state.menu = None;
             state.split = None;
+            state.resizing = false;
+        }
+        Message::MenuRotatePressed => {
+            state.menu = None;
+            state.split_stacked = !state.split_stacked;
+        }
+        Message::DividerPressed => state.resizing = state.split.is_some(),
+        Message::DividerMoved(share) => {
+            if state.resizing && share.is_finite() {
+                state.split_share = Some(share.clamp(SHARE_LIMITS.0, SHARE_LIMITS.1));
+            }
         }
         Message::PaneFocused(id) => state.activate_id(id),
         Message::Launcher(id, message) => {

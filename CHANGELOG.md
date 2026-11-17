@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.57.0 - 2026-11-17
+
+- Split view: drag the divider to resize the panes, and stack them one above the other from a tab's menu.
+
 ## 0.56.0 - 2026-11-17
 
 - Split view: two tabs side by side (Ctrl+Shift+S, or a tab's menu), Ctrl+Shift+O switches the keyboard between them.

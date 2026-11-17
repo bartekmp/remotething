@@ -568,3 +568,61 @@ fn the_other_pane_key_gives_the_keyboard_across() {
 
     assert_eq!((fixture.active(), beside(&fixture)), ("a", Some("b")));
 }
+
+fn split_pair() -> Fixture {
+    let mut fixture = Fixture::with_tabs(&["a", "b"]);
+    let _ = fixture.state.toggle_split();
+    fixture
+}
+
+#[test]
+fn a_split_starts_in_halves_side_by_side() {
+    let fixture = split_pair();
+
+    assert_eq!(fixture.state.share(), 0.5);
+    assert!(!fixture.state.split_stacked);
+}
+
+#[test]
+fn dragging_the_divider_sets_the_share_within_limits_and_only_while_held() {
+    let mut fixture = split_pair();
+
+    fixture.send(Message::DividerMoved(0.3));
+    assert_eq!(fixture.state.share(), 0.5, "not held yet");
+
+    fixture.send(Message::DividerPressed);
+    fixture.send(Message::DividerMoved(0.3));
+    assert_eq!(fixture.state.share(), 0.3);
+    fixture.send(Message::DividerMoved(0.99));
+    assert_eq!(fixture.state.share(), 0.8);
+    fixture.send(Message::DividerMoved(-4.0));
+    assert_eq!(fixture.state.share(), 0.2);
+    fixture.send(Message::DividerMoved(f32::NAN));
+    assert_eq!(fixture.state.share(), 0.2);
+
+    fixture.state.release(false);
+    fixture.send(Message::DividerMoved(0.6));
+    assert_eq!(fixture.state.share(), 0.2, "let go");
+}
+
+#[test]
+fn the_menu_stacks_the_panes_and_puts_them_side_by_side_again() {
+    let mut fixture = split_pair();
+
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuRotatePressed);
+    assert!(fixture.state.split_stacked && fixture.state.menu.is_none());
+
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuRotatePressed);
+    assert!(!fixture.state.split_stacked);
+}
+
+#[test]
+fn a_press_on_the_divider_does_nothing_without_a_split() {
+    let mut fixture = Fixture::with_tabs(&["a"]);
+
+    fixture.send(Message::DividerPressed);
+
+    assert!(!fixture.state.resizing);
+}
