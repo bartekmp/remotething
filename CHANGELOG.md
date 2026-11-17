@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.56.0 - 2026-11-17
+
+- Split view: two tabs side by side (Ctrl+Shift+S, or a tab's menu), Ctrl+Shift+O switches the keyboard between them.
+
 ## 0.55.0 - 2026-11-17
 
 - Settings → Terminal: text size, and colour themes imported from Alacritty, kitty or Ghostty files, with a preview before applying.

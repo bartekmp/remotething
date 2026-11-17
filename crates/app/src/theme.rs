@@ -183,6 +183,26 @@ pub fn tab(is_active: bool) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
+/// The frame of a pane of the split view: an accent edge on the one that has the keyboard.
+pub fn pane_frame(has_keyboard: bool) -> impl Fn(&Theme) -> container::Style {
+    move |theme| {
+        let tokens = tokens(theme);
+        let color = if has_keyboard {
+            tokens.accent
+        } else {
+            Color::TRANSPARENT
+        };
+        container::Style {
+            border: Border {
+                color,
+                width: 1.5,
+                radius: RADIUS_CONTROL.into(),
+            },
+            ..container::Style::default()
+        }
+    }
+}
+
 /// The tab being carried: raised above the bar with a shadow and an accent edge.
 pub fn carried_tab(theme: &Theme) -> container::Style {
     let tokens = tokens(theme);

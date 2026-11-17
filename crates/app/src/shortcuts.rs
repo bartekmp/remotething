@@ -30,6 +30,8 @@ pub fn lines() -> Vec<(String, String)> {
             fl!("shortcuts-cycle"),
         ),
         ("Alt+1 … Alt+9".to_string(), fl!("shortcuts-number")),
+        ("Ctrl+Shift+S".to_string(), fl!("shortcuts-split")),
+        ("Ctrl+Shift+O".to_string(), fl!("shortcuts-other-pane")),
         ("Ctrl+F".to_string(), fl!("shortcuts-search")),
         ("↑ ↓ ← → Enter".to_string(), fl!("shortcuts-files-move")),
         ("Tab".to_string(), fl!("shortcuts-files-pane")),

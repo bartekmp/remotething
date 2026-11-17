@@ -18,6 +18,10 @@ pub(crate) enum Shortcut {
     SearchConnections,
     /// Ctrl+Shift+P: the command palette.
     Palette,
+    /// Ctrl+Shift+S: split the view, or go back to one tab.
+    Split,
+    /// Ctrl+Shift+O: the keyboard goes to the other pane of a split view.
+    OtherPane,
     /// F1: the list of shortcuts.
     Help,
     /// Ctrl+Tab.
@@ -59,6 +63,8 @@ impl Shortcut {
             ("t", true) => Some(Shortcut::NewTab),
             ("w", true) => Some(Shortcut::CloseTab),
             ("p", true) => Some(Shortcut::Palette),
+            ("s", true) => Some(Shortcut::Split),
+            ("o", true) => Some(Shortcut::OtherPane),
             ("w", false) => Some(Shortcut::CloseTabUnlessTerminal),
             ("f", false) => Some(Shortcut::SearchConnections),
             _ => None,
@@ -88,6 +94,14 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::Palette => {
             state.palette = Some(crate::palette::State::default());
             iced::widget::operation::focus(crate::palette::INPUT)
+        }
+        Shortcut::Split => {
+            state.centre = Centre::Sessions;
+            state.tabs.toggle_split().map(Message::Tabs)
+        }
+        Shortcut::OtherPane => {
+            state.tabs.focus_other_pane();
+            Task::none()
         }
         Shortcut::Help => {
             state.shortcuts_open = true;
@@ -277,6 +291,19 @@ mod tests {
             pressed(character("3"), keyboard::Modifiers::ALT),
             Some(Shortcut::GoToTab(3))
         );
+    }
+
+    #[test]
+    fn the_split_keys_are_recognised_and_beat_a_desktop() {
+        let ctrl_shift = keyboard::Modifiers::CTRL | keyboard::Modifiers::SHIFT;
+
+        assert_eq!(pressed(character("S"), ctrl_shift), Some(Shortcut::Split));
+        assert_eq!(
+            pressed(character("O"), ctrl_shift),
+            Some(Shortcut::OtherPane)
+        );
+        assert_eq!(pressed(character("s"), keyboard::Modifiers::CTRL), None);
+        assert!(Shortcut::Split.beats_a_desktop() && Shortcut::OtherPane.beats_a_desktop());
     }
 
     #[test]

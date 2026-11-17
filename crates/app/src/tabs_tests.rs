@@ -465,3 +465,106 @@ fn a_tab_number_picks_that_tab_and_nine_is_the_last() {
     fixture.state.activate_number(5);
     assert_eq!(fixture.active(), "a");
 }
+
+fn beside(fixture: &Fixture) -> Option<&str> {
+    let index = fixture.state.split_index()?;
+    Some(fixture.state.tabs[index].title.as_str())
+}
+
+#[test]
+fn the_menu_of_another_tab_puts_it_beside_the_front_tab() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuSplitPressed);
+
+    assert_eq!((fixture.active(), beside(&fixture)), ("c", Some("a")));
+    assert!(fixture.state.is_shown(0) && fixture.state.is_shown(2) && !fixture.state.is_shown(1));
+    assert!(fixture.state.menu.is_none());
+}
+
+#[test]
+fn the_front_tab_cannot_be_split_from_itself() {
+    let mut fixture = Fixture::with_tabs(&["a", "b"]);
+
+    fixture.send(Message::MenuRequested(1));
+    fixture.send(Message::MenuSplitPressed);
+
+    assert_eq!(beside(&fixture), None);
+}
+
+#[test]
+fn clicking_the_other_pane_or_a_shown_tab_trades_places_so_no_tab_is_shown_twice() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuSplitPressed);
+    let a = fixture.state.tabs[0].id;
+
+    fixture.send(Message::PaneFocused(a));
+    assert_eq!((fixture.active(), beside(&fixture)), ("a", Some("c")));
+
+    // The bar's tab that is beside the front one: pressing it swaps too.
+    fixture.send(Message::TabPressed(2));
+    assert_eq!((fixture.active(), beside(&fixture)), ("c", Some("a")));
+
+    // Another tab replaces the front one; the pair's other half stays.
+    fixture.send(Message::TabPressed(1));
+    assert_eq!((fixture.active(), beside(&fixture)), ("b", Some("a")));
+}
+
+#[test]
+fn cycling_onto_the_tab_beside_swaps_instead_of_showing_it_twice() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuSplitPressed);
+
+    fixture.state.cycle(true);
+
+    assert_eq!((fixture.active(), beside(&fixture)), ("a", Some("c")));
+}
+
+#[test]
+fn closing_either_tab_of_a_split_leaves_one_tab_in_front() {
+    let mut fixture = Fixture::with_tabs(&["a", "b", "c"]);
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuSplitPressed);
+
+    // Close the one beside: the front stays.
+    fixture.send(Message::CloseRequested(0));
+    assert_eq!((fixture.active(), beside(&fixture)), ("c", None));
+
+    // Split again and close the front: the one beside moves up.
+    fixture.send(Message::MenuRequested(0));
+    fixture.send(Message::MenuSplitPressed);
+    fixture.send(Message::CloseRequested(fixture.state.active));
+    assert_eq!((fixture.active(), beside(&fixture)), ("b", None));
+}
+
+#[test]
+fn the_split_key_splits_with_the_next_tab_and_unsplits_and_with_one_tab_opens_a_new_one() {
+    let mut fixture = Fixture::with_tabs(&["a", "b"]);
+
+    let _ = fixture.state.toggle_split();
+    assert_eq!((fixture.active(), beside(&fixture)), ("b", Some("a")));
+    let _ = fixture.state.toggle_split();
+    assert_eq!(beside(&fixture), None);
+
+    let mut single = Fixture::with_tabs(&["a"]);
+    let _ = single.state.toggle_split();
+    assert_eq!(single.state.tabs.len(), 2);
+    assert_eq!(beside(&single), Some("a"));
+    assert!(matches!(
+        single.state.tabs[single.state.active].content,
+        Content::Launcher(_)
+    ));
+}
+
+#[test]
+fn the_other_pane_key_gives_the_keyboard_across() {
+    let mut fixture = Fixture::with_tabs(&["a", "b"]);
+    let _ = fixture.state.toggle_split();
+
+    fixture.state.focus_other_pane();
+
+    assert_eq!((fixture.active(), beside(&fixture)), ("a", Some("b")));
+}

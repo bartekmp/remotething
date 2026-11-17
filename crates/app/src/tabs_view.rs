@@ -95,9 +95,10 @@ fn view_sized<'a>(
         }
     };
 
-    let body = match state.tabs.get(state.active) {
-        Some(tab) => view_content(tab, store, recent),
-        None => space().into(),
+    let body = match (state.tabs.get(state.active), state.split_index()) {
+        (Some(front), Some(beside)) => split_body(state, front, &state.tabs[beside], store, recent),
+        (Some(tab), None) => view_content(tab, store, recent),
+        _ => space().into(),
     };
     let page = column![bar, body]
         .spacing(12)
@@ -115,7 +116,14 @@ fn view_sized<'a>(
             column as f32 * (tab_bar::TAB_WIDTH + tab_bar::GAP),
             (line + 1) as f32 * (tab_bar::TAB_HEIGHT + tab_bar::GAP),
         );
-        layers = layers.push(tab_menu(&state.tabs[index], position));
+        let split = if state.split.is_some() && state.is_shown(index) {
+            SplitItem::Unsplit
+        } else if index != state.active {
+            SplitItem::Split
+        } else {
+            SplitItem::Nothing
+        };
+        layers = layers.push(tab_menu(&state.tabs[index], position, split));
     }
     if let Some(tab) = state.confirming_close.and_then(|id| state.index_of(id)) {
         layers = layers.push(close_question(&state.tabs[tab].title));
@@ -125,7 +133,7 @@ fn view_sized<'a>(
 
 fn view_tab(state: &State, index: usize, now: Instant) -> Element<'_, Message> {
     let tab = &state.tabs[index];
-    let is_active = index == state.active;
+    let is_active = state.is_shown(index);
     let is_drop_target = state.hovered == Some(index)
         && state
             .dragged
@@ -204,6 +212,39 @@ fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Eleme
     }
 }
 
+/// Two tabs side by side. Each keeps its place, left or right, as in the bar; the one that
+/// has the keyboard has a frame, and the other takes the keyboard when it is clicked.
+fn split_body<'a>(
+    state: &'a State,
+    front: &'a Tab,
+    beside: &'a Tab,
+    store: &'a Store,
+    recent: &'a Recent,
+) -> Element<'a, Message> {
+    let pane = |tab: &'a Tab, has_keyboard: bool| -> Element<'a, Message> {
+        let framed = container(view_content(tab, store, recent))
+            .padding(3)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(theme::pane_frame(has_keyboard));
+        if has_keyboard {
+            return framed.into();
+        }
+        // A cover takes the first click, so it does not also press something in the pane.
+        let cover = mouse_area(space().width(Length::Fill).height(Length::Fill))
+            .on_press(Message::PaneFocused(tab.id));
+        stack![framed, opaque(cover)].into()
+    };
+    let front_is_left = state.active < state.split_index().unwrap_or(usize::MAX);
+    let (front, beside) = (pane(front, true), pane(beside, false));
+    let (left, right) = if front_is_left {
+        (front, beside)
+    } else {
+        (beside, front)
+    };
+    row![left, right].spacing(theme::GAP / 2.0).into()
+}
+
 /// The tabs that do not fit on the line, as a list under the right end of the bar.
 fn overflow_list(state: &State, hidden: Vec<usize>) -> Element<'_, Message> {
     let items = hidden.into_iter().map(|index| {
@@ -225,8 +266,17 @@ fn overflow_list(state: &State, hidden: Vec<usize>) -> Element<'_, Message> {
         .into()
 }
 
+/// What a tab's menu offers about the split view.
+enum SplitItem {
+    /// Show this tab beside the front one.
+    Split,
+    /// Go back to one tab.
+    Unsplit,
+    Nothing,
+}
+
 /// The right-click menu of a tab, under the tab, with a catcher for clicks outside it.
-fn tab_menu(tab: &Tab, position: Point) -> Element<'_, Message> {
+fn tab_menu(tab: &Tab, position: Point, split: SplitItem) -> Element<'_, Message> {
     let item = |label: String, message: Message| {
         button(text(label))
             .width(Length::Fill)
@@ -237,6 +287,15 @@ fn tab_menu(tab: &Tab, position: Point) -> Element<'_, Message> {
     let mut items = column![];
     if tab.unsaved.is_some() {
         items = items.push(item(fl!("tabs-menu-save"), Message::MenuSavePressed));
+    }
+    match split {
+        SplitItem::Split => {
+            items = items.push(item(fl!("tabs-menu-split"), Message::MenuSplitPressed));
+        }
+        SplitItem::Unsplit => {
+            items = items.push(item(fl!("tabs-menu-unsplit"), Message::MenuUnsplitPressed));
+        }
+        SplitItem::Nothing => {}
     }
     items = items.push(item(fl!("tabs-menu-close"), Message::MenuClosePressed));
     let panel = container(items)

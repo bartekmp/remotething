@@ -37,6 +37,8 @@ pub struct State {
     pub(crate) menu: Option<u64>,
     /// A typed connection the user asked to save, until the window collects it.
     pub(crate) save_request: Option<(u64, QuickTarget)>,
+    /// The tab shown beside the one in front, when the view is split. It is never the one in front.
+    pub(crate) split: Option<u64>,
 }
 
 pub(crate) struct Tab {
@@ -77,6 +79,12 @@ pub enum Message {
     MenuSavePressed,
     /// "Close" in a tab's menu.
     MenuClosePressed,
+    /// "Show beside the front tab" in a tab's menu.
+    MenuSplitPressed,
+    /// "Back to one tab" in a tab's menu.
+    MenuUnsplitPressed,
+    /// A click on the pane that does not have the keyboard: it gets it.
+    PaneFocused(u64),
     Launcher(u64, launcher::Message),
     Session(u64, session::Message),
     Desktop(u64, desktop::Message),
@@ -281,11 +289,12 @@ impl State {
         if count < 2 {
             return;
         }
-        self.active = if forward {
+        let next = if forward {
             (self.active + 1) % count
         } else {
             (self.active + count - 1) % count
         };
+        self.set_active(next);
         self.dragged = None;
     }
 
@@ -298,8 +307,64 @@ impl State {
             number.saturating_sub(1)
         };
         if index < self.tabs.len() {
-            self.active = index;
+            self.set_active(index);
             self.dragged = None;
+        }
+    }
+
+    /// Brings the tab at `index` to the front. A tab that was beside the front one trades
+    /// places with it, so no tab is shown twice.
+    pub(crate) fn set_active(&mut self, index: usize) {
+        if let Some(id) = self.tabs.get(index).map(|tab| tab.id) {
+            self.activate_id(id);
+        }
+    }
+
+    fn activate_id(&mut self, id: u64) {
+        let Some(index) = self.index_of(id) else {
+            return;
+        };
+        let before = self.tabs.get(self.active).map(|tab| tab.id);
+        if self.split == Some(id) {
+            self.split = before.filter(|before| *before != id);
+        }
+        self.active = index;
+    }
+
+    /// The index of the tab shown beside the front one.
+    pub(crate) fn split_index(&self) -> Option<usize> {
+        self.split.and_then(|id| self.index_of(id))
+    }
+
+    /// Whether the tab at `index` is on show: in front, or beside the one in front.
+    pub(crate) fn is_shown(&self, index: usize) -> bool {
+        index == self.active || self.split_index() == Some(index)
+    }
+
+    /// Splits the view, or goes back to one tab when it is split. The next tab goes beside
+    /// the front one; with only one tab open, a new tab does.
+    pub fn toggle_split(&mut self) -> Task<Message> {
+        if self.split.take().is_some() {
+            return Task::none();
+        }
+        if self.tabs.len() >= 2 {
+            let next = (self.active + 1) % self.tabs.len();
+            self.split = self.tabs.get(next).map(|tab| tab.id);
+            return Task::none();
+        }
+        let Some(front) = self.tabs.get(self.active).map(|tab| tab.id) else {
+            return Task::none();
+        };
+        // The new tab takes the keyboard, so a connection can be typed at once.
+        let task = self.open_launcher();
+        self.split = Some(front);
+        task
+    }
+
+    /// Gives the keyboard to the other pane of a split view.
+    pub fn focus_other_pane(&mut self) {
+        if let Some(id) = self.split {
+            self.activate_id(id);
         }
     }
 
@@ -324,11 +389,18 @@ impl State {
         if index >= self.tabs.len() {
             return;
         }
+        let was_in_front = index == self.active;
         // Dropping the tab drops its session, which closes the connection.
-        self.tabs.remove(index);
-        // Keep the same tab in front; when it was the one closed, its left neighbour.
-        if self.active > index || self.active >= self.tabs.len() {
-            self.active = self.active.saturating_sub(1);
+        let closed = self.tabs.remove(index).id;
+        if self.split == Some(closed) {
+            self.split = None;
+        }
+        if was_in_front {
+            // The tab beside it, if any, moves up; else the one that took its place.
+            let beside = self.split.take().and_then(|id| self.index_of(id));
+            self.active = beside.unwrap_or_else(|| index.min(self.tabs.len().saturating_sub(1)));
+        } else if self.active > index {
+            self.active -= 1;
         }
         self.hovered = None;
     }
@@ -353,7 +425,7 @@ impl State {
         let tab = self.tabs.remove(source);
         self.tabs.insert(target, tab);
         // The carried tab was brought to the front when it was pressed.
-        self.active = target;
+        self.activate_id(id);
         if animate {
             let glow = crate::motion::Tween::between(
                 1.0,
@@ -528,8 +600,9 @@ pub fn update(
     match message {
         Message::TabPressed(index) => {
             if let Some(tab) = state.tabs.get(index) {
-                state.active = index;
-                state.dragged = Some(tab.id);
+                let id = tab.id;
+                state.set_active(index);
+                state.dragged = Some(id);
                 // A pressed tab is under the pointer, whatever was reported before.
                 state.hovered = Some(index);
             }
@@ -548,9 +621,7 @@ pub fn update(
         Message::OverflowToggled => state.overflow_open = !state.overflow_open,
         Message::OverflowPicked(index) => {
             state.overflow_open = false;
-            if index < state.tabs.len() {
-                state.active = index;
-            }
+            state.set_active(index);
         }
         Message::MenuRequested(index) => {
             state.dragged = None;
@@ -570,6 +641,21 @@ pub fn update(
                 state.request_close(index);
             }
         }
+        Message::MenuSplitPressed => {
+            // The tab of the menu goes beside the front one, unless it is the front one.
+            let beside = state
+                .menu
+                .take()
+                .filter(|id| state.index_of(*id) != Some(state.active));
+            if beside.is_some() {
+                state.split = beside;
+            }
+        }
+        Message::MenuUnsplitPressed => {
+            state.menu = None;
+            state.split = None;
+        }
+        Message::PaneFocused(id) => state.activate_id(id),
         Message::Launcher(id, message) => {
             return update_launcher(state, id, message, context, recent);
         }

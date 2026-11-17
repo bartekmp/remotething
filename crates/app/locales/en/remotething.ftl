@@ -412,3 +412,7 @@ terminal-theme-import-failed = Cannot import the theme: { $reason }
 terminal-theme-too-big = the file is too big to be a theme
 terminal-theme-note = Reads theme files of Alacritty (.toml), kitty (.conf) and Ghostty. A ✓ marks the theme in use; the box shows how a theme looks before you use it.
 error-terminal-themes = Cannot read the terminal themes:
+tabs-menu-split = Show beside the front tab
+tabs-menu-unsplit = Back to one tab
+shortcuts-split = Split the view, or go back to one tab
+shortcuts-other-pane = Keyboard to the other pane
