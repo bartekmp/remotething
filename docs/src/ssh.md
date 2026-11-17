@@ -115,6 +115,7 @@ A connected session has a **Browse files** button above the terminal. It opens a
 | Download a file | Select it, press **Download**, then choose where to save it |
 | More actions | Right-click a row. A menu opens under it: **Preview**, **Download**, **Copy path**, **Rename**, **Delete**, and on a folder **New folder** inside it |
 | Upload by dragging | With the file pane open, drop files or folders on the window. They go the same way as **Upload** and **Upload folder**. Works on Windows, macOS and X11; not on a native Wayland window |
+| Details | Each row shows permissions (`rwxr-xr-x`), the modification time (UTC) and the size. **Hide details** in the toolbar leaves only names, which helps in a narrow pane. SCP servers give no times |
 | Preview a file | Select it, press **Preview**. **Back** returns to the tree |
 | Upload a folder | **Upload folder**, then pick it. Every file in it is queued, keeping its place |
 | Download a folder | Select it, press **Download**, then pick where to put it. It is saved as a folder of the same name |

@@ -5,6 +5,7 @@ use iced::widget::{button, column, container, mouse_area, row, scrollable, space
 use iced::{Element, Font, Length};
 use remotething_files::EntryKind;
 
+use crate::file_details::{modified_text, permissions_text};
 use crate::files_dual;
 use crate::files_keys;
 use crate::files_menu_view;
@@ -17,6 +18,10 @@ use crate::theme;
 
 const INDENT: f32 = 14.0;
 const ARROW_WIDTH: f32 = 14.0;
+/// Widths of the detail columns, in monospace characters of the small text.
+const PERMISSIONS_WIDTH: f32 = 80.0;
+const MODIFIED_WIDTH: f32 = 118.0;
+const SIZE_WIDTH: f32 = 64.0;
 
 /// The pane, with the local pane and the copy buttons beside it when that is showing.
 pub fn view(state: &State) -> Element<'_, Message> {
@@ -102,6 +107,14 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
     toolbar = toolbar.push(pill(
         fl!("files-preview"),
         (ready && state.selected_file().is_some()).then_some(Message::PreviewPressed),
+    ));
+    toolbar = toolbar.push(pill(
+        if state.details {
+            fl!("files-details-hide")
+        } else {
+            fl!("files-details-show")
+        },
+        Some(Message::DetailsToggled),
     ));
     if !state.is_local {
         toolbar = toolbar
@@ -193,12 +206,31 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
     ]
     .spacing(6)
     .align_y(Vertical::Center);
+    if state.details {
+        let cell = |content: String, width: f32| {
+            text(content)
+                .font(Font::MONOSPACE)
+                .size(theme::TEXT_SMALL)
+                .style(theme::secondary_text)
+                .width(Length::Fixed(width))
+                .wrapping(text::Wrapping::None)
+        };
+        let modified = tree_row.entry.modified.map(modified_text);
+        let permissions = tree_row.entry.permissions.map(permissions_text);
+        line = line
+            .push(cell(permissions.unwrap_or_default(), PERMISSIONS_WIDTH))
+            .push(cell(modified.unwrap_or_default(), MODIFIED_WIDTH));
+    }
     if let (false, Some(size)) = (is_folder, tree_row.entry.size) {
         line = line.push(
             text(format_size(size))
                 .size(theme::TEXT_SMALL)
-                .style(theme::secondary_text),
+                .style(theme::secondary_text)
+                .width(Length::Fixed(SIZE_WIDTH))
+                .align_x(iced::alignment::Horizontal::Right),
         );
+    } else if state.details {
+        line = line.push(space::horizontal().width(Length::Fixed(SIZE_WIDTH)));
     }
 
     let kind = tree_row.entry.kind;

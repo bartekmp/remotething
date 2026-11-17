@@ -398,3 +398,5 @@ shortcuts-files-move = Move in a file browser, open and fold folders
 shortcuts-files-pane = Switch between the two file panes
 shortcuts-files-act = Rename, delete, refresh in a file browser
 shortcuts-help = Show or hide this list
+files-details-show = Details
+files-details-hide = Hide details

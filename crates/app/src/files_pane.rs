@@ -58,6 +58,8 @@ pub struct State {
     pub(crate) menu: Option<Menu>,
     /// Whether the pane has a close button: not when it is the whole tab.
     pub(crate) closable: bool,
+    /// Whether rows show permissions and modification time.
+    pub(crate) details: bool,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -141,6 +143,8 @@ pub enum Message {
     ClosePressed,
     /// The "This computer" button: show the local pane beside this one, or hide it.
     LocalToggled,
+    /// The "Details" button: show or hide permissions and modification time.
+    DetailsToggled,
     /// A message for the local pane.
     Other(Box<Message>),
     /// "Copy to this computer": the selection here goes into the local folder.
@@ -202,6 +206,7 @@ impl State {
             preview: None,
             menu: None,
             closable: true,
+            details: true,
             pending_replace: None,
             status: None,
             other: None,
@@ -421,6 +426,10 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             Task::none()
         }
         Message::ClosePressed => return (Task::none(), Some(Event::Close)),
+        Message::DetailsToggled => {
+            state.details = !state.details;
+            Task::none()
+        }
         Message::LocalToggled => files_dual::toggle(state),
         Message::Other(inner) => match state.other.as_mut() {
             Some(other) => update(other, *inner).0.map(files_dual::wrap),

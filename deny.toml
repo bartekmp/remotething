@@ -4,6 +4,7 @@
 # None of these are vulnerabilities; they are "unmaintained" notices on crates
 # we do not choose ourselves. Remove each line when its parent moves on.
 ignore = [
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained notice only; pulled by russh-sftp and suppaftp" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser; pulled by iced's text stack (cosmic-text)" },
     { id = "RUSTSEC-2024-0436", reason = "paste; pulled by iced's renderer" },
     { id = "RUSTSEC-2026-0374", reason = "basic-toml; build-time only, pulled by i18n-embed-fl" },

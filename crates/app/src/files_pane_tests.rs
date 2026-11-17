@@ -453,3 +453,14 @@ fn only_a_selected_file_can_be_previewed() {
 fn the_pane_has_a_close_button_unless_it_is_the_whole_tab() {
     assert!(State::empty().closable);
 }
+
+#[test]
+fn details_are_shown_at_first_and_the_button_hides_and_shows_them() {
+    let mut state = loaded();
+    assert!(state.details);
+
+    let _ = update(&mut state, Message::DetailsToggled);
+    assert!(!state.details);
+    let _ = update(&mut state, Message::DetailsToggled);
+    assert!(state.details);
+}

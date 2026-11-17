@@ -87,7 +87,7 @@ pub(crate) fn stamped_name(connection: &str, unix: u64, extension: &str) -> Stri
 }
 
 /// The date of a day counted from 1970-01-01, in the proleptic Gregorian calendar.
-fn civil_date(days: u64) -> (u64, u64, u64) {
+pub(crate) fn civil_date(days: u64) -> (u64, u64, u64) {
     // Howard Hinnant's algorithm, shifted so that years start in March.
     let shifted = days + 719_468;
     let era = shifted / 146_097;
