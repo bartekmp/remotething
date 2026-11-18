@@ -505,6 +505,17 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 state.properties_open = false;
                 return Task::none();
             }
+            // In a form, Tab and Shift+Tab move between the fields.
+            let is_tab = key == keyboard::Key::Named(keyboard::key::Named::Tab);
+            let in_form =
+                state.properties_open || state.vault.is_some() || state.centre != Centre::Sessions;
+            if is_tab && in_form && !captured && !modifiers.control() && !modifiers.alt() {
+                return if modifiers.shift() {
+                    iced::widget::operation::focus_previous()
+                } else {
+                    iced::widget::operation::focus_next()
+                };
+            }
             // Everything else belongs to the terminal in front, when one is showing.
             let terminal_shows =
                 state.centre == Centre::Sessions && state.vault.is_none() && state.menu.is_none();
@@ -708,7 +719,7 @@ pub fn theme(state: &State) -> Theme {
         ThemeChoice::Light => Mode::Light,
         ThemeChoice::Dark => Mode::Dark,
     };
-    look::for_mode(mode)
+    look::for_mode(mode, state.preferences.high_contrast)
 }
 
 /// Keeps the theme in step when the desktop switches between light and dark.

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.68.0 - 2026-11-18
+
+- High contrast colours in Settings, Tab and Shift+Tab move between the fields of forms, and an Accessibility chapter in the guide.
+
 ## 0.67.0 - 2026-11-18
 
 - SSH remote forwards (`R:9000:localhost:3000`) and dynamic forwards (a SOCKS5 proxy, `D:1080`); the PuTTY import brings them over.

@@ -11,4 +11,5 @@
 - [Remote Desktop](rdp.md)
 - [VNC](vnc.md)
 - [Recording](recording.md)
+- [Accessibility](accessibility.md)
 - [The connections file](connections-file.md)

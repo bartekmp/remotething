@@ -105,6 +105,7 @@ pub enum Message {
     Terminal(crate::terminal_settings::Message),
     TabLayoutPicked(TabLayoutOption),
     AnimationsToggled(bool),
+    HighContrastToggled(bool),
     InterfaceScalePicked(ScaleOption),
     ThemePicked(ThemeOption),
     LanguagePicked(LanguageOption),
@@ -201,6 +202,10 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         }
         Message::AnimationsToggled(on) => {
             preferences.animations = on;
+            Event::Changed
+        }
+        Message::HighContrastToggled(on) => {
+            preferences.high_contrast = on;
             Event::Changed
         }
         Message::InterfaceScalePicked(option) => {
@@ -343,9 +348,20 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
         .label(fl!("settings-animations"))
         .on_toggle(Message::AnimationsToggled);
 
-    column![theme, language, interface_size, tabs, animations]
-        .spacing(16)
-        .into()
+    let high_contrast = checkbox(preferences.high_contrast)
+        .label(fl!("settings-high-contrast"))
+        .on_toggle(Message::HighContrastToggled);
+
+    column![
+        theme,
+        language,
+        interface_size,
+        tabs,
+        animations,
+        high_contrast
+    ]
+    .spacing(16)
+    .into()
 }
 
 /// Exporting and importing the connections.

@@ -20,6 +20,9 @@ pub struct Preferences {
     /// Whether panels slide and tabs light up as they land. On unless switched off.
     #[serde(default = "yes")]
     pub animations: bool,
+    /// Stronger colours and borders, for low vision or a bright room. Off unless switched on.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub high_contrast: bool,
     /// How big the whole window is drawn, in percent. 100 is the normal size.
     #[serde(default = "normal_scale", skip_serializing_if = "is_normal_scale")]
     pub interface_scale: u16,
@@ -42,6 +45,7 @@ impl Default for Preferences {
             tree_collapsed: false,
             tab_layout: TabLayout::default(),
             animations: true,
+            high_contrast: false,
             interface_scale: normal_scale(),
             terminal: TerminalLook::default(),
             features: Features::default(),
@@ -293,6 +297,18 @@ mod tests {
     }
 
     #[test]
+    fn high_contrast_is_off_unless_the_file_says_otherwise() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+
+        std::fs::write(&path, "theme = \"dark\"\n").unwrap();
+        assert!(!load(&path).unwrap().high_contrast);
+
+        std::fs::write(&path, "high_contrast = true\n").unwrap();
+        assert!(load(&path).unwrap().high_contrast);
+    }
+
+    #[test]
     fn saved_preferences_load_back_the_same() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("new").join("settings.toml");
@@ -302,6 +318,7 @@ mod tests {
             tree_collapsed: true,
             tab_layout: TabLayout::Wrap,
             animations: false,
+            high_contrast: true,
             interface_scale: 150,
             terminal: TerminalLook {
                 theme: Some("gruvbox".to_string()),

@@ -92,11 +92,54 @@ const LIGHT: Tokens = Tokens {
     on_danger: color!(0xFFFFFF),
 };
 
+/// Black and white with hard borders: every text and border colour is at least 7:1 on its panel.
+const DARK_CONTRAST: Tokens = Tokens {
+    background: color!(0x000000),
+    panel: color!(0x000000),
+    panel_border: color!(0xFFFFFF),
+    shadow: alpha(color!(0x000000), 0.0),
+    surface: alpha(color!(0xFFFFFF), 0.12),
+    surface_hover: alpha(color!(0xFFFFFF), 0.25),
+    surface_border: color!(0xFFFFFF),
+    selected: alpha(color!(0xFFFF00), 0.25),
+    selected_text: color!(0xFFFF66),
+    text: color!(0xFFFFFF),
+    text_secondary: color!(0xE6E6E6),
+    accent: color!(0x7DB8FF),
+    accent_hover: color!(0xA8D0FF),
+    on_accent: color!(0x000000),
+    danger: color!(0xFF9C9C),
+    on_danger: color!(0x000000),
+};
+
+const LIGHT_CONTRAST: Tokens = Tokens {
+    background: color!(0xFFFFFF),
+    panel: color!(0xFFFFFF),
+    panel_border: color!(0x000000),
+    shadow: alpha(color!(0x000000), 0.0),
+    surface: alpha(color!(0x000000), 0.06),
+    surface_hover: alpha(color!(0x000000), 0.16),
+    surface_border: color!(0x000000),
+    selected: alpha(color!(0x0036B3), 0.18),
+    selected_text: color!(0x00227A),
+    text: color!(0x000000),
+    text_secondary: color!(0x1F1F1F),
+    accent: color!(0x0036B3),
+    accent_hover: color!(0x00227A),
+    on_accent: color!(0xFFFFFF),
+    danger: color!(0x8A0000),
+    on_danger: color!(0xFFFFFF),
+};
+
+const HIGH_CONTRAST_SUFFIX: &str = " High Contrast";
+
 /// The app theme for a light or dark system. An unknown mode is treated as light.
-pub fn for_mode(mode: Mode) -> Theme {
-    let (name, tokens) = match mode {
-        Mode::Dark => ("Remotething Dark", &DARK),
-        Mode::Light | Mode::None => ("Remotething Light", &LIGHT),
+pub fn for_mode(mode: Mode, high_contrast: bool) -> Theme {
+    let (name, tokens) = match (mode, high_contrast) {
+        (Mode::Dark, false) => ("Remotething Dark", &DARK),
+        (Mode::Dark, true) => ("Remotething Dark High Contrast", &DARK_CONTRAST),
+        (Mode::Light | Mode::None, false) => ("Remotething Light", &LIGHT),
+        (Mode::Light | Mode::None, true) => ("Remotething Light High Contrast", &LIGHT_CONTRAST),
     };
     let palette = Palette {
         background: tokens.background,
@@ -110,10 +153,12 @@ pub fn for_mode(mode: Mode) -> Theme {
 }
 
 fn tokens(theme: &Theme) -> &'static Tokens {
-    if theme.extended_palette().is_dark {
-        &DARK
-    } else {
-        &LIGHT
+    let high_contrast = theme.to_string().ends_with(HIGH_CONTRAST_SUFFIX);
+    match (theme.extended_palette().is_dark, high_contrast) {
+        (true, false) => &DARK,
+        (false, false) => &LIGHT,
+        (true, true) => &DARK_CONTRAST,
+        (false, true) => &LIGHT_CONTRAST,
     }
 }
 
@@ -491,6 +536,32 @@ mod tests {
     }
 
     #[test]
+    fn high_contrast_text_and_borders_reach_seven_to_one() {
+        for tokens in [&LIGHT_CONTRAST, &DARK_CONTRAST] {
+            assert!(contrast(tokens.text, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.text_secondary, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.danger, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.accent, tokens.panel) >= 4.5);
+            assert!(contrast(tokens.selected_text, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.panel_border, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.surface_border, tokens.panel) >= 7.0);
+            assert!(contrast(tokens.on_accent, tokens.accent) >= 7.0);
+            assert!(contrast(tokens.on_danger, tokens.danger) >= 7.0);
+        }
+    }
+
+    #[test]
+    fn the_high_contrast_theme_keeps_its_mode_and_tokens() {
+        let dark = for_mode(Mode::Dark, true);
+        let light = for_mode(Mode::Light, true);
+
+        assert!(dark.extended_palette().is_dark);
+        assert!(!light.extended_palette().is_dark);
+        assert_eq!(tokens(&dark).panel_border, DARK_CONTRAST.panel_border);
+        assert_eq!(tokens(&light).panel_border, LIGHT_CONTRAST.panel_border);
+    }
+
+    #[test]
     fn button_labels_are_readable_on_their_fill() {
         for tokens in [&LIGHT, &DARK] {
             assert!(contrast(tokens.on_accent, tokens.accent) >= 4.5);
@@ -500,8 +571,8 @@ mod tests {
 
     #[test]
     fn an_unknown_system_mode_gets_the_light_theme() {
-        assert!(!for_mode(Mode::None).extended_palette().is_dark);
-        assert!(!for_mode(Mode::Light).extended_palette().is_dark);
-        assert!(for_mode(Mode::Dark).extended_palette().is_dark);
+        assert!(!for_mode(Mode::None, false).extended_palette().is_dark);
+        assert!(!for_mode(Mode::Light, false).extended_palette().is_dark);
+        assert!(for_mode(Mode::Dark, false).extended_palette().is_dark);
     }
 }

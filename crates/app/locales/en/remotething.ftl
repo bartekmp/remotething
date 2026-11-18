@@ -391,6 +391,7 @@ palette-new-tab = New tab
 palette-credentials = Credentials
 palette-settings = Settings
 settings-animations = Animate panels and tabs
+settings-high-contrast = High contrast colours
 settings-interface-size = Interface size
 shortcuts-title = Keyboard shortcuts
 shortcuts-palette = Go to a connection or action
