@@ -209,7 +209,9 @@ files-cancel = Cancel
 files-retry = Retry
 files-clear = Clear
 
-jump-needs-credential = The jump host { $name } needs a credential with a user name and either a stored password or a key file. A jump host cannot ask while connecting.
+jump-needs-credential = The jump host { $name } needs a credential: a stored password, a key file, an agent, or "ask every time". Keyboard-interactive sign-in does not work on a jump host.
+jump-ask-unsupported = The jump host { $name } asks for its password, which only SSH tabs can do. Store the password in its credential.
+session-jump-password = Password for the jump host { $name }
 jump-loop = The jump hosts form a loop at { $name }.
 
 files-replace-question = { $file } already exists on the server. Replace it?

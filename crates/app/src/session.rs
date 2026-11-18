@@ -47,6 +47,8 @@ pub struct State {
     pub(crate) typed_username: Option<String>,
     /// The jump hosts on the way, in the order they are connected to.
     pub(crate) jumps: Vec<jump::Ready>,
+    /// The jump host whose password the form is asking for, while it does.
+    pub(crate) asking_jump: Option<usize>,
     pub(crate) username: String,
     pub(crate) method: Method,
     pub(crate) stage: Stage,
@@ -157,6 +159,8 @@ impl State {
 }
 
 pub(crate) struct Form {
+    /// The jump host this form is for, when it is not the target.
+    pub(crate) jump: Option<String>,
     pub(crate) ask_username: bool,
     pub(crate) username: String,
     /// The password or passphrase as typed.
@@ -285,6 +289,7 @@ impl State {
             connection,
             typed_username,
             jumps: Vec::new(),
+            asking_jump: None,
             username: String::new(),
             method: Method::Password(None),
             stage: Stage::Connecting,
@@ -316,6 +321,25 @@ impl State {
             async move { jump::load(planned, secrets).map(SealedJumps) },
             Message::JumpsLoaded,
         )
+    }
+
+    /// Asks for the password of the next jump host that needs one typed, or goes on to the
+    /// target when none is left.
+    pub(crate) fn ask_for_jumps(&mut self, context: &Context<'_>) -> Task<Message> {
+        let Some(index) = self.jumps.iter().position(jump::Ready::needs_typing) else {
+            self.asking_jump = None;
+            return self.begin_target(context);
+        };
+        self.asking_jump = Some(index);
+        let jump = &self.jumps[index];
+        self.stage = Stage::Asking(Form {
+            jump: Some(jump.name.clone()),
+            ask_username: jump.username().is_empty(),
+            username: jump.username().to_string(),
+            secret: String::new(),
+            note: None,
+        });
+        Task::none()
     }
 
     /// Opens a terminal in a WSL distribution on this machine: no sign-in, no network.
@@ -408,6 +432,7 @@ impl State {
 
     pub(crate) fn ask(&mut self, note: Option<String>) -> Task<Message> {
         self.stage = Stage::Asking(Form {
+            jump: None,
             ask_username: self.username.is_empty(),
             username: self.username.clone(),
             secret: String::new(),

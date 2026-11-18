@@ -17,6 +17,7 @@ pub struct Planned {
     /// The name shown when something about this jump host goes wrong.
     pub name: String,
     pub endpoint: Endpoint,
+    /// Empty only for a jump host that is asked for it.
     pub username: String,
     /// Where the password or passphrase is stored.
     pub credential_id: String,
@@ -25,19 +26,39 @@ pub struct Planned {
     pub key_file: Option<PathBuf>,
     /// Whether to sign in with the keys of a running ssh-agent.
     pub agent: bool,
+    /// Whether the password is typed when connecting: nothing is stored for it.
+    pub ask: bool,
 }
 
 /// A jump host with everything needed to sign in to it.
 #[derive(Clone)]
 pub struct Ready {
+    pub(crate) name: String,
     endpoint: Endpoint,
     username: String,
     key_file: Option<PathBuf>,
     agent: bool,
+    ask: bool,
     secret: Option<Secret>,
 }
 
 impl Ready {
+    /// Whether the user still has to type the password of this jump host.
+    pub fn needs_typing(&self) -> bool {
+        self.ask && self.secret.is_none()
+    }
+
+    /// The user name known so far, empty when it has to be typed too.
+    pub fn username(&self) -> &str {
+        &self.username
+    }
+
+    /// Takes what the user typed.
+    pub fn set_typed(&mut self, username: String, password: Secret) {
+        self.username = username;
+        self.secret = Some(password);
+    }
+
     pub fn hop(&self) -> Option<Hop> {
         let auth = match (&self.key_file, &self.secret) {
             _ if self.agent => Auth::Agent {
@@ -65,8 +86,9 @@ impl Ready {
 /// The jump hosts of a connection in the order they are connected to: the
 /// one reached directly first, the one next to the target last.
 ///
-/// A jump host cannot be asked for a password while connecting, so each needs
-/// a credential with a user name and either a stored password or a key file.
+/// Each needs a credential: with a stored password, a key file or an agent it connects
+/// by itself; an "ask every time" credential has its password typed first. Keyboard-interactive
+/// sign-in does not work on a jump host.
 pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
     let mut chain = Vec::new();
     let mut seen = HashSet::new();
@@ -84,17 +106,19 @@ pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
             .as_ref()
             .and_then(|id| store.credentials.iter().find(|c| &c.id == id))
             .ok_or_else(needs_credential)?;
+        let ask = credential.kind == CredentialKind::Ask;
         let username = credential
             .username
             .clone()
             .filter(|username| !username.is_empty())
+            // The user name of an asked credential may be typed as well.
+            .or_else(|| ask.then(String::new))
             .ok_or_else(needs_credential)?;
         let agent = credential.kind == CredentialKind::Agent;
         let key_file = match (credential.kind, &credential.key_file) {
-            (CredentialKind::Password | CredentialKind::Agent, _) => None,
+            (CredentialKind::Password | CredentialKind::Agent | CredentialKind::Ask, _) => None,
             (CredentialKind::PrivateKey, Some(path)) => Some(PathBuf::from(path)),
-            (CredentialKind::PrivateKey, None)
-            | (CredentialKind::Ask | CredentialKind::Interactive, _) => {
+            (CredentialKind::PrivateKey, None) | (CredentialKind::Interactive, _) => {
                 return Err(needs_credential());
             }
         };
@@ -109,6 +133,7 @@ pub fn plan(store: &Store, nearest_jump: &str) -> Result<Vec<Planned>, String> {
             credential_id: credential.id.clone(),
             key_file,
             agent,
+            ask,
         });
         next = resolved.jump;
     }
@@ -124,7 +149,7 @@ pub fn load(planned: Vec<Planned>, secrets: Arc<dyn SecretStore>) -> Result<Vec<
         .into_iter()
         .map(|jump| {
             // The agent holds the keys; nothing is stored for it.
-            let secret = if jump.agent {
+            let secret = if jump.agent || jump.ask {
                 None
             } else {
                 secrets
@@ -132,14 +157,16 @@ pub fn load(planned: Vec<Planned>, secrets: Arc<dyn SecretStore>) -> Result<Vec<
                     .map_err(|error| error.to_string())?
             };
             // A key file may need no passphrase; a password must be stored.
-            if !jump.agent && jump.key_file.is_none() && secret.is_none() {
+            if !jump.agent && !jump.ask && jump.key_file.is_none() && secret.is_none() {
                 return Err(fl!("jump-needs-credential", name = jump.name));
             }
             Ok(Ready {
+                name: jump.name,
                 endpoint: jump.endpoint,
                 username: jump.username,
                 key_file: jump.key_file,
                 agent: jump.agent,
+                ask: jump.ask,
                 secret,
             })
         })
@@ -218,11 +245,24 @@ mod tests {
     }
 
     #[test]
-    fn a_jump_host_that_would_have_to_ask_is_refused_by_name() {
+    fn a_jump_host_with_no_credential_is_refused_by_name() {
         let store = store();
 
-        assert!(plan(&store, "asks").unwrap_err().contains("asks"));
         assert!(plan(&store, "bare").unwrap_err().contains("bare"));
+    }
+
+    #[test]
+    fn an_asked_jump_host_waits_for_its_password_to_be_typed() {
+        let planned = plan(&store(), "asks").unwrap();
+        let secrets = Arc::new(MemoryStore::new());
+
+        let mut ready = load(planned, secrets).unwrap();
+        assert!(ready[0].needs_typing());
+        assert!(ready[0].hop().is_none());
+
+        ready[0].set_typed("ops".to_string(), Secret::new("hunter2".to_string()));
+        assert!(!ready[0].needs_typing());
+        assert!(ready[0].hop().is_some());
     }
 
     #[test]

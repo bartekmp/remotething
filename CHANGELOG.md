@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.69.0 - 2026-11-18
+
+- A jump host with an "ask every time" credential now asks for its password when you connect, instead of refusing.
+
 - The guide has screenshots, a shortcuts page and a troubleshooting page, and a new introduction.
 
 ## 0.68.0 - 2026-11-18

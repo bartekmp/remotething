@@ -170,6 +170,11 @@ fn sign_in_form<'a>(state: &State, form: &'a Form) -> Element<'a, Message> {
     let mut fields = column![text(state.connection.name.clone()).size(theme::TEXT_TITLE)]
         .spacing(10)
         .max_width(FORM_WIDTH);
+    if let Some(jump) = &form.jump {
+        fields = fields.push(
+            text(fl!("session-jump-password", name = jump.as_str())).style(theme::secondary_text),
+        );
+    }
     if let Some(note) = &form.note {
         fields = fields.push(text(note.as_str()).style(text::danger));
     }
@@ -180,7 +185,7 @@ fn sign_in_form<'a>(state: &State, form: &'a Form) -> Element<'a, Message> {
                 .on_submit(Message::Submitted),
         );
     }
-    let secret_label = if state.asks_for_passphrase() {
+    let secret_label = if form.jump.is_none() && state.asks_for_passphrase() {
         fl!("session-passphrase")
     } else {
         fl!("session-password")

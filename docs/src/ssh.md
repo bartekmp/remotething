@@ -19,7 +19,7 @@ What the app asks for depends on the connection's credential:
 
 **ssh-agent** works with `ssh-agent` or any compatible agent (GNOME Keyring, KeePassXC, 1Password) through `SSH_AUTH_SOCK` on Linux. On Windows it uses the OpenSSH agent service, then Pageant. The credential needs a user name; the agent signs, so the private keys never reach this app. Add keys with `ssh-add`.
 
-**Keyboard-interactive** is for servers that use two-factor sign-in (PAM with a one-time code). The credential needs a user name. Hidden answers are masked. It does not work for jump hosts, which cannot ask while connecting, and there is no time limit while you type.
+**Keyboard-interactive** is for servers that use two-factor sign-in (PAM with a one-time code). The credential needs a user name. Hidden answers are masked. It does not work for jump hosts, and there is no time limit while you type.
 
 A password typed into the tab is used for that session only. To store one, use the **Credentials** screen.
 
@@ -30,7 +30,7 @@ If the server refuses a password, the form comes back so you can try again. If i
 A connection, or a folder above it, can name another connection as its **Jump host** in the properties panel. The app connects to the jump host first and reaches the target through it; jump hosts can be chained, each with its own jump host.
 
 - Every server on the way has its host key checked, and the question names the server it is about. Trust each in turn.
-- A jump host cannot ask for a password while connecting. It needs a credential with a user name and either a stored password, or a private key file (its passphrase, if any, stored too).
+- A jump host needs a credential. With a stored password, a key file (its passphrase, if any, stored too) or an agent it connects by itself. With **Ask every time** the tab first asks for that jump host's password (and user name, if the credential has none), one form per jump host, then goes on. A refused password ends the tab with the host's name; **Reconnect** asks again. Keyboard-interactive credentials do not work on jump hosts. VNC tabs cannot ask, so a jump host used by VNC needs a stored password.
 - The jump host's SSH server must allow forwarding (`AllowTcpForwarding yes`, the OpenSSH default). If it does not, the tab says which host refused.
 - The connections to the jump hosts stay open as long as the session does, and close with it.
 

@@ -18,7 +18,7 @@ The local port is in use by another program. Pick another port in the connection
 
 ## A jump host fails
 
-Each jump host needs its own credential with a user name and either a stored password or a key file, and its SSH server must allow forwarding (`AllowTcpForwarding yes`). The tab names the host that refused. See [Jump hosts](ssh.md#jump-hosts).
+Each jump host needs its own credential (a stored password, a key file, an agent, or **Ask every time**), and its SSH server must allow forwarding (`AllowTcpForwarding yes`). The tab names the host that refused. See [Jump hosts](ssh.md#jump-hosts).
 
 ## RDP: the connection drops when the window resizes
 

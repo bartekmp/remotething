@@ -186,7 +186,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
     match message {
         Message::JumpsLoaded(Ok(SealedJumps(jumps))) => {
             state.jumps = jumps;
-            state.begin_target(context)
+            state.ask_for_jumps(context)
         }
         Message::JumpsLoaded(Err(reason)) => {
             state.stage = Stage::Ended(reason);
@@ -224,6 +224,10 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 return Task::none();
             }
             let secret = Secret::new(std::mem::take(&mut form.secret));
+            if let Some(index) = state.asking_jump {
+                state.jumps[index].set_typed(username, secret);
+                return state.ask_for_jumps(context);
+            }
             state.username = username;
             state.set_secret(Some(secret));
             state.connect(context)

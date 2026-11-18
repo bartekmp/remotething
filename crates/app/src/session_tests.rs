@@ -511,6 +511,48 @@ fn a_jump_host_with_a_credential_first_loads_its_secrets_then_goes_on_to_the_tar
 }
 
 #[test]
+fn an_asked_jump_host_gets_its_own_form_before_the_target() {
+    let mut fixture = Fixture::new();
+    fixture.store = toml::from_str(
+        r#"
+        [[credential]]
+        id = "ask"
+        name = "Ask"
+        kind = "ask"
+
+        [[connection]]
+        id = "bastion"
+        name = "bastion"
+        protocol = "ssh"
+        host = "bastion.example.net"
+        credential = "ask"
+        "#,
+    )
+    .unwrap();
+    let (mut state, _) = State::start(connection_with_jump("bastion"), &fixture.context());
+    let planned = crate::jump::plan(&fixture.store, "bastion").unwrap();
+    let ready = crate::jump::load(planned, Arc::new(MemoryStore::new())).unwrap();
+
+    fixture.send(&mut state, Message::JumpsLoaded(Ok(SealedJumps(ready))));
+
+    // First the jump host: its name and both fields are asked.
+    assert_eq!(form(&state).jump.as_deref(), Some("bastion"));
+    assert!(form(&state).ask_username);
+    fixture.send(&mut state, Message::UsernameChanged("ops".to_string()));
+    fixture.send(
+        &mut state,
+        Message::SecretChanged(Hidden("hunter2".to_string())),
+    );
+    fixture.send(&mut state, Message::Submitted);
+
+    // Then the target, which has no credential either.
+    assert_eq!(form(&state).jump, None);
+    assert_eq!(state.asking_jump, None);
+    assert!(!state.jumps[0].needs_typing());
+    assert!(state.jumps[0].hop().is_some());
+}
+
+#[test]
 fn a_jump_host_whose_secret_is_missing_ends_the_session_with_the_reason() {
     let mut fixture = Fixture::new();
     let (mut state, _) = State::start(connection_with_jump("bastion"), &fixture.context());

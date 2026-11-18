@@ -390,6 +390,11 @@ impl Live {
 pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) -> Task<Message> {
     match message {
         Message::JumpsLoaded(Ok(SealedJumps(jumps))) => {
+            // Typing a jump host's password is only built for SSH tabs; never skip the jump.
+            if let Some(asked) = jumps.iter().find(|jump| jump.needs_typing()) {
+                state.stage = Stage::Ended(fl!("jump-ask-unsupported", name = asked.name.as_str()));
+                return Task::none();
+            }
             state.jumps = jumps;
             state.begin_target(context)
         }
