@@ -14,6 +14,8 @@ The window has two parts: the connection tree on the left and open tabs in the c
 - The button at the top of the tree folds it to a narrow strip; press it again to bring it back. The app remembers this.
 - **New folder** and **New connection** add an item inside the selected folder, or beside the selected connection. With nothing selected they go to the top level. The properties panel opens for the new item.
 
+![The connection tree and the properties panel](images/properties.png)
+
 ### Right-click menu
 
 | Right-click on | Offers |

@@ -11,5 +11,7 @@
 - [Remote Desktop](rdp.md)
 - [VNC](vnc.md)
 - [Recording](recording.md)
+- [Keyboard shortcuts](shortcuts.md)
 - [Accessibility](accessibility.md)
+- [Troubleshooting](troubleshooting.md)
 - [The connections file](connections-file.md)

@@ -1,6 +1,6 @@
 # Installing
 
-The pipeline builds the Windows zip for every change. Linux packages are built on demand for now and will be published with tagged releases.
+The pipeline builds the Windows zip for every merge to the main branch. Linux packages are built on demand for now and will be published with tagged releases.
 
 ## Linux
 

@@ -2,6 +2,8 @@
 
 Double-click an SSH connection, or right-click it and choose **Connect**. A tab opens with a terminal.
 
+![An SSH terminal in the dark theme](images/terminal-dark.png)
+
 ## Signing in
 
 What the app asks for depends on the connection's credential:
@@ -57,6 +59,8 @@ The first time you connect to a host, nothing is sent to it yet. The tab shows t
 1. Compare the fingerprint with the one the server's administrator gives you.
 2. Press **Trust and connect**. To refuse, close the tab.
 
+![The fingerprint of an unknown server](images/host-key.png)
+
 Trusted keys are kept in `known_hosts.toml`, beside the connections file, by host and port.
 
 If a trusted host later shows a different key, the tab warns you before anything is sent. This happens when a server is reinstalled, and also when someone intercepts the connection. Trust the new key only if you know why it changed.
@@ -110,6 +114,8 @@ A WSL tab is a terminal like an SSH one: search, recording, screenshots and copy
 ## Files only (SFTP)
 
 Choose the protocol **SFTP** for a connection to get just the files: no terminal, no shell is started. The tab is the file browser, filling the whole area, and it signs in exactly like SSH (passwords, keys, agent, one-time codes, jump hosts, host-key check). The actions below work the same. Typing `sftp://user@host` in the new-tab box opens one too.
+
+![The file browser of an SFTP connection, with permissions and dates](images/files-light.png)
 
 ### Servers without SFTP
 

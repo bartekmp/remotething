@@ -5,6 +5,8 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+- The guide has screenshots, a shortcuts page and a troubleshooting page, and a new introduction.
+
 ## 0.68.0 - 2026-11-18
 
 - High contrast colours in Settings, Tab and Shift+Tab move between the fields of forms, and an Accessibility chapter in the guide.
