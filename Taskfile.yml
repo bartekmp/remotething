@@ -55,6 +55,12 @@ tasks:
     cmds:
       - mdbook serve docs --open
 
+  package:linux:
+    desc: Build the .deb and .rpm into dist/ (needs cargo-deb and cargo-generate-rpm)
+    cmds:
+      - cargo xtask build linux
+      - cargo xtask package linux
+
   package:windows:
     desc: Build the Windows zip into dist/
     cmds:
