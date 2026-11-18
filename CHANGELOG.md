@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.70.0 - 2026-11-18
+
+- Duplicate a connection from its right-click menu, then edit the copy.
+
 ## 0.69.1 - 2026-11-18
 
 - The Linux packages carry the real logo (the menu and window icon were a placeholder), in every size, and the desktop entry matches the window.

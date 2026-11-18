@@ -54,6 +54,8 @@ pub enum Message {
     /// Open the properties panel.
     Edit,
     Rename,
+    /// Add a copy of a connection and open it for editing.
+    Duplicate,
     ChangeIcon,
     IconPicked(Option<&'static str>),
     MoveUp,
@@ -81,6 +83,7 @@ pub fn actions(target: Option<&Selection>) -> &'static [Message] {
             Message::Connect,
             Message::Edit,
             Message::Rename,
+            Message::Duplicate,
             Message::ChangeIcon,
             Message::MoveUp,
             Message::MoveDown,
@@ -96,6 +99,7 @@ fn label(action: Message) -> String {
         Message::NewConnection => fl!("tree-new-connection"),
         Message::Edit => fl!("menu-edit"),
         Message::Rename => fl!("menu-rename"),
+        Message::Duplicate => fl!("menu-duplicate"),
         Message::ChangeIcon => fl!("menu-change-icon"),
         Message::MoveUp => fl!("menu-move-up"),
         Message::MoveDown => fl!("menu-move-down"),
@@ -210,6 +214,14 @@ mod tests {
         assert!(actions.contains(&Message::NewConnection));
         assert!(actions.contains(&Message::Rename));
         assert!(!actions.contains(&Message::Connect));
+        assert!(!actions.contains(&Message::Duplicate));
+    }
+
+    #[test]
+    fn a_connection_can_be_duplicated() {
+        let target = Selection::Connection("web".to_string());
+
+        assert!(actions(Some(&target)).contains(&Message::Duplicate));
     }
 
     #[test]

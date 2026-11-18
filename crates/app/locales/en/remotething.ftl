@@ -104,6 +104,8 @@ tree-title = Connections
 properties-title = Properties
 
 menu-connect = Connect
+menu-duplicate = Duplicate
+tree-copy-name = { $name } (copy)
 menu-rename = Rename
 menu-change-icon = Change icon
 menu-move-up = Move up

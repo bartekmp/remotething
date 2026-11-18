@@ -76,6 +76,22 @@ impl State {
         }
     }
 
+    /// Adds a copy of a connection right after it, selects it and opens it for editing.
+    pub(crate) fn duplicate_connection(&mut self, id: &str) {
+        let Some(original) = self.store.connections.iter().find(|c| c.id == id) else {
+            return;
+        };
+        let name = fl!("tree-copy-name", name = original.name.as_str());
+        let mut updated = self.store.clone();
+        let Ok(copy_id) = updated.duplicate_connection(id, name) else {
+            return;
+        };
+        if self.commit(updated) {
+            self.select(Some(Selection::Connection(copy_id)));
+            self.properties_open = true;
+        }
+    }
+
     pub(crate) fn save_draft(&mut self) -> Task<Message> {
         let (Some(draft), Some(selection)) = (&self.draft, self.tree.selected()) else {
             return Task::none();

@@ -73,6 +73,9 @@ pub(crate) fn on_menu(state: &mut State, message: menu::Message) -> Task<Message
                     .chain(operation::select_all(tree::RENAME_INPUT));
             }
         }
+        (menu::Message::Duplicate, Some(Selection::Connection(id))) => {
+            state.duplicate_connection(id);
+        }
         (menu::Message::IconPicked(icon), Some(item)) => state.set_icon(item, icon),
         (menu::Message::MoveUp, Some(item)) => state.shift(item, Direction::Up),
         (menu::Message::MoveDown, Some(item)) => state.shift(item, Direction::Down),

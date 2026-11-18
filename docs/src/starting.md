@@ -22,10 +22,11 @@ The window has two parts: the connection tree on the left and open tabs in the c
 | --- | --- |
 | Empty space | New folder, New connection (both at the top level) |
 | A folder | New folder and New connection inside it, Edit, Rename, Change icon, Move up, Move down, Remove |
-| A connection | Connect, Edit, Rename, Change icon, Move up, Move down, Remove |
+| A connection | Connect, Edit, Rename, Duplicate, Change icon, Move up, Move down, Remove |
 
 - **Edit** opens the properties panel.
 - **Rename** turns the name into a text field. Enter keeps the new name, Escape keeps the old one.
+- **Duplicate** adds a copy of a connection right after it, named "name (copy)", and opens it for editing, so you can change just the host or the port. The copy keeps the folder, every setting and the credential; passwords are shared through that credential, not copied.
 - **Change icon** shows the icon grid; the change is saved when you pick one.
 - Escape or a click outside closes the menu.
 

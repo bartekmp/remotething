@@ -27,6 +27,22 @@ impl Store {
         })
     }
 
+    /// Adds a copy of a connection right after it, with the name `name` and a new id, and
+    /// returns that id. The copy keeps the folder, the settings and the credential.
+    pub fn duplicate_connection(&mut self, connection_id: &str, name: String) -> Result<String> {
+        let position = self
+            .connections
+            .iter()
+            .position(|connection| connection.id == connection_id)
+            .ok_or_else(|| Error::UnknownConnection(connection_id.to_string()))?;
+        let mut copy = self.connections[position].clone();
+        copy.id = self.new_connection_id(&name);
+        copy.name = name;
+        let id = copy.id.clone();
+        self.connections.insert(position + 1, copy);
+        Ok(id)
+    }
+
     /// Removes a credential. One that a folder or connection still uses is refused.
     pub fn remove_credential(&mut self, credential_id: &str) -> Result<()> {
         let folder_user = self
@@ -242,6 +258,47 @@ mod tests {
     #[test]
     fn a_name_without_letters_still_gives_an_id() {
         assert_eq!(store().new_folder_id("!!!"), "item");
+    }
+
+    #[test]
+    fn a_copy_sits_after_the_original_with_a_new_id_and_the_same_settings() {
+        let mut store = store();
+
+        let id = store
+            .duplicate_connection("web-01", "web-01 (copy)".to_string())
+            .unwrap();
+
+        let ids: Vec<&str> = store.connections.iter().map(|c| c.id.as_str()).collect();
+        assert_eq!(ids, ["bastion", "web-01", "web-01-copy"]);
+        assert_eq!(id, "web-01-copy");
+        let (original, copy) = (&store.connections[1], &store.connections[2]);
+        assert_eq!(copy.name, "web-01 (copy)");
+        assert_eq!(copy.parent, original.parent);
+        assert_eq!(copy.host, original.host);
+        assert_eq!(copy.settings, original.settings);
+    }
+
+    #[test]
+    fn copying_twice_gives_two_ids() {
+        let mut store = store();
+
+        let first = store
+            .duplicate_connection("bastion", "bastion".to_string())
+            .unwrap();
+        let second = store
+            .duplicate_connection("bastion", "bastion".to_string())
+            .unwrap();
+
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn an_unknown_connection_cannot_be_copied() {
+        assert!(
+            store()
+                .duplicate_connection("nope", "x".to_string())
+                .is_err()
+        );
     }
 
     #[test]
