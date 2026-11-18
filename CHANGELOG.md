@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.67.0 - 2026-11-18
+
+- SSH remote forwards (`R:9000:localhost:3000`) and dynamic forwards (a SOCKS5 proxy, `D:1080`); the PuTTY import brings them over.
+
 ## 0.66.1 - 2026-11-18
 
 - The SMB guide no longer says the administrative shares (`C$`) are listed; they are not.

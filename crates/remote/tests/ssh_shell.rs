@@ -132,6 +132,38 @@ impl server::Handler for TestServer {
         Ok(())
     }
 
+    /// Listens for a remote forward and hands each client to the SSH client, like OpenSSH.
+    async fn tcpip_forward(
+        &mut self,
+        address: &str,
+        port: &mut u32,
+        session: &mut Session,
+    ) -> Result<bool, Self::Error> {
+        let Ok(listener) = TcpListener::bind((address, *port as u16)).await else {
+            return Ok(false);
+        };
+        *port = u32::from(listener.local_addr().unwrap().port());
+        let (address, port, handle) = (address.to_string(), *port, session.handle());
+        tokio::spawn(async move {
+            while let Ok((mut client, peer)) = listener.accept().await {
+                let opened = handle
+                    .channel_open_forwarded_tcpip(
+                        address.clone(),
+                        port,
+                        peer.ip().to_string(),
+                        u32::from(peer.port()),
+                    )
+                    .await;
+                let Ok(channel) = opened else { continue };
+                tokio::spawn(async move {
+                    let _ = tokio::io::copy_bidirectional(&mut client, &mut channel.into_stream())
+                        .await;
+                });
+            }
+        });
+        Ok(true)
+    }
+
     async fn pty_request(
         &mut self,
         channel: ChannelId,
@@ -766,6 +798,77 @@ async fn a_local_forward_reaches_a_host_behind_the_server() {
     client.read_exact(&mut answer).await.unwrap();
 
     assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_remote_forward_lets_the_server_reach_a_host_here() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let target = start_shouting_server().await;
+    let shell = connected_shell().await;
+    let forward = shell
+        .connection
+        .forward_remote(0, "127.0.0.1".to_string(), target)
+        .await
+        .unwrap();
+
+    let mut client = tokio::net::TcpStream::connect(("127.0.0.1", forward.local_port()))
+        .await
+        .unwrap();
+    client.write_all(b"hello").await.unwrap();
+    let mut answer = [0u8; 5];
+    client.read_exact(&mut answer).await.unwrap();
+
+    assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_dynamic_forward_is_a_socks_proxy_through_the_server() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let target = start_shouting_server().await;
+    let shell = connected_shell().await;
+    let forward = shell.connection.forward_dynamic(0).await.unwrap();
+
+    let mut client = tokio::net::TcpStream::connect(("127.0.0.1", forward.local_port()))
+        .await
+        .unwrap();
+    // Greeting with one method (no sign-in), then CONNECT to 127.0.0.1:target.
+    client.write_all(&[5, 1, 0]).await.unwrap();
+    let mut chosen = [0u8; 2];
+    client.read_exact(&mut chosen).await.unwrap();
+    assert_eq!(chosen, [5, 0]);
+    let mut request = vec![5, 1, 0, 1, 127, 0, 0, 1];
+    request.extend_from_slice(&target.to_be_bytes());
+    client.write_all(&request).await.unwrap();
+    let mut reply = [0u8; 10];
+    client.read_exact(&mut reply).await.unwrap();
+    assert_eq!(&reply[..2], &[5, 0]);
+    client.write_all(b"hello").await.unwrap();
+    let mut answer = [0u8; 5];
+    client.read_exact(&mut answer).await.unwrap();
+
+    assert_eq!(&answer, b"HELLO");
+}
+
+#[tokio::test]
+async fn a_dynamic_forward_answers_refused_for_a_closed_port() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let shell = connected_shell().await;
+    let forward = shell.connection.forward_dynamic(0).await.unwrap();
+
+    let mut client = tokio::net::TcpStream::connect(("127.0.0.1", forward.local_port()))
+        .await
+        .unwrap();
+    client.write_all(&[5, 1, 0]).await.unwrap();
+    let mut chosen = [0u8; 2];
+    client.read_exact(&mut chosen).await.unwrap();
+    client
+        .write_all(&[5, 1, 0, 1, 127, 0, 0, 1, 0, 9])
+        .await
+        .unwrap();
+    let mut reply = [0u8; 10];
+    client.read_exact(&mut reply).await.unwrap();
+
+    assert_eq!(reply[1], 5);
 }
 
 #[tokio::test]

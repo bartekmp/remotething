@@ -235,7 +235,7 @@ fn planned(session: &PuttySession) -> std::result::Result<PlannedConnection, Str
         .map_or((Vec::new(), 0), parse_forwardings);
     if left_out > 0 {
         notes.push(format!(
-            "{left_out} remote or dynamic port forward(s) were not imported"
+            "{left_out} port forward(s) could not be read and were not imported"
         ));
     }
     Ok(PlannedConnection {
@@ -249,13 +249,13 @@ fn planned(session: &PuttySession) -> std::result::Result<PlannedConnection, Str
     })
 }
 
-/// Reads PuTTY's `L8080=host:80,R9000=host:9000,D1080`. Returns the local
-/// forwards and how many others (remote, dynamic, unreadable) were left out.
+/// Reads PuTTY's `L8080=host:80,R9000=host:9000,D1080`. Returns the forwards
+/// and how many entries could not be read.
 fn parse_forwardings(text: &str) -> (Vec<Forward>, usize) {
     let mut forwards = Vec::new();
     let mut left_out = 0;
     for entry in text.split(',').filter(|entry| !entry.trim().is_empty()) {
-        match local_forward(entry.trim()) {
+        match forward_of(entry.trim()) {
             Some(forward) => forwards.push(forward),
             None => left_out += 1,
         }
@@ -263,12 +263,20 @@ fn parse_forwardings(text: &str) -> (Vec<Forward>, usize) {
     (forwards, left_out)
 }
 
-/// `L8080=host:80`, optionally with a bind address before the port.
-fn local_forward(entry: &str) -> Option<Forward> {
-    let (source, target) = entry.strip_prefix('L')?.split_once('=')?;
+/// `L8080=host:80`, `R9000=host:80` or `D1080`, optionally with a bind address before the port.
+fn forward_of(entry: &str) -> Option<Forward> {
     // The bind address, if any, comes before the last colon.
-    let local_port = source.rsplit(':').next()?;
-    Forward::parse(&format!("{local_port}:{target}")).ok()
+    let port_of = |source: &str| source.rsplit(':').next().map(str::to_string);
+    if let Some(source) = entry.strip_prefix('D') {
+        return Forward::parse(&format!("D:{}", port_of(source)?)).ok();
+    }
+    let (prefix, rest) = if let Some(rest) = entry.strip_prefix('L') {
+        ("", rest)
+    } else {
+        ("R:", entry.strip_prefix('R')?)
+    };
+    let (source, target) = rest.split_once('=')?;
+    Forward::parse(&format!("{prefix}{}:{target}", port_of(source)?)).ok()
 }
 
 impl Store {

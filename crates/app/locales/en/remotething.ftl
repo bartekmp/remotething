@@ -233,8 +233,8 @@ session-agent-refused = The server accepted none of the keys in your ssh-agent f
 
 forwards-active = Port forwards: { $list }
 properties-forwards = Port forwards
-properties-forwards-hint = 8080:db.internal:5432, 9000:localhost:9000
-properties-error-forwards = Port forward { $text } is not local_port:host:port.
+properties-forwards-hint = 8080:db.internal:5432, R:9000:localhost:3000, D:1080
+properties-error-forwards = Port forward { $text } is not port:host:port, R:port:host:port or D:port.
 
 kind-interactive = Keyboard-interactive
 credentials-interactive-note = For servers that ask for a password and a one-time code. The questions are shown on every connect. Nothing is stored here except the user name.

@@ -14,13 +14,13 @@ pub type SftpStream = russh::ChannelStream<Msg>;
 
 /// An open SSH connection. It stays open while a shell or a copy of this handle uses it.
 #[derive(Clone)]
-pub struct Connection(Arc<Links>);
+pub struct Connection(pub(super) Arc<Links>);
 
 /// The connection to the target and, kept open underneath it, those to the jump hosts.
-struct Links {
+pub(super) struct Links {
     target: client::Handle<Handler>,
     _tunnel: Vec<client::Handle<Handler>>,
-    details: Learned,
+    pub(super) details: Learned,
 }
 
 impl Connection {

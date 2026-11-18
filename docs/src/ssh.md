@@ -34,10 +34,19 @@ A connection, or a folder above it, can name another connection as its **Jump ho
 
 ## Port forwards
 
-The **Port forwards** field of a connection, or of a folder above it, lists local forwards like `ssh -L`: `8080:db.internal:5432, 9000:localhost:9000`. Each is `local_port:host:port`, with `host` as the SSH server sees it.
+The **Port forwards** field of a connection, or of a folder above it, lists forwards, separated by commas. There are three kinds:
+
+| Write | Like | What it does |
+| --- | --- | --- |
+| `8080:db.internal:5432` | `ssh -L` | Listens on this machine's port 8080 and reaches `db.internal:5432` as the server sees it |
+| `R:9000:localhost:3000` | `ssh -R` | The server listens on its port 9000 and reaches `localhost:3000` as this machine sees it |
+| `D:1080` | `ssh -D` | Listens on this machine's port 1080 as a SOCKS5 proxy; whatever connects through it leaves from the server |
+
 
 - The forwards open when the session connects and close with the tab.
-- They listen on `127.0.0.1` only, so only this machine can use them.
+- They listen on `127.0.0.1` only, so only this machine (or, for `R:`, only the server itself) can use them.
+- The SOCKS5 proxy has no sign-in and supports `CONNECT` (TCP) only.
+- A server that does not allow remote forwards (`AllowTcpForwarding`, `GatewayPorts` rules) refuses an `R:` forward; the tab says so in red.
 - A port that is already in use is shown in red above the terminal; the other forwards still open.
 - A connection with its own list ignores the folder's; leave it empty to inherit.
 
@@ -171,6 +180,4 @@ In a file browser (SFTP, FTP, FTPS or SMB tab, or the file pane beside a termina
 
 | Feature | State |
 | --- | --- |
-| Remote forwards (`-R`) and dynamic forwards (`-D`) | Planned |
-| Files: progress and a transfer queue, rename, delete, new folder, preview, the wide view with permissions and dates, drag and drop | Planned |
 | Host certificates | Not supported; the server must offer a plain host key |

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use iced::widget::{column, text};
 use iced::{Element, Task};
-use remotething_core::Forward;
+use remotething_core::{Forward, ForwardKind};
 use remotething_remote::ssh::{Connection, Forwarding};
 
 use crate::i18n::fl;
@@ -46,9 +46,19 @@ pub fn start(connection: Connection, wanted: Vec<Forward>) -> Task<Message> {
         async move {
             let mut active = Active::default();
             for forward in wanted {
-                let opened = connection
-                    .forward_local(forward.local_port, forward.host.clone(), forward.port)
-                    .await;
+                let opened = match forward.kind {
+                    ForwardKind::Local => {
+                        connection
+                            .forward_local(forward.local_port, forward.host.clone(), forward.port)
+                            .await
+                    }
+                    ForwardKind::Remote => {
+                        connection
+                            .forward_remote(forward.local_port, forward.host.clone(), forward.port)
+                            .await
+                    }
+                    ForwardKind::Dynamic => connection.forward_dynamic(forward.local_port).await,
+                };
                 match opened {
                     Ok(running) => active.running.push((forward, running)),
                     Err(error) => active.failed.push(error.to_string()),

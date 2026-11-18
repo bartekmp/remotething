@@ -39,6 +39,41 @@ impl client::Handler for Handler {
         Ok(())
     }
 
+    /// The server passes on a client of a remote forward: connect it to its target here.
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: russh::Channel<client::Msg>,
+        _connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: client::ChannelOpenHandle,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        let target = self
+            .details
+            .lock()
+            .ok()
+            .and_then(|details| details.remote_targets.get(&connected_port).cloned());
+        let Some((host, port)) = target else {
+            reply
+                .reject(russh::ChannelOpenFailure::AdministrativelyProhibited)
+                .await;
+            return Ok(());
+        };
+        match tokio::net::TcpStream::connect((host.as_str(), port)).await {
+            Ok(mut local) => {
+                reply.accept().await;
+                tokio::spawn(async move {
+                    let _ =
+                        tokio::io::copy_bidirectional(&mut local, &mut channel.into_stream()).await;
+                });
+            }
+            Err(_) => reply.reject(russh::ChannelOpenFailure::ConnectFailed).await,
+        }
+        Ok(())
+    }
+
     /// Runs before anything secret is sent. Only an accepted key lets the handshake go on.
     async fn check_server_key(
         &mut self,

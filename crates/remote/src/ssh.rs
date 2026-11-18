@@ -108,6 +108,9 @@ pub struct Details {
     pub host_key_algorithm: String,
     /// The SHA-256 fingerprint of the server's host key.
     pub fingerprint: String,
+    /// Remote forwards that are open: the port on the server and the host and port here
+    /// that its clients are sent to. The handler reads it when the server opens a channel.
+    pub(super) remote_targets: std::collections::HashMap<u32, (String, u16)>,
 }
 
 /// The public key a server identified itself with.
@@ -227,6 +230,13 @@ pub enum Error {
         host: String,
         /// What went wrong there.
         reason: Box<Error>,
+    },
+
+    /// The server refused to listen on a port for a remote forward.
+    #[error("the server would not listen on port {port}")]
+    RemoteForwardRefused {
+        /// The port on the server.
+        port: u16,
     },
 
     /// The local port of a forward could not be listened on, usually because it is in use.

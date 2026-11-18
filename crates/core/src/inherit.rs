@@ -248,6 +248,7 @@ mod tests {
     #[test]
     fn forwards_come_from_the_folder_unless_the_connection_has_its_own() {
         let forward = |local_port| crate::Forward {
+            kind: crate::ForwardKind::Local,
             local_port,
             host: "db".to_string(),
             port: 5432,
