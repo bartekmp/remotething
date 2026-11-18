@@ -6,7 +6,7 @@ Choose the protocol **SMB** in the connection's properties, or type `smb://host`
 
 ## Shares
 
-The top of the browser lists the **shares** the server offers, as folders. Open one to browse it. Printer shares and the administration pipe (`IPC$`) are left out. The administrative disk shares of a Windows machine (`C$` and the like) show too, and open only for an administrator.
+The top of the browser lists the **shares** the server offers, as folders. Open one to browse it. Printer shares, the administration pipe (`IPC$`) and the hidden administrative shares of a Windows machine (`C$`, `ADMIN$` and the like) are left out. A Windows machine with no shared folders of its own therefore shows an empty list.
 
 You cannot create, rename or delete a share here, only what is inside one.
 
