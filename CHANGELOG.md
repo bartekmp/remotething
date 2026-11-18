@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.69.1 - 2026-11-18
+
+- The Linux packages carry the real logo (the menu and window icon were a placeholder), in every size, and the desktop entry matches the window.
+
 ## 0.69.0 - 2026-11-18
 
 - A jump host with an "ask every time" credential now asks for its password when you connect, instead of refusing.

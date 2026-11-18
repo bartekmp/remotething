@@ -1,8 +1,12 @@
 [Desktop Entry]
 Type=Application
 Name=Remotething
+GenericName=Remote connection manager
 Comment=Remote desktops, terminals and file transfers in one tree
 Exec=remotething
 Icon=remotething
 Terminal=false
 Categories=Network;RemoteAccess;
+Keywords=ssh;rdp;vnc;sftp;remote;terminal;
+StartupWMClass=remotething
+StartupNotify=true
