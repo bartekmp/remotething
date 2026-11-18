@@ -3,7 +3,7 @@
 mod prune;
 mod version;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows | bump major|minor|patch | prune | version-check <git ref>>";
@@ -220,8 +220,13 @@ fn git_output(arguments: &[&str]) -> Option<String> {
     String::from_utf8(output.stdout).ok()
 }
 
+/// The workspace, found when xtask runs. The path cargo saw when it built xtask is not used: CI
+/// shares one build cache between workspaces, so the binary may come from one that is gone.
 fn workspace_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+    manifest_dir
         .parent()
         .expect("xtask lives inside the workspace")
         .to_path_buf()
