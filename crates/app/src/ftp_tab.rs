@@ -1,4 +1,4 @@
-//! An FTP, FTPS or SMB tab: signing in, the certificate question for FTPS, then the
+//! An FTP, FTPS, SMB or NFS tab: signing in, the certificate question for FTPS, then the
 //! files filling the tab. Drawing is in `ftp_view.rs`.
 
 use std::sync::Arc;
@@ -6,7 +6,10 @@ use std::sync::Arc;
 use iced::Task;
 use iced::futures::FutureExt;
 use remotething_core::{CredentialKind, Protocol, ResolvedConnection};
-use remotething_files::{Certificate, Error, FtpFs, FtpSettings, RemoteFs, SmbFs, SmbSettings};
+use remotething_files::{
+    Certificate, Error, FtpFs, FtpSettings, NOBODY, NfsFs, NfsSettings, RemoteFs, SmbFs,
+    SmbSettings,
+};
 use remotething_secrets::Secret;
 
 use crate::credentials::Hidden;
@@ -151,6 +154,9 @@ impl State {
     }
 
     fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
+        if self.connection.protocol == Protocol::Nfs {
+            return self.connect_nfs(context);
+        }
         let credential = self.connection.credential.as_ref().and_then(|id| {
             context
                 .store
@@ -191,6 +197,29 @@ impl State {
                 Task::none()
             }
         }
+    }
+
+    /// NFS has no password: the server trusts the user and group number. They are written as
+    /// the user name of the credential (`1000` or `1000:100`), or typed in a connection string.
+    fn connect_nfs(&mut self, context: &Context<'_>) -> Task<Message> {
+        let named = self
+            .connection
+            .credential
+            .as_ref()
+            .and_then(|id| context.store.credentials.iter().find(|c| &c.id == id))
+            .and_then(|credential| credential.username.clone())
+            .or_else(|| self.typed_username.clone())
+            .unwrap_or_default();
+        let (uid, gid) = nfs_identity(&named);
+        self.username = format!("{uid}:{gid}");
+        let settings = NfsSettings {
+            host: self.connection.host.clone(),
+            port: self.connection.port,
+            uid,
+            gid,
+        };
+        self.stage = Stage::Connecting;
+        Task::perform(open_nfs(settings), Message::Opened)
     }
 
     fn ask(&mut self, note: Option<String>) -> Task<Message> {
@@ -242,6 +271,23 @@ impl State {
         self.stage = Stage::Browsing(Box::new(pane));
         task.map(Message::Files)
     }
+}
+
+/// The user and group number in `1000` or `1000:100` (the group then is the user's number
+/// again); anything else is the unprivileged "nobody".
+fn nfs_identity(text: &str) -> (u32, u32) {
+    let text = text.trim();
+    let (user, group) = text.split_once(':').unwrap_or((text, text));
+    match (user.parse(), group.parse()) {
+        (Ok(user), Ok(group)) => (user, group),
+        _ => (NOBODY, NOBODY),
+    }
+}
+
+async fn open_nfs(settings: NfsSettings) -> Result<Opened, Failure> {
+    let files = NfsFs::connect(settings).await.map_err(Failure::from)?;
+    let files: Arc<dyn RemoteFs> = Arc::new(files);
+    Ok(Opened(files))
 }
 
 async fn open_smb(settings: SmbSettings) -> Result<Opened, Failure> {

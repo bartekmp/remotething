@@ -35,7 +35,7 @@ impl QuickTarget {
 /// Understood forms:
 /// - `ssh user@host`, `ssh host`, with `-p 2222` anywhere after `ssh`
 /// - `rdp host`, `vnc host`
-/// - `ssh://user@host:2222`, `sftp://user@host`, `ftp://host`, `ftps://host`, `smb://host`, `rdp://host`, `vnc://host:5901`
+/// - `ssh://user@host:2222`, `sftp://user@host`, `ftp://host`, `ftps://host`, `smb://host`, `nfs://host`, `rdp://host`, `vnc://host:5901`
 /// - `user@host` and `user@host:2222`, taken as SSH
 /// - an IPv6 address goes in brackets when a port follows: `ssh://[::1]:2222`
 pub fn parse_quick(text: &str) -> Option<QuickTarget> {
@@ -78,6 +78,7 @@ fn protocol_named(word: &str) -> Option<Protocol> {
         "ftp" => Some(Protocol::Ftp),
         "ftps" => Some(Protocol::Ftps),
         "smb" => Some(Protocol::Smb),
+        "nfs" => Some(Protocol::Nfs),
         "rdp" => Some(Protocol::Rdp),
         "vnc" => Some(Protocol::Vnc),
         _ => None,
@@ -173,6 +174,14 @@ mod tests {
 
         assert_eq!(target.protocol, Protocol::Smb);
         assert_eq!(target.port_or_default(), 445);
+    }
+
+    #[test]
+    fn the_nfs_scheme_uses_the_portmapper_port_111() {
+        let target = parse_quick("nfs://nas").unwrap();
+
+        assert_eq!(target.protocol, Protocol::Nfs);
+        assert_eq!(target.port_or_default(), 111);
     }
 
     #[test]

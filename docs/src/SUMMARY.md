@@ -7,6 +7,7 @@
 - [SSH](ssh.md)
 - [FTP and FTPS](ftp.md)
 - [SMB](smb.md)
+- [NFS](nfs.md)
 - [Remote Desktop](rdp.md)
 - [VNC](vnc.md)
 - [Recording](recording.md)

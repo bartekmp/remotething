@@ -63,6 +63,10 @@ fn strip(state: &State) -> Element<'_, Message> {
         Protocol::Smb => text(fl!("smb-label"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
+        // NFS 3 sends everything in the clear, and is not finished here yet.
+        Protocol::Nfs => text(fl!("nfs-label"))
+            .size(theme::TEXT_SMALL)
+            .style(text::danger),
         _ => text(fl!("ftp-not-encrypted"))
             .size(theme::TEXT_SMALL)
             .style(text::danger),

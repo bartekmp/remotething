@@ -20,12 +20,13 @@ use crate::tree::{Selection, protocol_label};
 /// Space kept free beside the fields for the scrollbar of the panel.
 const SCROLLBAR_ROOM: f32 = 14.0;
 
-const PROTOCOLS: [ProtocolChoice; 8] = [
+const PROTOCOLS: [ProtocolChoice; 9] = [
     ProtocolChoice(Protocol::Ssh),
     ProtocolChoice(Protocol::Sftp),
     ProtocolChoice(Protocol::Ftp),
     ProtocolChoice(Protocol::Ftps),
     ProtocolChoice(Protocol::Smb),
+    ProtocolChoice(Protocol::Nfs),
     ProtocolChoice(Protocol::Wsl),
     ProtocolChoice(Protocol::Rdp),
     ProtocolChoice(Protocol::Vnc),

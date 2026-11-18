@@ -217,3 +217,33 @@ fn an_smb_tab_signs_in_like_the_others_and_is_not_marked_encrypted_by_ftps_rules
     assert!(matches!(&state.stage, Stage::Asking(form) if form.ask_username));
     assert!(!state.is_encrypted());
 }
+
+#[test]
+fn an_nfs_tab_connects_at_once_as_the_user_number_of_its_credential() {
+    let mut fixture = Fixture::new().with_credential(CredentialKind::Password);
+    fixture.store.credentials[0].username = Some("1000:100".to_string());
+
+    let state = fixture.start(Protocol::Nfs, Some("cred"));
+
+    assert!(matches!(state.stage, Stage::Connecting));
+    assert_eq!(state.username, "1000:100");
+}
+
+#[test]
+fn an_nfs_tab_without_a_user_number_is_nobody() {
+    let mut fixture = Fixture::new();
+
+    let state = fixture.start(Protocol::Nfs, None);
+
+    assert!(matches!(state.stage, Stage::Connecting));
+    assert_eq!(state.username, "65534:65534");
+}
+
+#[test]
+fn a_user_number_may_come_with_a_group_number() {
+    assert_eq!(nfs_identity("1000"), (1000, 1000));
+    assert_eq!(nfs_identity(" 1000:100 "), (1000, 100));
+    assert_eq!(nfs_identity("ops"), (NOBODY, NOBODY));
+    assert_eq!(nfs_identity("1000:ops"), (NOBODY, NOBODY));
+    assert_eq!(nfs_identity(""), (NOBODY, NOBODY));
+}

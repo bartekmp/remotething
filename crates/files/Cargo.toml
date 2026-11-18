@@ -23,6 +23,8 @@ russh-sftp = "3"
 suppaftp = { version = "12", default-features = false, features = ["tokio-rustls-ring"] }
 thiserror = "2"
 tokio = { version = "1", features = ["fs", "io-util", "net", "sync", "time"] }
+# The NFS protocol, version 3, in pure Rust.
+nfs3_client = { version = "0.9", features = ["tokio"] }
 
 [dev-dependencies]
 tempfile = "3"

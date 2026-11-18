@@ -157,6 +157,8 @@ pub enum Protocol {
     Ftps,
     /// Files on a Windows or Samba share, over SMB 2 or 3. The shares of the server are the top folders.
     Smb,
+    /// Files on an NFS 3 export (experimental). The exports of the server are the top folders.
+    Nfs,
     /// A WSL distribution on this Windows machine, in a local terminal. The host is its name.
     Wsl,
     /// Windows Remote Desktop.
@@ -175,7 +177,7 @@ impl Protocol {
     pub fn is_files_only(self) -> bool {
         matches!(
             self,
-            Protocol::Sftp | Protocol::Ftp | Protocol::Ftps | Protocol::Smb
+            Protocol::Sftp | Protocol::Ftp | Protocol::Ftps | Protocol::Smb | Protocol::Nfs
         )
     }
 
@@ -190,6 +192,8 @@ impl Protocol {
             Protocol::Ssh | Protocol::Sftp => 22,
             Protocol::Ftp | Protocol::Ftps => 21,
             Protocol::Smb => 445,
+            // The portmapper, which tells where the NFS services are.
+            Protocol::Nfs => 111,
             // A distribution is reached through wsl.exe, not over the network.
             Protocol::Wsl => 0,
             Protocol::Rdp => 3389,

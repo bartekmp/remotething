@@ -3674,6 +3674,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "nfs3_client"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48ce4bd533d749ddf240f98c405e1bb628957d1d0703c9c79fe67fe4cc7e012e"
+dependencies = [
+ "fastrand",
+ "nfs3_types",
+ "tokio",
+]
+
+[[package]]
+name = "nfs3_macros"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c65db184648a6ca6b3512baea5c372e0496f0af93473231b745563200926ca6"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
+]
+
+[[package]]
+name = "nfs3_types"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "252b9bcc45b1f8fa853c7358243e6cdc24473b3eb877b65da87e7daf75003bf9"
+dependencies = [
+ "nfs3_macros",
+]
+
+[[package]]
 name = "nix"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5049,7 +5080,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -5076,7 +5107,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-capture"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "jpeg-encoder",
  "png",
@@ -5086,7 +5117,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-core"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5097,9 +5128,10 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "async-trait",
+ "nfs3_client",
  "remotething-remote",
  "remotething-secrets",
  "russh-sftp",
@@ -5113,7 +5145,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-cliprdr",
@@ -5135,7 +5167,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "portable-pty",
  "remotething-secrets",
@@ -5147,7 +5179,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -5163,7 +5195,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-vnc"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "remotething-secrets",
  "tempfile",
@@ -7890,7 +7922,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.65.4"
+version = "0.66.0"
 dependencies = [
  "tempfile",
 ]

@@ -10,6 +10,7 @@ protocol-sftp = SFTP
 protocol-ftp = FTP
 protocol-ftps = FTPS
 protocol-smb = SMB
+protocol-nfs = NFS (experimental)
 protocol-rdp = RDP
 protocol-vnc = VNC
 
@@ -373,6 +374,7 @@ wsl-stopped = stopped
 protocol-wsl = WSL
 wsl-details-distribution = Distribution
 smb-label = SMB
+nfs-label = NFS, not encrypted (experimental)
 properties-save-password = Or save a password for this connection
 properties-save-password-user = User name
 properties-save-password-secret = Password

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.66.0 - 2026-11-18
+
+- NFS (experimental): browse and transfer files on an NFS 3 server. The server needs the `insecure` export option; see the NFS chapter of the guide.
+
 ## 0.65.4 - 2026-11-17
 
 - The size shown while resizing is no longer shown over VNC.

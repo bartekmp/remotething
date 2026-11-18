@@ -1,12 +1,13 @@
 //! Remote file systems for Remotething: listing folders and moving files.
 //!
-//! Every backend implements [`RemoteFs`]: SFTP, SCP, FTP and FTPS, SMB, and the local disk.
+//! Every backend implements [`RemoteFs`]: SFTP, SCP, FTP and FTPS, SMB, NFS, and the local disk.
 
 mod entry;
 mod fs;
 mod ftp;
 mod ftp_tls;
 mod local;
+mod nfs;
 mod scp;
 mod sftp;
 mod smb;
@@ -17,6 +18,7 @@ pub use fs::{OnProgress, RemoteFs};
 pub use ftp::{FtpFs, FtpSettings};
 pub use ftp_tls::Certificate;
 pub use local::LocalFs;
+pub use nfs::{NOBODY, NfsFs, NfsSettings};
 pub use scp::ScpFs;
 pub use sftp::SftpFs;
 pub use smb::{SmbFs, SmbSettings};
