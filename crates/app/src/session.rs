@@ -263,6 +263,8 @@ pub enum Message {
     Pasted(Option<String>),
     /// The "Browse files" button of a connected session.
     BrowseFilesPressed,
+    /// The Search button: opens the search bar, or closes it when it is open.
+    SearchPressed,
     Files(files_pane::Message),
     PasteConfirmed,
     PasteCancelled,

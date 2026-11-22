@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.74.0 - 2026-11-22
+
+- A Search button beside Browse files opens and closes the terminal search.
+
+
 ## 0.73.0 - 2026-11-22
 
 - A Flatpak: `cargo xtask package flatpak` builds a bundle that runs on any distribution with Flatpak.

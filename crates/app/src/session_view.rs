@@ -39,6 +39,20 @@ pub fn view(state: &State) -> Element<'_, Message> {
                 Some(pending) => stack![terminal, paste_question(pending)].into(),
                 None => terminal,
             };
+            // Search, and browsing the server's files when there is a server to browse.
+            let mut buttons = row![].spacing(6);
+            let search_button = button(text(fl!("search-open")).size(theme::TEXT_SMALL))
+                .style(theme::pill)
+                .on_press(Message::SearchPressed);
+            buttons = buttons.push(search_button);
+            if live.files.is_none() && live.connection.is_some() {
+                let browse = button(text(fl!("files-browse")).size(theme::TEXT_SMALL))
+                    .style(theme::pill)
+                    .on_press(Message::BrowseFilesPressed);
+                buttons = buttons.push(browse);
+            }
+            let toolbar = container(buttons).align_right(Length::Fill);
+            let terminal: Element<'_, Message> = column![toolbar, terminal].spacing(6).into();
             let body: Element<'_, Message> = match &live.files {
                 // The pane takes its own space beside the terminal; it does not cover it.
                 Some(pane) => {
@@ -60,14 +74,6 @@ pub fn view(state: &State) -> Element<'_, Message> {
                         row![terminal, pane].spacing(theme::GAP).into()
                     }
                 }
-                None if live.connection.is_some() => {
-                    let browse = button(text(fl!("files-browse")).size(theme::TEXT_SMALL))
-                        .style(theme::pill)
-                        .on_press(Message::BrowseFilesPressed);
-                    let toolbar = container(browse).align_right(Length::Fill);
-                    column![toolbar, terminal].spacing(6).into()
-                }
-                // A terminal on this machine has no server to browse the files of.
                 None => terminal,
             };
             let mut layers = column![].spacing(6);

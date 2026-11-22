@@ -784,6 +784,18 @@ fn ctrl_shift_f_opens_the_search_bar_and_types_nothing() {
 }
 
 #[test]
+fn the_search_button_opens_the_bar_and_closes_it_again() {
+    let mut fixture = Fixture::new();
+    let (mut state, _input) = live(&mut fixture);
+
+    fixture.send(&mut state, Message::SearchPressed);
+    assert!(live_of(&state).search.is_some());
+
+    fixture.send(&mut state, Message::SearchPressed);
+    assert!(live_of(&state).search.is_none());
+}
+
+#[test]
 fn searching_highlights_matches_and_next_walks_through_them() {
     let mut fixture = Fixture::new();
     let (mut state, _input) = live(&mut fixture);

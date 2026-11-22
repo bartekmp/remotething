@@ -459,6 +459,17 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             }
             task.map(Message::Files)
         }
+        Message::SearchPressed => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            if live.search.is_some() {
+                live.close_search();
+                return Task::none();
+            }
+            live.open_search();
+            iced::widget::operation::focus(search::INPUT)
+        }
         Message::SearchChanged(query) => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.search_for(query);
