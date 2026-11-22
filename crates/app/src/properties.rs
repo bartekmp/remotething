@@ -323,15 +323,6 @@ pub fn view<'a>(
         theme::input("", &draft.name).on_input(Message::NameChanged),
     ));
 
-    let default_icon = match selection {
-        Selection::Folder(_) => icons::for_folder(None),
-        Selection::Connection(_) => icons::for_connection(None, draft.protocol),
-    };
-    fields = fields.push(labelled(
-        fl!("properties-icon"),
-        icons::grid(draft.icon.as_deref(), default_icon, Message::IconPicked),
-    ));
-
     if is_connection {
         fields = fields.push(labelled(
             fl!("properties-host"),
@@ -390,6 +381,16 @@ pub fn view<'a>(
             .width(Length::Fill),
         ));
     }
+
+    // The picker is big and rarely needed, so it comes after the fields people fill in.
+    let default_icon = match selection {
+        Selection::Folder(_) => icons::for_folder(None),
+        Selection::Connection(_) => icons::for_connection(None, draft.protocol),
+    };
+    fields = fields.push(labelled(
+        fl!("properties-icon"),
+        icons::grid(draft.icon.as_deref(), default_icon, Message::IconPicked),
+    ));
 
     let buttons = row![
         button(text(fl!("properties-save")))

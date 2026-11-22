@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use iced::alignment::Vertical;
-use iced::widget::{button, column, container, mouse_area, row, scrollable, space, text};
+use iced::widget::{column, container, mouse_area, row, scrollable, space, text};
 use iced::{Element, Length};
 use remotething_core::{Protocol, Store};
 
@@ -237,20 +237,6 @@ pub fn update(state: &mut State, message: Message) -> Option<Event> {
 }
 
 pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
-    let toolbar = row![
-        button(text(fl!("tree-new-folder")).size(theme::TEXT_SMALL))
-            .style(theme::pill)
-            .on_press(Message::NewFolderPressed),
-        button(text(fl!("tree-new-connection")).size(theme::TEXT_SMALL))
-            .style(theme::pill)
-            .on_press(Message::NewConnectionPressed),
-    ]
-    .spacing(6);
-    let credentials = button(text(fl!("tree-credentials")).size(theme::TEXT_SMALL))
-        .style(theme::pill)
-        .on_press(Message::CredentialsPressed);
-    let toolbar = column![toolbar, credentials].spacing(6);
-
     let query = state
         .search
         .as_deref()
@@ -278,7 +264,7 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
         .on_exit(Message::ListExited)
         .on_press(Message::ListPressed)
         .on_right_press(Message::MenuRequested(None));
-    let mut panel = column![toolbar].spacing(theme::GAP);
+    let mut panel = column![].spacing(theme::GAP);
     if let Some(typed) = &state.search {
         panel = panel.push(
             theme::input(&fl!("tree-search-hint"), typed)

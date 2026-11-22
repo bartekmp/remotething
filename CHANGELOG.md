@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.75.0 - 2026-11-22
+
+- The sidebar buttons have icons and stay as icons on the folded sidebar; pressing one unfolds it. Credentials are outlined and divided from their form, empty checkboxes are visible, and the icon picker moved below the other connection fields.
+
+
 ## 0.74.0 - 2026-11-22
 
 - A Search button beside Browse files opens and closes the terminal search.

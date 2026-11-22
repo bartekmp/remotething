@@ -158,6 +158,7 @@ fn found_list<'a>(state: &'a State, plan: &'a WslPlan) -> Element<'a, Message> {
         let label = format!("{}  ({state_label})", distro.name);
         list = list.push(
             checkbox(state.chosen.contains(&distro.name))
+                .style(crate::theme::check)
                 .label(label)
                 .on_toggle(move |on| Message::Toggled(name.clone(), on)),
         );

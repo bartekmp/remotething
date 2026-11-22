@@ -2,7 +2,7 @@
 //! context menu and the row being dragged.
 
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{button, column, container, opaque, pin, row, space, stack, text};
+use iced::widget::{button, column, container, opaque, pin, row, space, stack, text, tooltip};
 use iced::{Element, Length, Point};
 
 use crate::app::{Centre, Message, State};
@@ -126,17 +126,75 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
         .into()
 }
 
-/// The folded tree: the button that brings it back, and settings at the bottom.
-fn rail<'a>(width: Option<f32>) -> Element<'a, Message> {
-    let settings = button(icons::view(icons::SETTINGS, COLLAPSE_ICON_SIZE))
+/// What the sidebar buttons do, in the order shown: new folder, new connection, credentials.
+fn sidebar_actions() -> [(Icon, String, Message); 3] {
+    [
+        (
+            icons::FOLDER_PLUS,
+            fl!("tree-new-folder"),
+            Message::Tree(tree::Message::NewFolderPressed),
+        ),
+        (
+            icons::CIRCLE_PLUS,
+            fl!("tree-new-connection"),
+            Message::Tree(tree::Message::NewConnectionPressed),
+        ),
+        (
+            icons::KEY,
+            fl!("tree-credentials"),
+            Message::Tree(tree::Message::CredentialsPressed),
+        ),
+    ]
+}
+
+/// A button of the sidebar: the icon and its name.
+fn labelled_button<'a>(icon: Icon, label: String, message: Message) -> Element<'a, Message> {
+    let content = row![
+        icons::view(icon, look::TEXT_BODY),
+        text(label).size(look::TEXT_SMALL)
+    ]
+    .spacing(6)
+    .align_y(Vertical::Center);
+    button(content).style(look::pill).on_press(message).into()
+}
+
+/// A button of the folded sidebar: the icon, with the name when the pointer rests on it.
+fn rail_button<'a>(icon: Icon, label: String, message: Message) -> Element<'a, Message> {
+    let icon_button = button(icons::view(icon, COLLAPSE_ICON_SIZE))
         .padding(8)
         .style(look::pill)
-        .on_press(Message::SettingsPressed);
+        .on_press(message);
+    tooltip(
+        icon_button,
+        text(label).size(look::TEXT_SMALL),
+        tooltip::Position::Right,
+    )
+    .gap(4)
+    .style(look::chip)
+    .into()
+}
+
+/// The folded tree: the button that brings it back, the same actions as icons, and settings
+/// at the bottom. Pressing an action also unfolds the tree.
+fn rail<'a>(width: Option<f32>) -> Element<'a, Message> {
     let expand = icon_button(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled);
-    let rail = container(column![expand, space::vertical(), settings].align_x(Horizontal::Center))
-        .height(Length::Fill)
-        .padding(look::GAP)
-        .style(look::panel);
+    let mut actions = column![].spacing(look::GAP).align_x(Horizontal::Center);
+    for (icon, label, message) in sidebar_actions() {
+        actions = actions.push(rail_button(icon, label, message));
+    }
+    let settings = rail_button(
+        icons::SETTINGS,
+        fl!("tree-settings"),
+        Message::SettingsPressed,
+    );
+    let rail = container(
+        column![expand, actions, space::vertical(), settings]
+            .spacing(look::GAP * 2.0)
+            .align_x(Horizontal::Center),
+    )
+    .height(Length::Fill)
+    .padding(look::GAP)
+    .style(look::panel);
     match width {
         Some(width) => rail.width(Length::Fixed(width)).into(),
         None => rail.into(),
@@ -151,18 +209,24 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
         icon_button(icons::PANEL_LEFT_CLOSE, Message::TreeCollapseToggled),
     ]
     .align_y(Vertical::Center);
-    let content = tree::view(&state.tree, &state.store).map(Message::Tree);
-    let settings_label = row![
-        icons::view(icons::SETTINGS, look::TEXT_BODY),
-        text(fl!("tree-settings")).size(look::TEXT_SMALL),
+    let [folder, connection, credentials] = sidebar_actions();
+    let toolbar = column![
+        row![
+            labelled_button(folder.0, folder.1, folder.2),
+            labelled_button(connection.0, connection.1, connection.2),
+        ]
+        .spacing(6),
+        labelled_button(credentials.0, credentials.1, credentials.2),
     ]
-    .spacing(6)
-    .align_y(Vertical::Center);
-    let settings = button(settings_label)
-        .style(look::pill)
-        .on_press(Message::SettingsPressed);
+    .spacing(6);
+    let content = tree::view(&state.tree, &state.store).map(Message::Tree);
+    let settings = labelled_button(
+        icons::SETTINGS,
+        fl!("tree-settings"),
+        Message::SettingsPressed,
+    );
     side_panel(
-        column![header, content, settings].spacing(look::GAP),
+        column![header, toolbar, content, settings].spacing(look::GAP),
         TREE_WIDTH,
     )
 }

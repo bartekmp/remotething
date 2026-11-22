@@ -375,6 +375,21 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 }
 
 fn handle(state: &mut State, message: Message) -> Task<Message> {
+    // The folded sidebar shows only icons; pressing one opens it for what follows.
+    if state.preferences.tree_collapsed
+        && matches!(
+            message,
+            Message::SettingsPressed
+                | Message::Tree(
+                    tree::Message::NewFolderPressed
+                        | tree::Message::NewConnectionPressed
+                        | tree::Message::CredentialsPressed
+                )
+        )
+    {
+        state.preferences.tree_collapsed = false;
+        state.save_preferences();
+    }
     match message {
         Message::Frame(now) => state.now = now,
         Message::Tree(message) => {

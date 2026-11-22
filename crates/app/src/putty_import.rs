@@ -145,6 +145,7 @@ fn found_list<'a>(state: &'a State, plan: &'a ImportPlan) -> Element<'a, Message
         let label = format!("{}  ({target})", connection.name);
         let mut entry = column![
             checkbox(ticked)
+                .style(crate::theme::check)
                 .label(label)
                 .on_toggle(move |on| Message::Toggled(name.clone(), on))
         ]

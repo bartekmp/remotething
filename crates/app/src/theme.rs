@@ -6,8 +6,11 @@ use std::borrow::Borrow;
 use iced::border::{self, Border};
 use iced::theme::{Mode, Palette};
 use iced::widget::overlay::menu;
-use iced::widget::{PickList, TextInput, button, container, pick_list, text, text_input};
+use iced::widget::{
+    PickList, TextInput, button, checkbox, container, pick_list, space, text, text_input,
+};
 use iced::{Color, Font, Shadow, Theme, Vector, color};
+use iced::{Element, Length};
 
 pub const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
 pub const INTER_BOLD: &[u8] = include_bytes!("../assets/fonts/Inter-Bold.ttf");
@@ -406,6 +409,58 @@ pub fn entry(is_selected: bool) -> impl Fn(&Theme, button::Status) -> button::St
             ..button::Style::default()
         }
     }
+}
+
+/// A checkbox whose empty box shows clearly against the panel.
+pub fn check(theme: &Theme, status: checkbox::Status) -> checkbox::Style {
+    let tokens = tokens(theme);
+    let (checkbox::Status::Active { is_checked }
+    | checkbox::Status::Hovered { is_checked }
+    | checkbox::Status::Disabled { is_checked }) = status;
+    let hovered = matches!(status, checkbox::Status::Hovered { .. });
+    let (fill, edge) = match (is_checked, hovered) {
+        (true, true) => (tokens.accent_hover, tokens.accent_hover),
+        (true, false) => (tokens.accent, tokens.accent),
+        (false, true) => (tokens.surface_hover, tokens.text),
+        (false, false) => (tokens.surface, tokens.text_secondary),
+    };
+    checkbox::Style {
+        background: fill.into(),
+        icon_color: tokens.on_accent,
+        border: Border {
+            color: edge,
+            width: 1.5,
+            radius: 4.0.into(),
+        },
+        text_color: Some(tokens.text),
+    }
+}
+
+/// A list entry with a hairline outline, so neighbours read as separate items.
+pub fn outlined_entry(is_selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |theme, status| {
+        let style = entry(is_selected)(theme, status);
+        button::Style {
+            border: Border {
+                color: tokens(theme).surface_border,
+                width: 1.0,
+                radius: RADIUS_CONTROL.into(),
+            },
+            ..style
+        }
+    }
+}
+
+/// A thin vertical line between two columns of a panel.
+pub fn vertical_divider<'a, Message: 'a>() -> Element<'a, Message> {
+    container(space::horizontal())
+        .width(Length::Fixed(1.0))
+        .height(Length::Fill)
+        .style(|theme: &Theme| container::Style {
+            background: Some(tokens(theme).surface_border.into()),
+            ..container::Style::default()
+        })
+        .into()
 }
 
 /// Text that explains or labels, one step quieter than body text.

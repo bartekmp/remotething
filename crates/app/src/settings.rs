@@ -345,10 +345,12 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
     .spacing(2);
 
     let animations = checkbox(preferences.animations)
+        .style(crate::theme::check)
         .label(fl!("settings-animations"))
         .on_toggle(Message::AnimationsToggled);
 
     let high_contrast = checkbox(preferences.high_contrast)
+        .style(crate::theme::check)
         .label(fl!("settings-high-contrast"))
         .on_toggle(Message::HighContrastToggled);
 
@@ -404,6 +406,7 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
     let features = preferences.features;
     let mut switches = column![
         checkbox(features.screenshots)
+            .style(crate::theme::check)
             .label(fl!("settings-feature-screenshots"))
             .on_toggle(Message::ScreenshotsToggled),
     ]
@@ -417,6 +420,7 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
     }
     switches = switches.push(
         checkbox(features.console_recording)
+            .style(crate::theme::check)
             .label(fl!("settings-feature-console"))
             .on_toggle(Message::ConsoleRecordingToggled),
     );
@@ -429,6 +433,7 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
     }
     switches = switches.push(
         checkbox(features.desktop_recording)
+            .style(crate::theme::check)
             .label(fl!("settings-feature-desktop"))
             .on_toggle(Message::DesktopRecordingToggled),
     );
@@ -450,11 +455,13 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
         switches = switches
             .push(
                 checkbox(features.record_every_session)
+                    .style(crate::theme::check)
                     .label(fl!("settings-feature-every"))
                     .on_toggle(Message::EveryRecordingToggled),
             )
             .push(
                 checkbox(features.record_keystrokes)
+                    .style(crate::theme::check)
                     .label(fl!("settings-feature-keystrokes"))
                     .on_toggle(Message::KeystrokesToggled),
             );

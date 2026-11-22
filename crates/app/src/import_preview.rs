@@ -119,6 +119,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
         };
         list = list.push(
             checkbox(state.chosen.contains(&connection.id))
+                .style(crate::theme::check)
                 .label(label)
                 .on_toggle(move |on| Message::Toggled(id.clone(), on)),
         );

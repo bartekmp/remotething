@@ -228,8 +228,20 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
 
     let entries = store.credentials.iter().map(|credential| {
         let is_selected = state.selected() == Some(credential.id.as_str());
-        button(text(credential.name.as_str()))
-            .style(theme::entry(is_selected))
+        let mut label = column![text(credential.name.as_str())];
+        if let Some(username) = credential
+            .username
+            .as_deref()
+            .filter(|name| !name.is_empty())
+        {
+            label = label.push(
+                text(username)
+                    .size(theme::TEXT_SMALL)
+                    .style(theme::secondary_text),
+            );
+        }
+        button(label)
+            .style(theme::outlined_entry(is_selected))
             .width(Length::Fill)
             .on_press(Message::Selected(credential.id.clone()))
             .into()
@@ -238,7 +250,7 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
         button(text(fl!("credentials-new")))
             .style(theme::pill)
             .on_press(Message::NewPressed),
-        scrollable(column(entries).spacing(2)),
+        scrollable(column(entries).spacing(6)),
     ]
     .spacing(10)
     .width(Length::Fixed(LIST_WIDTH));
@@ -250,9 +262,8 @@ pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
             .into(),
     };
 
-    column![header, row![list, form].spacing(theme::PANEL_PADDING)]
-        .spacing(12)
-        .into()
+    let body = row![list, theme::vertical_divider(), form].spacing(theme::PANEL_PADDING);
+    column![header, body].spacing(12).into()
 }
 
 fn view_form(draft: &Draft) -> Element<'_, Message> {
