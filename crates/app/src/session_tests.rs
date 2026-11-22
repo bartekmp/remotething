@@ -1,6 +1,7 @@
 //! Tests of `session.rs`.
 
 use crate::preferences::Preferences;
+use crate::terminal_mouse;
 use remotething_core::{Credential, Protocol, Quality};
 use remotething_secrets::MemoryStore;
 use tokio::sync::oneshot;
@@ -339,6 +340,56 @@ fn the_wheel_scrolls_back_and_typing_returns_to_the_newest_lines() {
 
     let _ = state.key(&Key::Character("l".into()), Modifiers::empty(), Some("l"));
     assert_eq!(scrolled_back(&state), 0);
+}
+
+#[test]
+fn mouse_events_go_to_a_program_that_asked_for_them() {
+    let mut fixture = Fixture::new();
+    let (mut state, mut input) = live(&mut fixture);
+    let click = terminal_mouse::Report {
+        action: terminal_mouse::Action::Press(terminal_mouse::Button::Left),
+        column: 2,
+        line: 1,
+        shift: false,
+        alt: false,
+        ctrl: false,
+    };
+
+    // Nobody asked: nothing is sent.
+    fixture.send(
+        &mut state,
+        Message::Terminal(terminal_view::Event::Mouse(click)),
+    );
+    assert!(input.try_recv().is_err());
+
+    let on = Message::Shell(ShellEvent::Output(b"\x1b[?1000h\x1b[?1006h".to_vec()));
+    fixture.send(&mut state, on);
+    fixture.send(
+        &mut state,
+        Message::Terminal(terminal_view::Event::Mouse(click)),
+    );
+    assert_eq!(
+        input.try_recv().unwrap(),
+        ShellInput::Data(b"\x1b[<0;3;2M".to_vec())
+    );
+}
+
+#[test]
+fn the_wheel_moves_a_full_screen_program_with_arrow_keys() {
+    let mut fixture = Fixture::new();
+    let (mut state, mut input) = live(&mut fixture);
+    let alternate = Message::Shell(ShellEvent::Output(b"\x1b[?1049h".to_vec()));
+    fixture.send(&mut state, alternate);
+
+    fixture.send(
+        &mut state,
+        Message::Terminal(terminal_view::Event::Scrolled(-2)),
+    );
+
+    assert_eq!(
+        input.try_recv().unwrap(),
+        ShellInput::Data(b"\x1b[B\x1b[B".to_vec())
+    );
 }
 
 #[test]

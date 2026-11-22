@@ -239,6 +239,19 @@ impl Screen {
         self.term.mode().contains(TermMode::BRACKETED_PASTE)
     }
 
+    /// What the remote program asked to be told about the mouse.
+    pub fn mouse_mode(&self) -> crate::terminal_mouse::Mode {
+        crate::terminal_mouse::Mode::of(*self.term.mode())
+    }
+
+    /// Whether the wheel should move a full-screen program with arrow keys: it has the
+    /// alternate screen, no scrollback of its own to show, and did not ask for the mouse.
+    pub fn wheel_sends_arrows(&self) -> bool {
+        let mode = self.term.mode();
+        mode.contains(TermMode::ALT_SCREEN | TermMode::ALTERNATE_SCROLL)
+            && !mode.intersects(TermMode::MOUSE_MODE)
+    }
+
     /// Whether arrow keys must be sent in the form full-screen programs ask for.
     pub fn application_cursor(&self) -> bool {
         self.term.mode().contains(TermMode::APP_CURSOR)
@@ -452,6 +465,20 @@ mod tests {
         screen.feed(b"\x1b[?25l");
 
         assert_eq!(screen.cursor(), None);
+    }
+
+    #[test]
+    fn the_screen_knows_what_the_program_asked_of_the_mouse() {
+        let mut screen = Screen::new(10, 3);
+        assert!(!screen.mouse_mode().reporting());
+
+        screen.feed(b"\x1b[?1000h\x1b[?1006h");
+        assert!(screen.mouse_mode().reporting() && screen.mouse_mode().sgr);
+        assert!(!screen.wheel_sends_arrows());
+
+        screen.feed(b"\x1b[?1000l\x1b[?1049h");
+        assert!(!screen.mouse_mode().reporting());
+        assert!(screen.wheel_sends_arrows());
     }
 
     #[test]

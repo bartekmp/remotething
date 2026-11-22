@@ -8,6 +8,7 @@ use iced::{Color, Element, Font, Length, Point, Rectangle, Renderer, Size, Theme
 use remotething_remote::ssh::TerminalSize;
 
 use crate::terminal::{Cell, Granularity, Paint, Screen};
+use crate::terminal_mouse::{self, Action as MouseAction, Report};
 
 pub const FONT_REGULAR: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Regular.ttf");
 pub const FONT_BOLD: &[u8] = include_bytes!("../assets/fonts/NotoSansMono-Bold.ttf");
@@ -235,6 +236,8 @@ pub enum Event {
     SelectionEnded,
     /// A middle click: paste what was last selected.
     PasteRequested,
+    /// The mouse did something the remote program asked to be told about.
+    Mouse(terminal_mouse::Report),
 }
 
 /// The screen as a widget that fills its space.
@@ -272,8 +275,13 @@ struct Program<'a, Message> {
 #[derive(Default)]
 struct Dragging {
     held: bool,
-    /// Whether Ctrl is down, which makes the wheel change the text size.
-    ctrl: bool,
+    /// The modifier keys that are down: Ctrl makes the wheel change the text size, and
+    /// Shift keeps the mouse for selecting when the program wants it.
+    modifiers: iced::keyboard::Modifiers,
+    /// The button held down and reported to the program, until it is released.
+    reported: Option<terminal_mouse::Button>,
+    /// The character the program was last told the pointer is on.
+    last_cell: Option<(usize, usize)>,
     /// When the wheel last changed the size. X11 can report one notch twice.
     last_zoom: Option<Instant>,
     /// The last press, to tell a double or triple click.
@@ -306,6 +314,101 @@ fn press_count(previous: Option<Press>, now: Instant, column: usize, line: usize
     }
 }
 
+impl<Message> Program<'_, Message> {
+    /// Tells the remote program about a mouse event when it asked for them. `Some` means the
+    /// event is dealt with, and the inner action is what the view answers with.
+    fn report_mouse(
+        &self,
+        dragging: &mut Dragging,
+        event: &mouse::Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> Option<Option<Action<Message>>> {
+        let mode = self.screen.mouse_mode();
+        let modifiers = dragging.modifiers;
+        let publish = |report: Report| {
+            Some(Some(
+                Action::publish((self.on_event)(Event::Mouse(report))).and_capture(),
+            ))
+        };
+        let report = |action: MouseAction, (column, line): (usize, usize)| Report {
+            action,
+            column,
+            line,
+            shift: modifiers.shift(),
+            alt: modifiers.alt(),
+            ctrl: modifiers.control(),
+        };
+        let cell = |position: Point| cell_at(position, self.metrics);
+        // Shift gives the mouse back to the view, to select text.
+        let ours = !mode.reporting() || modifiers.shift();
+
+        match event {
+            mouse::Event::ButtonPressed(button) if !ours => {
+                let button = report_button(*button)?;
+                let position = cursor.position_in(bounds)?;
+                dragging.reported = Some(button);
+                dragging.last_cell = Some(cell(position));
+                publish(report(MouseAction::Press(button), cell(position)))
+            }
+            // Released even outside the view, or the program would think it is still held.
+            mouse::Event::ButtonReleased(released)
+                if dragging.reported == report_button(*released) =>
+            {
+                let button = dragging.reported.take()?;
+                let position = cursor.position_from(bounds.position())?;
+                if ours {
+                    return Some(None);
+                }
+                publish(report(MouseAction::Release(button), cell(position)))
+            }
+            mouse::Event::CursorMoved { .. } if !ours => {
+                let position = cursor.position_from(bounds.position())?;
+                let moved_to = cell(position);
+                if dragging.last_cell == Some(moved_to) {
+                    return None;
+                }
+                let action = match dragging.reported {
+                    Some(button) => MouseAction::Drag(button),
+                    None if cursor.is_over(bounds) => MouseAction::Move,
+                    None => return None,
+                };
+                dragging.last_cell = Some(moved_to);
+                publish(report(action, moved_to))
+            }
+            mouse::Event::WheelScrolled { delta } if !ours && cursor.is_over(bounds) => {
+                // Ctrl and the wheel change the text size, as everywhere else.
+                if modifiers.control() {
+                    return None;
+                }
+                let lines = wheel_lines(*delta, self.metrics);
+                if lines == 0 {
+                    return None;
+                }
+                let notches = lines.unsigned_abs().div_ceil(WHEEL_LINES as u32).min(10) as u8;
+                let position = cursor.position_in(bounds)?;
+                publish(report(
+                    MouseAction::Wheel {
+                        up: lines > 0,
+                        notches,
+                    },
+                    cell(position),
+                ))
+            }
+            _ => None,
+        }
+    }
+}
+
+fn report_button(button: mouse::Button) -> Option<terminal_mouse::Button> {
+    match button {
+        mouse::Button::Left => Some(terminal_mouse::Button::Left),
+        mouse::Button::Middle => Some(terminal_mouse::Button::Middle),
+        mouse::Button::Right => Some(terminal_mouse::Button::Right),
+        _ => None,
+    }
+}
+
 impl<Message> canvas::Program<Message> for Program<'_, Message> {
     type State = Dragging;
 
@@ -319,12 +422,17 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         let publish = |event: Event| Some(Action::publish((self.on_event)(event)));
 
         if let iced::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) = event {
-            dragging.ctrl = modifiers.control();
+            dragging.modifiers = *modifiers;
+        }
+        if let iced::Event::Mouse(mouse_event) = event
+            && let Some(action) = self.report_mouse(dragging, mouse_event, bounds, cursor)
+        {
+            return action;
         }
         if let iced::Event::Mouse(mouse_event) = event {
             match mouse_event {
                 mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
-                    if dragging.ctrl {
+                    if dragging.modifiers.control() {
                         let steps = zoom_steps(*delta);
                         let now = Instant::now();
                         let repeat = dragging
@@ -455,7 +563,9 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> mouse::Interaction {
-        if cursor.is_over(bounds) {
+        if cursor.is_over(bounds) && self.screen.mouse_mode().reporting() {
+            mouse::Interaction::default()
+        } else if cursor.is_over(bounds) {
             mouse::Interaction::Text
         } else {
             mouse::Interaction::default()

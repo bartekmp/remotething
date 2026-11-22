@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.71.0 - 2026-11-22
+
+- Terminal programs that use the mouse (tmux, htop, mc) get clicks, drags and the wheel; hold Shift to select text. The wheel moves less and similar programs.
+
 ## 0.70.0 - 2026-11-18
 
 - Duplicate a connection from its right-click menu, then edit the copy.

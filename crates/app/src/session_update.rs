@@ -16,6 +16,7 @@ use crate::features;
 use crate::files_pane;
 use crate::forwards;
 use crate::i18n::fl;
+use crate::keys;
 use crate::meter::{Meter, Totals};
 use crate::note::Note;
 use crate::paste;
@@ -25,6 +26,7 @@ use crate::session::{
     Context, Failure, INITIAL_SIZE, Message, Method, Sealed, SealedJumps, Stage, State,
 };
 use crate::terminal::Screen;
+use crate::terminal_mouse;
 use crate::terminal_view;
 
 pub(crate) struct Live {
@@ -374,13 +376,24 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             let Stage::Connected(live) = &mut state.stage else {
                 return Task::none();
             };
+            if let terminal_view::Event::Mouse(report) = event {
+                if let Some(bytes) = terminal_mouse::encode(&report, live.screen.mouse_mode()) {
+                    live.type_in(bytes);
+                }
+                return Task::none();
+            }
             live.cache.clear();
             match event {
+                terminal_view::Event::Mouse(_) => {}
                 terminal_view::Event::Resized(size) => {
                     live.screen
                         .resize(usize::from(size.columns), usize::from(size.lines));
                     live.record(|recording| recording.resize(size.columns, size.lines));
                     live.send(ShellInput::Resize(size));
+                }
+                terminal_view::Event::Scrolled(lines) if live.screen.wheel_sends_arrows() => {
+                    let application = live.screen.application_cursor();
+                    live.type_in(keys::wheel_arrows(lines, application));
                 }
                 terminal_view::Event::Scrolled(lines) => live.screen.scroll(lines),
                 // The window changes the text size; see `State::zoom_terminal`.

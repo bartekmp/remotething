@@ -35,6 +35,18 @@ pub fn to_bytes(
     Some(bytes)
 }
 
+/// Arrow key presses for the wheel in a full-screen program that does not use the mouse:
+/// up for a turn away from the user, one press for each line.
+pub fn wheel_arrows(lines: i32, application_cursor: bool) -> Vec<u8> {
+    let key = match (lines > 0, application_cursor) {
+        (true, false) => &b"\x1b[A"[..],
+        (true, true) => b"\x1bOA",
+        (false, false) => b"\x1b[B",
+        (false, true) => b"\x1bOB",
+    };
+    key.repeat(lines.unsigned_abs() as usize)
+}
+
 fn named_key(named: Named, application_cursor: bool) -> Option<&'static [u8]> {
     let bytes: &[u8] = match (named, application_cursor) {
         (Named::Enter, _) => b"\r",
@@ -90,6 +102,12 @@ mod tests {
 
     fn character(text: &str) -> Key {
         Key::Character(text.into())
+    }
+
+    #[test]
+    fn the_wheel_in_a_full_screen_program_is_arrow_presses() {
+        assert_eq!(wheel_arrows(2, false), b"\x1b[A\x1b[A");
+        assert_eq!(wheel_arrows(-1, true), b"\x1bOB");
     }
 
     #[test]

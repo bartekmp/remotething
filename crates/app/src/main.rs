@@ -79,6 +79,7 @@ mod tabs;
 mod tabs_view;
 mod terminal;
 mod terminal_look;
+mod terminal_mouse;
 mod terminal_search;
 mod terminal_settings;
 mod terminal_theme;
