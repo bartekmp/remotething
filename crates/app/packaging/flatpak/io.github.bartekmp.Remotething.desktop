@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Remotething
+GenericName=Remote connection manager
+Comment=Remote desktops, terminals and file transfers in one tree
+Exec=remotething
+Icon=io.github.bartekmp.Remotething
+Terminal=false
+Categories=Network;RemoteAccess;
+Keywords=ssh;rdp;vnc;sftp;remote;terminal;
+StartupWMClass=io.github.bartekmp.Remotething
+StartupNotify=true

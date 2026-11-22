@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.bartekmp.Remotething</id>
+  <name>Remotething</name>
+  <summary>Remote desktops, terminals and file transfers in one tree</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <description>
+    <p>One connection tree for SSH terminals, RDP and VNC desktops, and file transfers over SFTP, SCP, FTP, SMB and NFS.</p>
+  </description>
+  <launchable type="desktop-id">io.github.bartekmp.Remotething.desktop</launchable>
+  <categories>
+    <category>Network</category>
+    <category>RemoteAccess</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+</component>

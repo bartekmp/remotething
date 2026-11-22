@@ -6,7 +6,7 @@ mod version;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package windows | bump major|minor|patch | prune | version-check <git ref>>";
+const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package flatpak | package windows | bump major|minor|patch | prune | version-check <git ref>>";
 
 const LINUX_TARGET: &str = "x86_64-unknown-linux-gnu";
 const WINDOWS_TARGET: &str = "x86_64-pc-windows-msvc";
@@ -28,6 +28,7 @@ fn main() -> ExitCode {
         ]),
         ["build", "windows"] => build_windows(),
         ["package", "linux"] => package_linux(),
+        ["package", "flatpak"] => package_flatpak(),
         ["package", "windows"] => package_windows(),
         ["bump", part] => bump(part),
         ["prune"] => prune_builds(),
@@ -102,6 +103,61 @@ fn package_linux() -> bool {
         "--output",
         &dist,
     ])
+}
+
+/// Builds the Flatpak in its own SDK and writes a bundle to `dist/`. Needs `flatpak-builder`
+/// and the freedesktop SDK with its Rust extension; it does not use `build linux`.
+fn package_flatpak() -> bool {
+    let Some(dist) = dist_directory() else {
+        return false;
+    };
+    let manifest =
+        workspace_root().join("crates/app/packaging/flatpak/io.github.bartekmp.Remotething.yml");
+    let build_directory = workspace_root().join("target").join("flatpak-build");
+    let repo = dist.join("flatpak-repo");
+    let bundle = dist.join(format!("remotething-{VERSION}.flatpak"));
+    let run = |program: &str, args: &[String]| {
+        println!("==> {program} {}", args.join(" "));
+        Command::new(program)
+            .args(args)
+            .status()
+            .is_ok_and(|status| status.success())
+    };
+    let text = |path: &std::path::Path| path.to_string_lossy().into_owned();
+
+    // The builder is a package on some systems and a Flatpak itself on others.
+    let installed = Command::new("flatpak-builder")
+        .arg("--version")
+        .output()
+        .is_ok();
+    let (program, mut build) = if installed {
+        ("flatpak-builder", Vec::new())
+    } else {
+        (
+            "flatpak",
+            vec!["run".to_string(), "org.flatpak.Builder".to_string()],
+        )
+    };
+    build.extend([
+        "--force-clean".to_string(),
+        "--disable-rofiles-fuse".to_string(),
+        "--user".to_string(),
+        "--install-deps-from=flathub".to_string(),
+        format!("--repo={}", text(&repo)),
+        text(&build_directory),
+        text(&manifest),
+    ]);
+
+    run(program, &build)
+        && run(
+            "flatpak",
+            &[
+                "build-bundle".to_string(),
+                text(&repo),
+                text(&bundle),
+                "io.github.bartekmp.Remotething".to_string(),
+            ],
+        )
 }
 
 /// Zips the Windows release build into `dist/`. Run `build windows` first.

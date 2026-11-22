@@ -123,7 +123,10 @@ fn window_settings(interface_scale: u16) -> iced::window::Settings {
     };
     #[cfg(target_os = "linux")]
     {
-        settings.platform_specific.application_id = "remotething".to_string();
+        // Inside a Flatpak the desktop entry is named after the app id, and the window
+        // must carry the same name for the desktop to find its icon.
+        settings.platform_specific.application_id =
+            std::env::var("FLATPAK_ID").unwrap_or_else(|_| "remotething".to_string());
     }
     settings
 }

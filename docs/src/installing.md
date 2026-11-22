@@ -11,6 +11,16 @@ The pipeline builds the Windows zip for every merge to the main branch. Linux pa
 
 Both add Remotething to the application menu. They need the glibc of the system they were built on (2.43, Ubuntu 26.04 or newer) until the pipeline builds them on an older base.
 
+### Flatpak
+
+`cargo xtask package flatpak` builds `remotething-<version>.flatpak` in `dist/`, on any distribution that has Flatpak, with no glibc requirement. It needs `flatpak-builder` (or the `org.flatpak.Builder` Flatpak) and the freedesktop 25.08 SDK with its Rust extension. Install the bundle with:
+
+```sh
+flatpak install --user dist/remotething-<version>.flatpak
+```
+
+The Flatpak may use the network, the window system and GPU, the desktop keyring, ssh-agent and your home folder (the "This computer" pane, key files and `~/.ssh/known_hosts`). Its settings are kept apart from a `.deb` install, in `~/.var/app/io.github.bartekmp.Remotething/config`. It is not on Flathub.
+
 Without a Vulkan or OpenGL driver the app still runs, with slower software rendering.
 
 ## Windows

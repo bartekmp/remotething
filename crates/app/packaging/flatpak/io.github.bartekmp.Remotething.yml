@@ -1,0 +1,59 @@
+# Builds Remotething inside the Flatpak SDK, so it links the runtime's libraries and not
+# the host's. `cargo xtask package flatpak` runs it and writes a bundle to `dist/`.
+#
+# The build downloads crates, which is fine for a local or Jenkins build. Flathub builds
+# offline and needs the crates listed as sources (flatpak-cargo-generator) first.
+app-id: io.github.bartekmp.Remotething
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: remotething
+
+finish-args:
+  # The window: Wayland, or X11 where there is no Wayland, with GPU drawing.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Every protocol connects out.
+  - --share=network
+  # Passwords and key passphrases live in the desktop's keyring (KWallet, GNOME Keyring).
+  - --talk-name=org.freedesktop.secrets
+  # Keys held by ssh-agent.
+  - --socket=ssh-auth
+  # The "This computer" pane, key files, and the OpenSSH known_hosts with host certificate
+  # authorities are all under the home folder.
+  - --filesystem=home
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  build-args:
+    - --share=network
+  env:
+    CARGO_HOME: /run/build/remotething/cargo
+
+modules:
+  - name: remotething
+    buildsystem: simple
+    build-commands:
+      - cargo build --release -p remotething
+      - install -Dm755 target/release/remotething /app/bin/remotething
+      - install -Dm644 crates/app/packaging/flatpak/io.github.bartekmp.Remotething.desktop /app/share/applications/io.github.bartekmp.Remotething.desktop
+      - install -Dm644 crates/app/packaging/flatpak/io.github.bartekmp.Remotething.metainfo.xml /app/share/metainfo/io.github.bartekmp.Remotething.metainfo.xml
+      - install -Dm644 crates/app/packaging/remotething.svg /app/share/icons/hicolor/scalable/apps/io.github.bartekmp.Remotething.svg
+      - |
+        for size in 16 32 48 64 128 256; do
+          install -Dm644 crates/app/packaging/icons/remotething-$size.png \
+            /app/share/icons/hicolor/${size}x${size}/apps/io.github.bartekmp.Remotething.png
+        done
+    sources:
+      - type: dir
+        path: ../../../..
+        skip:
+          - .git
+          - target
+          - dist
+          - .flatpak-builder
+          - flatpak-build
