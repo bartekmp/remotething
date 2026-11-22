@@ -27,6 +27,8 @@ pub enum HostKeyVerdict {
 pub struct KnownHosts {
     path: PathBuf,
     keys: BTreeMap<String, String>,
+    /// Where host certificate authorities are read from instead of `~/.ssh/known_hosts`.
+    openssh_file: Option<PathBuf>,
 }
 
 /// The file's shape: one `"host:port" = "key"` line under `[hosts]`.
@@ -51,7 +53,20 @@ impl KnownHosts {
         Ok(Self {
             path: path.to_path_buf(),
             keys,
+            openssh_file: None,
         })
+    }
+
+    /// Reads host certificate authorities from this OpenSSH `known_hosts` file instead of
+    /// the one in `~/.ssh`.
+    pub fn with_openssh_file(mut self, path: PathBuf) -> Self {
+        self.openssh_file = Some(path);
+        self
+    }
+
+    /// The OpenSSH `known_hosts` file to read authorities from, if not the default.
+    pub fn openssh_file(&self) -> Option<&Path> {
+        self.openssh_file.as_deref()
     }
 
     /// Compares an offered key with the stored one.

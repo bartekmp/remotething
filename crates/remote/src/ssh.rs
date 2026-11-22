@@ -8,6 +8,7 @@
 
 mod connect;
 mod forward;
+mod host_certificate;
 mod host_key;
 mod shell;
 mod tunnel;

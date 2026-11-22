@@ -65,6 +65,16 @@ Trusted keys are kept in `known_hosts.toml`, beside the connections file, by hos
 
 If a trusted host later shows a different key, the tab warns you before anything is sent. This happens when a server is reinstalled, and also when someone intercepts the connection. Trust the new key only if you know why it changed.
 
+### Host certificates
+
+A fleet signed by a certificate authority needs no question per server. Remotething reads the `@cert-authority` lines of OpenSSH's `~/.ssh/known_hosts` (on Windows, `%USERPROFILE%\.ssh\known_hosts`), so the same line serves `ssh` and Remotething:
+
+```text
+@cert-authority *.example.net ssh-ed25519 AAAA...
+```
+
+A server the pattern covers presents its certificate, and the tab connects when it is a host certificate for that name, signed by that authority and within its dates. A certificate that fails these checks is refused with the reason. Servers no pattern covers behave as before, with the fingerprint question. Patterns take `*`, `?` and `!` to exclude; a port other than 22 is written `[host]:port`.
+
 ## The terminal
 
 - 16, 256 and true colours, bold and underline. The colours follow the app's light or dark theme.
@@ -182,9 +192,3 @@ In a file browser (SFTP, FTP, FTPS or SMB tab, or the file pane beside a termina
 - The copies use the same transfer queue as upload and download, with cancel, retry and resume.
 - **← Copy** asks before replacing a file on the server. **Copy →** never replaces a local file: it says so and stops.
 - **Hide this computer** closes the second pane.
-
-## Not available yet
-
-| Feature | State |
-| --- | --- |
-| Host certificates | Not supported; the server must offer a plain host key |

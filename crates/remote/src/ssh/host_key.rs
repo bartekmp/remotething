@@ -6,6 +6,7 @@ use remotething_secrets::{HostKeyVerdict, KnownHosts};
 use russh::client;
 use russh::keys::{HashAlg, PublicKeyOrCertificate};
 
+use super::host_certificate::{self, Authority};
 use super::{Details, Endpoint, Error, HostKey};
 
 /// Where the handler leaves the reason for refusing a key, for [`super::open_shell`] to report.
@@ -20,6 +21,8 @@ pub(super) struct Handler {
     pub(super) known: KnownHosts,
     pub(super) refusal: Refusal,
     pub(super) details: Learned,
+    /// The authorities whose host certificates are accepted.
+    pub(super) authorities: Vec<Authority>,
 }
 
 impl client::Handler for Handler {
@@ -79,6 +82,19 @@ impl client::Handler for Handler {
         &mut self,
         offered: &PublicKeyOrCertificate,
     ) -> Result<bool, Self::Error> {
+        // A certificate replaces the key check: it is accepted only from an authority the
+        // user trusts for this host, and nothing is asked.
+        if let PublicKeyOrCertificate::Certificate(certificate) = offered {
+            return match host_certificate::check(&self.authorities, &self.endpoint, certificate) {
+                Ok(()) => Ok(true),
+                Err(error) => {
+                    if let Ok(mut refusal) = self.refusal.lock() {
+                        *refusal = Some(error);
+                    }
+                    Ok(false)
+                }
+            };
+        }
         let verdict = match describe(offered, &self.endpoint) {
             Ok(host_key) => judge(&self.known, &self.endpoint, host_key),
             Err(error) => Err(error),

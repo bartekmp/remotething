@@ -11,6 +11,7 @@ use russh::keys::agent::client::AgentClient;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
+use super::host_certificate;
 use super::host_key::{Handler, Learned, Refusal};
 use super::{
     Auth, Challenge, Connection, Endpoint, Error, Hop, Prompt, Result, Shell, TerminalSize, shell,
@@ -181,8 +182,16 @@ pub(super) async fn establish(
     known: KnownHosts,
     details: Learned,
 ) -> Result<client::Handle<Handler>> {
+    let authorities = host_certificate::load(&known);
+    // A certificate is asked for only from a server an authority covers; every other
+    // server keeps showing its plain key, which is accepted one host at a time.
+    let mut preferred = client::Config::default().preferred;
+    if host_certificate::any_covers(&authorities, endpoint) {
+        preferred.host_key_certificates = preferred.key.clone();
+    }
     let config = Arc::new(client::Config {
         keepalive_interval: Some(KEEPALIVE),
+        preferred,
         ..client::Config::default()
     });
     let refusal = Refusal::default();
@@ -191,6 +200,7 @@ pub(super) async fn establish(
         known,
         refusal: Arc::clone(&refusal),
         details: Arc::clone(&details),
+        authorities,
     };
 
     let handshake = match through {

@@ -5,6 +5,9 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.72.0 - 2026-11-22
+
+- SSH accepts host certificates from the authorities in `~/.ssh/known_hosts` (`@cert-authority`), with no question per server.
 ## 0.71.1 - 2026-11-22
 
 - Terminal search finds a phrase that wrapped onto the next line.
