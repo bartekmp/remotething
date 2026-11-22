@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.71.1 - 2026-11-22
+
+- Terminal search finds a phrase that wrapped onto the next line.
+
 ## 0.71.0 - 2026-11-22
 
 - Terminal programs that use the mouse (tmux, htop, mc) get clicks, drags and the wheel; hold Shift to select text. The wheel moves less and similar programs.

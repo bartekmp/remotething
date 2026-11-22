@@ -6,12 +6,14 @@ use alacritty_terminal::term::cell::Flags;
 
 use crate::terminal::{Screen, SelectedSpan};
 
-/// A match: a piece of one line of the screen or scrollback. Lines above the
-/// newest screen have negative numbers. Columns are both included.
+/// A match: from a character of one line to a character of the same or a later line,
+/// when the text wrapped. Lines above the newest screen have negative numbers. Columns
+/// are both included.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Found {
     pub line: i32,
     pub start: usize,
+    pub end_line: i32,
     pub end: usize,
 }
 
@@ -23,7 +25,8 @@ pub struct FoundSpan {
 }
 
 impl Screen {
-    /// Every place `needle` occurs, oldest line first, ignoring letter case.
+    /// Every place `needle` occurs, oldest line first, ignoring letter case. Text the
+    /// terminal wrapped onto the next line is searched as one line.
     pub fn find(&self, needle: &str) -> Vec<Found> {
         let needle: Vec<char> = needle.chars().map(fold).collect();
         if needle.is_empty() {
@@ -32,39 +35,39 @@ impl Screen {
         let history = self.term.grid().history_size() as i32;
         let last = self.term.screen_lines() as i32 - 1;
         let mut found = Vec::new();
+        // The characters of the text so far, with where each one is on screen.
+        let mut text: Vec<(char, i32, usize)> = Vec::new();
         for line in -history..=last {
-            let text = self.line_chars(line);
-            let mut column = 0;
-            while column + needle.len() <= text.len() {
-                if text[column..column + needle.len()] == needle[..] {
-                    found.push(Found {
-                        line,
-                        start: column,
-                        end: column + needle.len() - 1,
-                    });
-                    column += needle.len();
-                } else {
-                    column += 1;
-                }
+            let wraps = self.push_line(line, &mut text);
+            if wraps && line < last {
+                continue;
             }
+            search_text(&text, &needle, &mut found);
+            text.clear();
         }
         found
     }
 
-    /// The characters of a line, one per column, in folded case.
-    fn line_chars(&self, line: i32) -> Vec<char> {
+    /// Adds the characters of a line to `text`, and tells whether the text goes on
+    /// in the next line.
+    fn push_line(&self, line: i32, text: &mut Vec<(char, i32, usize)>) -> bool {
         let row = &self.term.grid()[Line(line)];
-        (0..self.term.columns())
-            .map(|column| {
-                let cell = &row[Column(column)];
-                // The second half of a wide character holds nothing to match.
-                if cell.flags.contains(Flags::WIDE_CHAR_SPACER) {
-                    ' '
-                } else {
-                    fold(cell.c)
-                }
-            })
-            .collect()
+        let columns = self.term.columns();
+        for column in 0..columns {
+            let cell = &row[Column(column)];
+            // A gap left where a wide character did not fit holds nothing to match.
+            if cell.flags.contains(Flags::LEADING_WIDE_CHAR_SPACER) {
+                continue;
+            }
+            // The second half of a wide character holds nothing to match.
+            let character = if cell.flags.contains(Flags::WIDE_CHAR_SPACER) {
+                ' '
+            } else {
+                fold(cell.c)
+            };
+            text.push((character, line, column));
+        }
+        row[Column(columns - 1)].flags.contains(Flags::WRAPLINE)
     }
 
     /// Remembers the matches to highlight, and which one is the current one.
@@ -93,19 +96,54 @@ impl Screen {
         let lines = self.lines() as i32;
         let mut spans = Vec::new();
         for (index, found) in self.found.iter().enumerate() {
-            let line = found.line + scrolled_back;
-            if (0..lines).contains(&line) {
+            // A match that wrapped is highlighted on each of its lines.
+            for line in found.line..=found.end_line {
+                let shown = line + scrolled_back;
+                if !(0..lines).contains(&shown) {
+                    continue;
+                }
+                let start = if line == found.line { found.start } else { 0 };
+                let end = if line == found.end_line {
+                    found.end
+                } else {
+                    self.columns() - 1
+                };
                 spans.push(FoundSpan {
                     span: SelectedSpan {
-                        line: line as usize,
-                        start: found.start,
-                        end: found.end,
+                        line: shown as usize,
+                        start,
+                        end,
                     },
                     current: self.current_found == Some(index),
                 });
             }
         }
         spans
+    }
+}
+
+/// Adds to `found` each place `needle` occurs in the text, which keeps where each
+/// character is on screen.
+fn search_text(text: &[(char, i32, usize)], needle: &[char], found: &mut Vec<Found>) {
+    let mut at = 0;
+    while at + needle.len() <= text.len() {
+        let same = text[at..at + needle.len()]
+            .iter()
+            .zip(needle)
+            .all(|((character, _, _), wanted)| character == wanted);
+        if !same {
+            at += 1;
+            continue;
+        }
+        let (_, line, start) = text[at];
+        let (_, end_line, end) = text[at + needle.len() - 1];
+        found.push(Found {
+            line,
+            start,
+            end_line,
+            end,
+        });
+        at += needle.len();
     }
 }
 
@@ -133,6 +171,41 @@ mod tests {
         let places: Vec<(i32, usize)> = found.iter().map(|f| (f.line, f.start)).collect();
         assert_eq!(places, [(0, 0), (0, 6), (1, 0)]);
         assert_eq!(found[0].end, 4);
+    }
+
+    #[test]
+    fn text_that_wrapped_is_found_as_one_line() {
+        // 20 columns: "wrapped" is split between the first and the second line.
+        let screen = screen("0123456789012345678wrapped end");
+
+        let found = screen.find("wrapped");
+
+        assert_eq!(found.len(), 1);
+        let found = found[0];
+        assert_eq!((found.line, found.start), (0, 19));
+        assert_eq!((found.end_line, found.end), (1, 5));
+    }
+
+    #[test]
+    fn a_match_that_wrapped_is_highlighted_on_both_lines() {
+        let mut screen = screen("0123456789012345678wrapped end");
+        let found = screen.find("wrapped")[0];
+        screen.set_found(vec![found], Some(0));
+
+        let spans: Vec<(usize, usize, usize)> = screen
+            .found_spans()
+            .iter()
+            .map(|found| (found.span.line, found.span.start, found.span.end))
+            .collect();
+
+        assert_eq!(spans, [(0, 19, 19), (1, 0, 5)]);
+    }
+
+    #[test]
+    fn lines_the_program_ended_are_not_joined() {
+        let screen = screen("0123456789012345678w\r\napped");
+
+        assert!(screen.find("wapped").is_empty());
     }
 
     #[test]
