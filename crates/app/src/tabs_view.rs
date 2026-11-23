@@ -30,6 +30,7 @@ pub fn view<'a>(
     recent: &'a Recent,
     layout: TabLayout,
     now: Instant,
+    app: &'a crate::app::State,
 ) -> Element<'a, Message> {
     if state.tabs.is_empty() {
         return container(text(fl!("tabs-empty")).style(theme::secondary_text))
@@ -37,7 +38,7 @@ pub fn view<'a>(
             .into();
     }
     // The bar depends on the width it gets, which is only known at layout time.
-    responsive(move |size| view_sized(state, store, recent, layout, now, size.width)).into()
+    responsive(move |size| view_sized(state, store, recent, layout, now, size.width, app)).into()
 }
 
 fn view_sized<'a>(
@@ -47,6 +48,7 @@ fn view_sized<'a>(
     layout: TabLayout,
     now: Instant,
     width: f32,
+    app: &'a crate::app::State,
 ) -> Element<'a, Message> {
     let count = state.tabs.len();
     let new_tab = bar_button(icons::PLUS, Message::NewTabPressed);
@@ -96,8 +98,10 @@ fn view_sized<'a>(
     };
 
     let body = match (state.tabs.get(state.active), state.split_index()) {
-        (Some(front), Some(beside)) => split_body(state, front, &state.tabs[beside], store, recent),
-        (Some(tab), None) => view_content(tab, store, recent),
+        (Some(front), Some(beside)) => {
+            split_body(state, front, &state.tabs[beside], store, recent, app)
+        }
+        (Some(tab), None) => view_content(tab, store, recent, app),
         _ => space().into(),
     };
     // Over the remote view itself, so it is seen where the eyes are while resizing.
@@ -206,9 +210,15 @@ fn bar_button<'a>(icon: icons::Icon, on_press: Message) -> Element<'a, Message> 
         .into()
 }
 
-fn view_content<'a>(tab: &'a Tab, store: &'a Store, recent: &'a Recent) -> Element<'a, Message> {
+fn view_content<'a>(
+    tab: &'a Tab,
+    store: &'a Store,
+    recent: &'a Recent,
+    app: &'a crate::app::State,
+) -> Element<'a, Message> {
     let id = tab.id;
     match &tab.content {
+        Content::Page(shown) => crate::window::page_view(app, *shown),
         Content::Launcher(query) => launcher::view(store, recent.ids(), query)
             .map(move |message| Message::Launcher(id, message)),
         Content::Session(session) => {
@@ -231,8 +241,9 @@ fn split_body<'a>(
     beside: &'a Tab,
     store: &'a Store,
     recent: &'a Recent,
+    app: &'a crate::app::State,
 ) -> Element<'a, Message> {
-    responsive(move |size| split_sized(state, front, beside, store, recent, size)).into()
+    responsive(move |size| split_sized(state, front, beside, store, recent, app, size)).into()
 }
 
 /// Width of the divider, which is also the gap between the panes.
@@ -244,10 +255,11 @@ fn split_sized<'a>(
     beside: &'a Tab,
     store: &'a Store,
     recent: &'a Recent,
+    app: &'a crate::app::State,
     size: iced::Size,
 ) -> Element<'a, Message> {
     let pane = |tab: &'a Tab, has_keyboard: bool, portion: u16| -> Element<'a, Message> {
-        let framed = container(view_content(tab, store, recent))
+        let framed = container(view_content(tab, store, recent, app))
             .padding(3)
             .width(Length::Fill)
             .height(Length::Fill)

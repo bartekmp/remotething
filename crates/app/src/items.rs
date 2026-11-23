@@ -281,7 +281,8 @@ impl State {
             Ok(added) => {
                 if self.commit(updated) {
                     self.notice = Some(fl!("putty-done", count = added));
-                    self.centre = crate::app::Centre::Sessions;
+                    self.settings_screen = crate::app::Centre::Settings;
+                    self.tabs.close_page(crate::tabs::Page::Settings);
                 }
             }
             Err(error) => self.error = Some(format!("{} {error}", fl!("import-failed"))),
@@ -299,7 +300,8 @@ impl State {
                         added = done.added,
                         existing = done.already_there
                     ));
-                    self.centre = crate::app::Centre::Sessions;
+                    self.settings_screen = crate::app::Centre::Settings;
+                    self.tabs.close_page(crate::tabs::Page::Settings);
                 }
             }
             Err(error) => self.error = Some(format!("{} {error}", fl!("import-failed"))),
@@ -331,7 +333,7 @@ impl State {
             Ok(incoming) => {
                 self.error = None;
                 self.import = Some(import_preview::State::new(incoming));
-                self.centre = Centre::Import;
+                self.open_settings(Centre::Import);
             }
             Err(reason) => self.error = Some(format!("{} {reason}", fl!("import-failed"))),
         }

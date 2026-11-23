@@ -16,6 +16,7 @@ use crate::organise;
 use crate::properties;
 use crate::putty_import;
 use crate::settings;
+use crate::tabs::Page;
 use crate::tabs_view;
 use crate::theme as look;
 use crate::tree;
@@ -32,24 +33,22 @@ const CARRIED_OFFSET: f32 = 14.0;
 
 pub fn view(state: &State) -> Element<'_, Message> {
     let tree = tree_panel(state);
-    let centre = match (&state.vault, state.centre) {
+    let centre = match (&state.vault, state.centre()) {
         // The prompt covers the sessions; credentials and settings stay reachable.
         (Some(prompt), Centre::Sessions) => vault::view(prompt).map(Message::Vault),
-        (_, Centre::Sessions) => {
+        // The credentials and the settings are tabs, drawn in the place of a session.
+        _ => {
             let layout = state.preferences.tab_layout;
-            tabs_view::view(&state.tabs, &state.store, &state.recent, layout, state.now)
-                .map(Message::Tabs)
+            tabs_view::view(
+                &state.tabs,
+                &state.store,
+                &state.recent,
+                layout,
+                state.now,
+                state,
+            )
+            .map(Message::Tabs)
         }
-        (_, Centre::Credentials) => {
-            credentials::view(&state.credentials, &state.store).map(Message::Credentials)
-        }
-        (_, Centre::Settings) => settings_view(state),
-        (_, Centre::Putty) => putty_import::view(&state.putty).map(Message::Putty),
-        (_, Centre::Wsl) => wsl_import::view(&state.wsl).map(Message::Wsl),
-        (_, Centre::Import) => match &state.import {
-            Some(screen) => import_preview::view(screen).map(Message::Preview),
-            None => settings_view(state),
-        },
     };
     let tabs = container(centre)
         .width(Length::Fill)
@@ -99,6 +98,25 @@ pub fn view(state: &State) -> Element<'_, Message> {
     layers.into()
 }
 
+/// A page that lives in a tab, as messages of the tabs: the window handles them.
+pub(crate) fn page_view(state: &State, page: Page) -> Element<'_, crate::tabs::Message> {
+    let screen: Element<'_, Message> = match page {
+        Page::Credentials => {
+            credentials::view(&state.credentials, &state.store).map(Message::Credentials)
+        }
+        Page::Settings => match state.centre() {
+            Centre::Putty => putty_import::view(&state.putty).map(Message::Putty),
+            Centre::Wsl => wsl_import::view(&state.wsl).map(Message::Wsl),
+            Centre::Import => match &state.import {
+                Some(screen) => import_preview::view(screen).map(Message::Preview),
+                None => settings_view(state),
+            },
+            _ => settings_view(state),
+        },
+    };
+    screen.map(|message| crate::tabs::Message::Page(Box::new(message)))
+}
+
 /// The width of the folded tree: a rail with one button above and one below.
 const RAIL_WIDTH: f32 = 56.0;
 /// Narrower than this, a sliding tree shows the rail instead of a squeezed panel.
@@ -109,14 +127,14 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
     let unfolded = state.tree_slide.value(state.now);
     if !state.tree_slide.is_running(state.now) {
         return if state.preferences.tree_collapsed {
-            rail(None, state.centre)
+            rail(None, state.centre())
         } else {
             expanded_tree(state)
         };
     }
     let width = RAIL_WIDTH + (TREE_WIDTH - RAIL_WIDTH) * unfolded;
     if width < RAIL_UNTIL {
-        return rail(Some(width), state.centre);
+        return rail(Some(width), state.centre());
     }
     // The panel is cut off by the edge of its box instead of being squeezed into it.
     container(expanded_tree(state))
@@ -248,7 +266,7 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
     ]
     .align_y(Vertical::Center);
     let [folder, connection, credentials] = sidebar_actions();
-    let credentials_showing = is_credentials(&credentials.2, state.centre);
+    let credentials_showing = is_credentials(&credentials.2, state.centre());
     let toolbar = column![
         row![
             labelled_button(folder.0, folder.1, folder.2, false),
@@ -268,7 +286,7 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
         icons::SETTINGS,
         fl!("tree-settings"),
         Message::SettingsPressed,
-        settings_showing(state.centre),
+        settings_showing(state.centre()),
     );
     side_panel(
         column![header, toolbar, content, settings].spacing(look::GAP),

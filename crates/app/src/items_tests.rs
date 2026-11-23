@@ -286,7 +286,7 @@ fn an_export_imported_into_the_same_tree_doubles_it_without_touching_what_was_th
     assert!(std::fs::read_to_string(&file).unwrap().contains("web-01"));
 
     state.preview_import(&file);
-    assert_eq!(state.centre, Centre::Import);
+    assert_eq!(state.centre(), Centre::Import);
     send(
         &mut state,
         Message::Preview(import_preview::Message::ImportPressed),
@@ -294,7 +294,7 @@ fn an_export_imported_into_the_same_tree_doubles_it_without_touching_what_was_th
 
     assert!(state.error.is_none());
     assert!(state.notice.is_some());
-    assert_eq!(state.centre, Centre::Settings);
+    assert_eq!(state.centre(), Centre::Settings);
     let saved = on_disk(&state);
     assert_eq!(saved.folders.len(), 4);
     assert_eq!(saved.connections.len(), 2);

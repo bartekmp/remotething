@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.79.0 - 2026-11-23
+
+- Credentials and Settings open as tabs, so you can switch to them and close them like a session.
+
 ## 0.78.0 - 2026-11-23
 
 - Local terminals: **New local terminal** (Ctrl+Shift+L, the new-tab box, the palette) opens your shell in a tab, and a **Local shell** connection can be saved with the shell (bash, zsh, tmux, herdr, …), arguments, start folder and variables.

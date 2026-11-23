@@ -71,7 +71,16 @@ pub(crate) struct Tab {
     pub(crate) unsaved: Option<QuickTarget>,
 }
 
+/// A screen of the app that lives in a tab: it is switched to and closed like a session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Page {
+    Credentials,
+    Settings,
+}
+
 pub(crate) enum Content {
+    /// The credentials or the settings. Their state belongs to the window, not to the tab.
+    Page(Page),
     /// A new tab that has not picked its connection yet, with the search typed so far.
     Launcher(String),
     Session(Box<session::State>),
@@ -120,6 +129,8 @@ pub enum Message {
     Desktop(u64, desktop::Message),
     Vnc(u64, vnc_tab::Message),
     Ftp(u64, ftp_tab::Message),
+    /// A message of a page shown in a tab, for the window to handle.
+    Page(Box<crate::app::Message>),
 }
 
 impl State {
@@ -140,6 +151,55 @@ impl State {
         });
         self.active = self.tabs.len() - 1;
         task
+    }
+
+    /// How many tabs are open.
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.tabs.len()
+    }
+
+    /// The page in front, when the tab in front is one.
+    pub fn front_page(&self) -> Option<Page> {
+        match &self.tabs.get(self.active)?.content {
+            Content::Page(page) => Some(*page),
+            _ => None,
+        }
+    }
+
+    /// Brings the tab of a page to the front, opening it first when there is none.
+    pub fn open_page(&mut self, page: Page) {
+        let existing = self
+            .tabs
+            .iter()
+            .position(|tab| matches!(tab.content, Content::Page(shown) if shown == page));
+        if let Some(index) = existing {
+            self.set_active(index);
+            return;
+        }
+        let id = self.new_id();
+        let title = match page {
+            Page::Credentials => fl!("tree-credentials"),
+            Page::Settings => fl!("tree-settings"),
+        };
+        self.tabs.push(Tab {
+            id,
+            title,
+            content: Content::Page(page),
+            unsaved: None,
+        });
+        self.active = self.tabs.len() - 1;
+    }
+
+    /// Closes the tab of a page, when it is open.
+    pub fn close_page(&mut self, page: Page) {
+        let existing = self
+            .tabs
+            .iter()
+            .position(|tab| matches!(tab.content, Content::Page(shown) if shown == page));
+        if let Some(index) = existing {
+            self.close(index);
+        }
     }
 
     /// Opens a tab with the user's own shell on this machine. It is not in the tree, but can be saved.
@@ -206,7 +266,7 @@ impl State {
             Content::Desktop(desktop) => &mut desktop.connection,
             Content::Vnc(vnc) => &mut vnc.connection,
             Content::Ftp(ftp) => &mut ftp.connection,
-            Content::Launcher(_) => return,
+            Content::Launcher(_) | Content::Page(_) => return,
         };
         connection.id = connection_id.to_string();
         connection.name = name.to_string();
@@ -601,7 +661,7 @@ impl State {
                 Content::Desktop(desktop) => Some(desktop.connection.id.as_str()),
                 Content::Vnc(vnc) => Some(vnc.connection.id.as_str()),
                 Content::Ftp(ftp) => Some(ftp.connection.id.as_str()),
-                Content::Launcher(_) => None,
+                Content::Launcher(_) | Content::Page(_) => None,
             })
             .collect()
     }
@@ -699,6 +759,8 @@ pub fn update(
     recent: &mut Recent,
 ) -> Task<Message> {
     match message {
+        // The window takes these before they get here.
+        Message::Page(_) => {}
         Message::TabPressed(index) => {
             if let Some(tab) = state.tabs.get(index) {
                 let id = tab.id;

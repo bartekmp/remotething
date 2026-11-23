@@ -265,10 +265,10 @@ fn the_credentials_button_opens_the_screen_and_close_returns() {
     let mut state = state(&directory, ONE_CONNECTION);
 
     tree(&mut state, tree::Message::CredentialsPressed);
-    assert_eq!(state.centre, Centre::Credentials);
+    assert_eq!(state.centre(), Centre::Credentials);
 
     credentials(&mut state, credentials::Message::ClosePressed);
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
 }
 
 #[test]
@@ -379,10 +379,10 @@ fn the_settings_button_opens_the_screen_and_close_returns() {
     let mut state = state(&directory, ONE_CONNECTION);
 
     let _ = update(&mut state, Message::SettingsPressed);
-    assert_eq!(state.centre, Centre::Settings);
+    assert_eq!(state.centre(), Centre::Settings);
 
     settings(&mut state, settings::Message::ClosePressed);
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
 }
 
 #[test]
@@ -478,7 +478,7 @@ fn applying_a_putty_import_adds_a_folder_and_returns_to_the_sessions() {
 
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
-    state.centre = Centre::Putty;
+    state.open_settings(Centre::Putty);
     let session = PuttySession {
         name: "Build".to_string(),
         host: Some("build.example.net".to_string()),
@@ -496,7 +496,7 @@ fn applying_a_putty_import_adds_a_folder_and_returns_to_the_sessions() {
         saved.credentials.last().unwrap().username.as_deref(),
         Some("ci")
     );
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
     assert!(state.notice.is_some());
 }
 
@@ -509,13 +509,13 @@ fn the_putty_screen_is_reached_from_settings_and_goes_back_to_it() {
         &mut state,
         Message::Settings(settings::Message::ImportPuttyPressed),
     );
-    assert_eq!(state.centre, Centre::Putty);
+    assert_eq!(state.centre(), Centre::Putty);
 
     let _ = update(
         &mut state,
         Message::Putty(putty_import::Message::BackPressed),
     );
-    assert_eq!(state.centre, Centre::Settings);
+    assert_eq!(state.centre(), Centre::Settings);
 }
 
 #[test]
@@ -577,7 +577,7 @@ fn importing_wsl_distributions_adds_them_to_a_wsl_folder_and_saves() {
     assert_eq!(added.host, "Ubuntu");
     assert_eq!(added.protocol, remotething_core::Protocol::Wsl);
     assert!(saved.folders.iter().any(|folder| folder.name == "WSL"));
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
     assert!(state.notice.is_some());
 }
 
@@ -585,11 +585,11 @@ fn importing_wsl_distributions_adds_them_to_a_wsl_folder_and_saves() {
 fn the_wsl_screen_closes_back_to_the_settings() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
-    state.centre = Centre::Wsl;
+    state.open_settings(Centre::Wsl);
 
     let _ = update(&mut state, Message::Wsl(wsl_import::Message::BackPressed));
 
-    assert_eq!(state.centre, Centre::Settings);
+    assert_eq!(state.centre(), Centre::Settings);
 }
 
 #[test]
@@ -669,7 +669,7 @@ fn the_palette_opens_with_its_shortcut_and_closes_with_escape_or_the_shortcut() 
 fn choosing_a_connection_in_the_palette_opens_it_and_closes_the_palette() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
-    state.centre = Centre::Settings;
+    state.open_settings(Centre::Settings);
     state.palette = Some(palette::State::default());
 
     let _ = update(
@@ -680,7 +680,7 @@ fn choosing_a_connection_in_the_palette_opens_it_and_closes_the_palette() {
 
     assert!(state.palette.is_none());
     assert_eq!(state.tabs.open_ids(), ["web-01"]);
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
 }
 
 #[test]
@@ -695,7 +695,7 @@ fn choosing_settings_in_the_palette_shows_the_settings() {
     );
     let _ = update(&mut state, Message::Palette(palette::Message::Submitted));
 
-    assert_eq!(state.centre, Centre::Settings);
+    assert_eq!(state.centre(), Centre::Settings);
 }
 
 #[test]
@@ -704,7 +704,7 @@ fn tab_keys_switch_tabs_and_bring_the_sessions_back() {
     let mut state = state(&directory, ONE_CONNECTION);
     let _ = state.tabs.open_launcher();
     let _ = state.tabs.open_launcher();
-    state.centre = Centre::Settings;
+    state.open_settings(Centre::Settings);
 
     key(
         &mut state,
@@ -712,7 +712,7 @@ fn tab_keys_switch_tabs_and_bring_the_sessions_back() {
         keyboard::Modifiers::ALT,
     );
 
-    assert_eq!(state.centre, Centre::Sessions);
+    assert_eq!(state.centre(), Centre::Sessions);
     assert_eq!(state.tabs.active, 0);
 }
 
@@ -904,4 +904,26 @@ fn a_nonsense_window_size_is_not_used() {
     };
 
     assert!(!tiny.is_usable());
+}
+
+#[test]
+fn credentials_and_settings_are_tabs_that_are_reused_and_closed_like_any_tab() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let _ = state.tabs.open_launcher();
+
+    tree(&mut state, tree::Message::CredentialsPressed);
+    let _ = update(&mut state, Message::SettingsPressed);
+    assert_eq!(state.tabs.len(), 3);
+    assert_eq!(state.centre(), Centre::Settings);
+
+    // Pressing the button of a page that is open brings its tab forward, not a second one.
+    tree(&mut state, tree::Message::CredentialsPressed);
+    assert_eq!(state.tabs.len(), 3);
+    assert_eq!(state.centre(), Centre::Credentials);
+
+    // Closing the tab in front shows what was behind it: a page can be left like any tab.
+    state.tabs.close_front();
+    assert_eq!(state.tabs.len(), 2);
+    assert_ne!(state.centre(), Centre::Credentials);
 }

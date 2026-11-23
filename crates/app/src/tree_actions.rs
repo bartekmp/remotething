@@ -4,7 +4,7 @@ use iced::Task;
 use iced::widget::operation;
 use remotething_core::Direction;
 
-use crate::app::{Centre, Message, State};
+use crate::app::{Message, State};
 use crate::menu;
 use crate::organise;
 use crate::rows;
@@ -30,7 +30,7 @@ pub(crate) fn on_tree_event(state: &mut State, event: tree::Event) -> Task<Messa
         }
         tree::Event::NewFolder => state.add_folder(state.folder_for_new_item()),
         tree::Event::NewConnection => state.add_connection(state.folder_for_new_item()),
-        tree::Event::ShowCredentials => state.centre = Centre::Credentials,
+        tree::Event::ShowCredentials => state.tabs.open_page(crate::tabs::Page::Credentials),
         tree::Event::Menu(target) => {
             if target.is_some() {
                 state.select(target.clone());

@@ -92,7 +92,7 @@ SSH connections open a terminal; see [SSH](ssh.md). RDP connections open a Windo
 
 ## Credentials
 
-Press **Credentials** under the tree toolbar. The screen replaces the tabs until you press **Back to sessions**.
+Press **Credentials** under the tree toolbar. It opens in a tab of its own, which you switch to and close like any other (the **Close** button does the same). Pressing the button again goes to the tab that is already open.
 
 - **New credential** adds one; fill in the form and press **Save**.
 - **Kind** is a password, a private key (with an optional passphrase), or "ask every time".
@@ -116,7 +116,7 @@ The file is encrypted with XChaCha20-Poly1305 under a key derived from the maste
 
 ## Settings
 
-Press **Settings** at the bottom of the connection tree; with the tree folded it is the round cog button at the bottom of the strip. Changes are saved as you make them.
+Press **Settings** at the bottom of the connection tree; with the tree folded it is the round cog button at the bottom of the strip. It opens in a tab like Credentials do. Changes are saved as you make them.
 
 | Setting | Choices | Default |
 | --- | --- | --- |

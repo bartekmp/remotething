@@ -98,14 +98,8 @@ impl Shortcut {
 
 pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool) -> Task<Message> {
     match shortcut {
-        Shortcut::NewTab => {
-            state.centre = Centre::Sessions;
-            state.tabs.open_launcher().map(Message::Tabs)
-        }
-        Shortcut::LocalTerminal => {
-            state.centre = Centre::Sessions;
-            state.open_local_terminal()
-        }
+        Shortcut::NewTab => state.tabs.open_launcher().map(Message::Tabs),
+        Shortcut::LocalTerminal => state.open_local_terminal(),
         Shortcut::CloseTab => {
             state.tabs.close_front();
             Task::none()
@@ -114,10 +108,7 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
             state.palette = Some(crate::palette::State::default());
             iced::widget::operation::focus(crate::palette::INPUT)
         }
-        Shortcut::Split => {
-            state.centre = Centre::Sessions;
-            state.tabs.toggle_split().map(Message::Tabs)
-        }
+        Shortcut::Split => state.tabs.toggle_split().map(Message::Tabs),
         Shortcut::Rotate => {
             state.tabs.rotate_split();
             Task::none()
@@ -131,12 +122,11 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
             Task::none()
         }
         Shortcut::NextTab | Shortcut::PreviousTab => {
-            state.centre = Centre::Sessions;
             state.tabs.cycle(shortcut == Shortcut::NextTab);
             Task::none()
         }
         Shortcut::TextBigger | Shortcut::TextSmaller => {
-            if state.centre == Centre::Sessions && state.tabs.front_is_terminal() {
+            if state.centre() == Centre::Sessions && state.tabs.front_is_terminal() {
                 state.zoom_terminal(if shortcut == Shortcut::TextBigger {
                     1
                 } else {
@@ -146,13 +136,12 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
             Task::none()
         }
         Shortcut::GoToTab(number) => {
-            state.centre = Centre::Sessions;
             state.tabs.activate_number(number);
             Task::none()
         }
         Shortcut::SearchConnections => {
             // A shell uses Ctrl+F to move forward, so a live terminal keeps the key.
-            if state.centre == Centre::Sessions && state.tabs.front_is_terminal() {
+            if state.centre() == Centre::Sessions && state.tabs.front_is_terminal() {
                 if captured {
                     return Task::none();
                 }
@@ -168,7 +157,7 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         }
         Shortcut::CloseTabUnlessTerminal => {
             // Shells use Ctrl+W to delete a word, so a live terminal keeps the key.
-            if state.centre == Centre::Sessions && state.tabs.front_is_terminal() {
+            if state.centre() == Centre::Sessions && state.tabs.front_is_terminal() {
                 if captured {
                     return Task::none();
                 }
@@ -228,18 +217,15 @@ pub(crate) fn on_shortcuts_key(state: &mut State, key: &keyboard::Key) {
 pub(crate) fn open_palette_item(state: &mut State, item: crate::palette::Item) -> Task<Message> {
     use crate::palette::Item;
     match item {
-        Item::Connection(id) => {
-            state.centre = Centre::Sessions;
-            state.open(&id)
-        }
+        Item::Connection(id) => state.open(&id),
         Item::NewTab => on_shortcut(state, Shortcut::NewTab, false),
         Item::LocalTerminal => on_shortcut(state, Shortcut::LocalTerminal, false),
         Item::Credentials => {
-            state.centre = Centre::Credentials;
+            state.tabs.open_page(crate::tabs::Page::Credentials);
             Task::none()
         }
         Item::Settings => {
-            state.centre = Centre::Settings;
+            state.open_settings(Centre::Settings);
             Task::none()
         }
     }
@@ -249,7 +235,7 @@ pub(crate) fn open_palette_item(state: &mut State, item: crate::palette::Item) -
 /// open is in front. It goes the same way as a picked file, so a name that is
 /// already there asks before replacing it.
 pub(crate) fn on_file_dropped(state: &State, path: std::path::PathBuf) -> Task<Message> {
-    if state.centre != Centre::Sessions {
+    if state.centre() != Centre::Sessions {
         return Task::none();
     }
     match state.tabs.file_dropped(path) {

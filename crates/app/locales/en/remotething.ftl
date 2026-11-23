@@ -47,7 +47,7 @@ tree-credentials = Credentials
 credentials-title = Credentials
 credentials-new = New credential
 credentials-new-name = New credential
-credentials-close = Back to sessions
+credentials-close = Close
 credentials-empty = Select a credential, or create one.
 credentials-name = Name
 credentials-username = User name
@@ -70,7 +70,7 @@ error-secret = The secret could not be stored:
 tree-settings = Settings
 
 settings-title = Settings
-settings-close = Back to sessions
+settings-close = Close
 settings-theme = Theme
 settings-language = Language
 settings-language-note = A language change takes effect the next time you start the app.

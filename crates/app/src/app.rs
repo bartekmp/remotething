@@ -26,7 +26,7 @@ use crate::putty_import;
 use crate::recent::{self, Recent};
 use crate::session;
 use crate::settings;
-use crate::tabs;
+use crate::tabs::{self, Page};
 use crate::terminal_view;
 use crate::theme as look;
 use crate::tree::{self, Selection};
@@ -70,7 +70,8 @@ pub struct State {
     pub(crate) wsl: wsl_import::State,
     /// The preview of a Remotething import, while it is shown.
     pub(crate) import: Option<import_preview::State>,
-    pub(crate) centre: Centre,
+    /// Which screen the settings page shows: the settings themselves or one of the previews.
+    pub(crate) settings_screen: Centre,
     pub(crate) secrets: Arc<dyn SecretStore>,
     /// The connections opened most recently, for the page of a new tab.
     pub(crate) recent: Recent,
@@ -240,7 +241,7 @@ impl State {
             putty: putty_import::State::default(),
             wsl: wsl_import::State::default(),
             import: None,
-            centre: Centre::Sessions,
+            settings_screen: Centre::Settings,
             secrets,
             known_hosts,
             recent,
@@ -379,9 +380,24 @@ fn save(store: &Store, path: &std::path::Path) -> Result<(), String> {
 }
 
 impl State {
+    /// What fills the middle of the window: the tab in front, which may be a page.
+    pub(crate) fn centre(&self) -> Centre {
+        match self.tabs.front_page() {
+            None => Centre::Sessions,
+            Some(Page::Credentials) => Centre::Credentials,
+            Some(Page::Settings) => self.settings_screen,
+        }
+    }
+
+    /// Shows the settings in a tab of their own, on the screen asked for.
+    pub(crate) fn open_settings(&mut self, screen: Centre) {
+        self.settings_screen = screen;
+        self.tabs.open_page(Page::Settings);
+    }
+
     /// Whether keys go to a remote desktop: one is in front, and nothing else wants them.
     fn desktop_has_keys(&self) -> bool {
-        self.centre == Centre::Sessions
+        self.centre() == Centre::Sessions
             && self.vault.is_none()
             && self.menu.is_none()
             && self.removal.is_none()
@@ -552,8 +568,9 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
             // In a form, Tab and Shift+Tab move between the fields.
             let is_tab = key == keyboard::Key::Named(keyboard::key::Named::Tab);
-            let in_form =
-                state.properties_open || state.vault.is_some() || state.centre != Centre::Sessions;
+            let in_form = state.properties_open
+                || state.vault.is_some()
+                || state.centre() != Centre::Sessions;
             if is_tab && in_form && !captured && !modifiers.control() && !modifiers.alt() {
                 return if modifiers.shift() {
                     iced::widget::operation::focus_previous()
@@ -563,7 +580,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
             // Everything else belongs to the terminal in front, when one is showing.
             let terminal_shows =
-                state.centre == Centre::Sessions && state.vault.is_none() && state.menu.is_none();
+                state.centre() == Centre::Sessions && state.vault.is_none() && state.menu.is_none();
             if captured || !terminal_shows {
                 return Task::none();
             }
@@ -576,6 +593,8 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             _,
             session::Message::Terminal(terminal_view::Event::Zoomed(steps)),
         )) => state.zoom_terminal(steps),
+        // A message of a page that lives in a tab is the window's own.
+        Message::Tabs(tabs::Message::Page(message)) => return update(state, *message),
         Message::Tabs(message) => {
             let mut context = session::Context {
                 store: &state.store,
@@ -621,7 +640,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 Some(credentials::Event::New) => state.add_credential(),
                 Some(credentials::Event::Save) => return state.save_credential(),
                 Some(credentials::Event::Delete) => return state.delete_credential(),
-                Some(credentials::Event::Close) => state.centre = Centre::Sessions,
+                Some(credentials::Event::Close) => state.tabs.close_page(Page::Credentials),
                 None => {}
             }
         }
@@ -649,7 +668,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             state.preferences.tree_collapsed = !state.preferences.tree_collapsed;
             state.save_preferences();
         }
-        Message::SettingsPressed => state.centre = Centre::Settings,
+        Message::SettingsPressed => state.open_settings(Centre::Settings),
         Message::PropertiesClosed => state.properties_open = false,
         Message::VaultOpened(Ok(unlocked)) => {
             state.secrets = unlocked.0;
@@ -668,7 +687,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 state.tabs.rescale_desktops();
             }
             settings::Event::Terminal(message) => return state.terminal_message(message),
-            settings::Event::Close => state.centre = Centre::Sessions,
+            settings::Event::Close => state.tabs.close_page(Page::Settings),
             settings::Event::PageChanged(page) => state.settings_page = page,
             settings::Event::PickFolder(kind) => {
                 return Task::perform(
@@ -684,13 +703,13 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             settings::Event::ImportPutty => {
                 let (screen, task) = putty_import::State::open();
                 state.putty = screen;
-                state.centre = Centre::Putty;
+                state.open_settings(Centre::Putty);
                 return task.map(Message::Putty);
             }
             settings::Event::ImportWsl => {
                 let (screen, task) = wsl_import::State::open();
                 state.wsl = screen;
-                state.centre = Centre::Wsl;
+                state.open_settings(Centre::Wsl);
                 return task.map(Message::Wsl);
             }
             settings::Event::Import => {
@@ -709,11 +728,11 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             match import_preview::update(screen, message) {
                 Some(import_preview::Event::Close) => {
                     state.import = None;
-                    state.centre = Centre::Settings;
+                    state.settings_screen = Centre::Settings;
                 }
                 Some(import_preview::Event::Apply(tree)) => {
                     state.import = None;
-                    state.centre = Centre::Settings;
+                    state.settings_screen = Centre::Settings;
                     state.import_tree(tree);
                 }
                 None => {}
@@ -722,7 +741,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         Message::Putty(message) => {
             let (task, event) = putty_import::update(&mut state.putty, message);
             match event {
-                Some(putty_import::Event::Close) => state.centre = Centre::Settings,
+                Some(putty_import::Event::Close) => state.settings_screen = Centre::Settings,
                 Some(putty_import::Event::Apply(plan, names)) => state.apply_putty(&plan, &names),
                 None => {}
             }
@@ -731,7 +750,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         Message::Wsl(message) => {
             let (task, event) = wsl_import::update(&mut state.wsl, message);
             match event {
-                Some(wsl_import::Event::Close) => state.centre = Centre::Settings,
+                Some(wsl_import::Event::Close) => state.settings_screen = Centre::Settings,
                 Some(wsl_import::Event::Apply(plan, names)) => state.apply_wsl(&plan, &names),
                 None => {}
             }
