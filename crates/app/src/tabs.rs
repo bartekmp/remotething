@@ -303,6 +303,17 @@ impl State {
     }
 
     /// Whether the tab in front is a live terminal, which gets Ctrl+W for itself.
+    /// Whether the tab in front shows a sign-in form.
+    pub fn front_is_asking(&self) -> bool {
+        match self.tabs.get(self.active).map(|tab| &tab.content) {
+            Some(Content::Session(session)) => session.is_asking(),
+            Some(Content::Desktop(desktop)) => desktop.is_asking(),
+            Some(Content::Vnc(vnc)) => vnc.is_asking(),
+            Some(Content::Ftp(ftp)) => ftp.is_asking(),
+            _ => false,
+        }
+    }
+
     pub fn front_is_terminal(&self) -> bool {
         self.tabs.get(self.active).is_some_and(Tab::is_live)
     }

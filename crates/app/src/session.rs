@@ -97,6 +97,11 @@ pub(crate) struct Browser {
 /// The sign-in form of the asking stage.
 impl State {
     /// Whether a shell or a file browser is running, so closing the tab would cut it.
+    /// Whether a sign-in form is showing, where Tab moves between the fields.
+    pub(crate) fn is_asking(&self) -> bool {
+        matches!(self.stage, Stage::Asking(_))
+    }
+
     pub(crate) fn is_connected(&self) -> bool {
         matches!(self.stage, Stage::Connected(_) | Stage::Browsing(_))
     }

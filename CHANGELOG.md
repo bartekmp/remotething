@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.1 - 2026-11-23
+
+- Tab moves between the user name and password in the sign-in form of a tab. The packages ship the license text.
+
 ## 0.80.0 - 2026-11-23
 
 - Remotething is now free software under the GNU General Public License, version 3. The packages (.deb, .rpm, Flatpak) carry the author, license and project address.

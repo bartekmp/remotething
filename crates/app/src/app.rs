@@ -573,7 +573,8 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             let is_tab = key == keyboard::Key::Named(keyboard::key::Named::Tab);
             let in_form = state.properties_open
                 || state.vault.is_some()
-                || state.centre() != Centre::Sessions;
+                || state.centre() != Centre::Sessions
+                || state.tabs.front_is_asking();
             if is_tab && in_form && !captured && !modifiers.control() && !modifiers.alt() {
                 return if modifiers.shift() {
                     iced::widget::operation::focus_previous()

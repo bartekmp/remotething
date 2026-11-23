@@ -1000,3 +1000,15 @@ fn an_old_connection_is_never_removed_by_closing_its_panel() {
 
     assert_eq!(on_disk(&state).connections.len(), 1);
 }
+
+#[test]
+fn a_sign_in_form_in_the_front_tab_is_a_form_where_tab_moves_between_fields() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    assert!(!state.tabs.front_is_asking());
+
+    // No credential: the tab asks for a user name and a password.
+    let _ = state.open("web-01");
+
+    assert!(state.tabs.front_is_asking());
+}

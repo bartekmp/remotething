@@ -122,6 +122,11 @@ impl State {
     }
 
     /// Whether the files are showing, so closing the tab would cut the connection.
+    /// Whether a sign-in form is showing, where Tab moves between the fields.
+    pub(crate) fn is_asking(&self) -> bool {
+        matches!(self.stage, Stage::Asking(_))
+    }
+
     pub(crate) fn is_connected(&self) -> bool {
         matches!(self.stage, Stage::Browsing(_))
     }
