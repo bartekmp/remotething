@@ -35,6 +35,26 @@ pub struct Preferences {
     /// Where screenshots and recordings go, when not in the default folders.
     #[serde(default, skip_serializing_if = "Folders::is_empty")]
     pub folders: Folders,
+    /// Where the window was when the app last ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<WindowPlacement>,
+}
+
+/// The size of the window, and whether it filled the screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WindowPlacement {
+    /// The size when not maximized, so leaving maximized goes back to it.
+    pub width: u32,
+    pub height: u32,
+    #[serde(default)]
+    pub maximized: bool,
+}
+
+impl WindowPlacement {
+    /// A saved size is ignored when it is nonsense, such as from a hand-edited file.
+    pub fn is_usable(&self) -> bool {
+        (200..=10_000).contains(&self.width) && (200..=10_000).contains(&self.height)
+    }
 }
 
 impl Default for Preferences {
@@ -50,6 +70,7 @@ impl Default for Preferences {
             terminal: TerminalLook::default(),
             features: Features::default(),
             folders: Folders::default(),
+            window: None,
         }
     }
 }
@@ -320,6 +341,11 @@ mod tests {
             animations: false,
             high_contrast: true,
             interface_scale: 150,
+            window: Some(WindowPlacement {
+                width: 1200,
+                height: 800,
+                maximized: true,
+            }),
             terminal: TerminalLook {
                 theme: Some("gruvbox".to_string()),
                 font_size: 18,

@@ -131,7 +131,7 @@ A theme change applies at once. A language change applies the next time you star
 
 The bottom of the screen shows the logo, the version and the copyright line.
 
-Settings are kept in `settings.toml`, in the same directory as the connections file.
+Settings are kept in `settings.toml`, in the same directory as the connections file. The window size and whether it was maximized are kept there too, and restored at the next start.
 
 ### Importing PuTTY sessions
 

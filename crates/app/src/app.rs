@@ -182,6 +182,8 @@ pub enum Message {
     /// The local clipboard picture, if it holds one and no text.
     ClipboardPictureRead(Option<remotething_rdp::Picture>),
     WindowResized(Size),
+    /// Whether the window fills the screen, asked once it stopped changing size.
+    WindowMaximized(bool),
     /// The window has not changed size for a moment: the number of the resize it follows.
     ResizeSettled(u64),
     /// The window's scale factor, when it opens or moves to another screen.
@@ -302,6 +304,28 @@ impl State {
         self.tree_slide.is_running(self.now)
             || self.properties_slide.is_running(self.now)
             || self.tabs.is_glowing(self.now)
+    }
+
+    /// Keeps the size of the window for the next start. A maximized window keeps the
+    /// size it had before, so un-maximizing after a restart goes back to it.
+    pub(crate) fn remember_window(&mut self, maximized: bool) {
+        let previous = self.preferences.window;
+        let size = match previous {
+            Some(placement) if maximized => (placement.width, placement.height),
+            _ => (
+                self.window.width.round() as u32,
+                self.window.height.round() as u32,
+            ),
+        };
+        let placement = preferences::WindowPlacement {
+            width: size.0,
+            height: size.1,
+            maximized,
+        };
+        if previous != Some(placement) {
+            self.preferences.window = Some(placement);
+            self.save_preferences();
+        }
     }
 
     pub(crate) fn save_preferences(&mut self) {
@@ -468,7 +492,13 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             if count == state.resize_count {
                 state.size_shown = false;
                 state.tabs.size_badge = false;
+                return iced::window::oldest()
+                    .and_then(iced::window::is_maximized)
+                    .map(Message::WindowMaximized);
             }
+        }
+        Message::WindowMaximized(maximized) => {
+            state.remember_window(maximized);
         }
         Message::FileDropped(path) => return input::on_file_dropped(state, path),
         Message::ScaleChanged(scale) => {

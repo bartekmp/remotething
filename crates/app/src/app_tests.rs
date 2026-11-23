@@ -877,3 +877,31 @@ fn the_window_size_shows_while_resizing_and_goes_when_the_resizing_stops() {
     let _ = update(&mut state, Message::ResizeSettled(2));
     assert!(!state.size_shown);
 }
+
+#[test]
+fn the_window_size_and_maximized_state_are_kept_for_the_next_start() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, "");
+    state.window = iced::Size::new(900.0, 700.0);
+
+    state.remember_window(false);
+    state.window = iced::Size::new(1920.0, 1080.0);
+    state.remember_window(true);
+
+    let saved = preferences::load(&preferences::path_beside(&state.path)).unwrap();
+    let placement = saved.window.unwrap();
+    // Maximized keeps the size from before, so un-maximizing goes back to it.
+    assert_eq!((placement.width, placement.height), (900, 700));
+    assert!(placement.maximized);
+}
+
+#[test]
+fn a_nonsense_window_size_is_not_used() {
+    let tiny = preferences::WindowPlacement {
+        width: 3,
+        height: 3,
+        maximized: true,
+    };
+
+    assert!(!tiny.is_usable());
+}

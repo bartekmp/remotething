@@ -115,12 +115,18 @@ const KEYRING_CALL_TIMEOUT: Duration = Duration::from_secs(60);
 /// The main window: the logo as its icon, and the name desktops match with the launcher entry.
 /// The window opens as big on screen whatever the interface size, so a bigger interface
 /// does not make a window that no longer fits.
-fn window_settings(interface_scale: u16) -> iced::window::Settings {
+fn window_settings(
+    interface_scale: u16,
+    placement: Option<preferences::WindowPlacement>,
+) -> iced::window::Settings {
     let mut settings = iced::window::Settings {
         icon: branding::window_icon(),
         size: scaled_window_size(interface_scale),
         ..iced::window::Settings::default()
     };
+    if let Some(placement) = placement.filter(|placement| placement.is_usable()) {
+        settings.size = iced::Size::new(placement.width as f32, placement.height as f32);
+    }
     #[cfg(target_os = "linux")]
     {
         // Inside a Flatpak the desktop entry is named after the app id, and the window
@@ -160,6 +166,7 @@ fn main() -> Result<()> {
     let vault_file = vault::path_beside(&path);
 
     let interface_scale = preferences.interface_scale;
+    let placement = preferences.window;
 
     let boot = move || {
         let state = match &keyring {
@@ -186,14 +193,20 @@ fn main() -> Result<()> {
         let ask_scale = iced::window::oldest()
             .and_then(iced::window::scale_factor)
             .map(app::Message::ScaleChanged);
-        (state, iced::Task::batch([ask_mode, ask_scale]))
+        // Asking at start-up, because on X11 a window cannot be created maximized.
+        let maximize = if placement.is_some_and(|placement| placement.maximized) {
+            iced::window::oldest().and_then(|id| iced::window::maximize(id, true))
+        } else {
+            iced::Task::none()
+        };
+        (state, iced::Task::batch([ask_mode, ask_scale, maximize]))
     };
     iced::application(boot, app::update, window::view)
         .title(app::title)
         .theme(app::theme)
         .scale_factor(app::scale_factor)
         .subscription(app::subscription)
-        .window(window_settings(interface_scale))
+        .window(window_settings(interface_scale, placement))
         .settings(iced::Settings {
             default_text_size: theme::TEXT_BODY.into(),
             default_font: theme::FONT,

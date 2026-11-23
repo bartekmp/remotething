@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.76.0 - 2026-11-23
+
+- The window opens with the size it had when you closed it, and maximized if it was.
+
 ## 0.75.0 - 2026-11-22
 
 - The sidebar buttons have icons and stay as icons on the folded sidebar; pressing one unfolds it. Credentials are outlined and divided from their form, empty checkboxes are visible, and the icon picker moved below the other connection fields.
