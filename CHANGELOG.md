@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.3 - 2026-11-23
+
+- The .deb and .rpm ship AppStream data, so software centres show the name, license and author.
+
 ## 0.80.2 - 2026-11-23
 
 - The .deb lists a maintainer contact address.
