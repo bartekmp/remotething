@@ -54,10 +54,33 @@ impl State {
         }
     }
 
+    /// Asks before removing the selected credential, unless something still uses it.
     pub(crate) fn delete_credential(&mut self) -> Task<Message> {
         let Some(id) = self.credentials.selected().map(str::to_string) else {
             return Task::none();
         };
+        // A credential in use is refused at once, with the reason, instead of asked about.
+        if let Err(error) = self.store.clone().remove_credential(&id) {
+            self.error = Some(error.to_string());
+            return Task::none();
+        }
+        let name = self
+            .store
+            .credentials
+            .iter()
+            .find(|credential| credential.id == id)
+            .map(|credential| credential.name.clone())
+            .unwrap_or_default();
+        self.removal = Some(crate::removal::Question::new(
+            crate::removal::Subject::Credential(id),
+            name,
+        ));
+        Task::none()
+    }
+
+    /// Removes a credential and its secret, once the user said yes.
+    pub(crate) fn remove_credential(&mut self, id: &str) -> Task<Message> {
+        let id = id.to_string();
         let mut updated = self.store.clone();
         if let Err(error) = updated.remove_credential(&id) {
             self.error = Some(error.to_string());

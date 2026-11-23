@@ -163,10 +163,46 @@ fn deleting_a_connection_removes_it_and_clears_the_panel() {
     );
 
     properties(&mut state, properties::Message::DeletePressed);
+    // Nothing goes before the user says yes.
+    assert!(state.removal.is_some());
+    assert_eq!(on_disk(&state).connections.len(), 1);
+
+    let _ = update(&mut state, Message::Removal(removal::Message::Confirmed));
 
     assert!(on_disk(&state).connections.is_empty());
     assert_eq!(state.tree.selected(), None);
     assert_eq!(state.draft, None);
+}
+
+#[test]
+fn saying_no_keeps_the_connection() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+
+    properties(&mut state, properties::Message::DeletePressed);
+    let _ = update(&mut state, Message::Removal(removal::Message::Cancelled));
+
+    assert_eq!(on_disk(&state).connections.len(), 1);
+    assert!(state.removal.is_none());
+}
+
+#[test]
+fn a_credential_is_removed_only_after_a_yes() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    credentials(&mut state, credentials::Message::NewPressed);
+    let id = state.credentials.selected().unwrap().to_string();
+
+    credentials(&mut state, credentials::Message::DeletePressed);
+    assert!(state.removal.is_some());
+    assert_eq!(on_disk(&state).credentials.len(), 1);
+
+    let _ = update(&mut state, Message::Removal(removal::Message::Confirmed));
+    assert!(on_disk(&state).credentials.iter().all(|c| c.id != id));
 }
 
 #[test]
@@ -194,10 +230,7 @@ fn confirming_removes_the_folder_and_what_is_inside() {
     );
     properties(&mut state, properties::Message::DeletePressed);
 
-    let _ = update(
-        &mut state,
-        Message::Removal(folder_removal::Message::Confirmed),
-    );
+    let _ = update(&mut state, Message::Removal(removal::Message::Confirmed));
 
     assert!(on_disk(&state).folders.is_empty());
     assert!(on_disk(&state).connections.is_empty());
@@ -214,10 +247,7 @@ fn declining_keeps_the_folder() {
     );
     properties(&mut state, properties::Message::DeletePressed);
 
-    let _ = update(
-        &mut state,
-        Message::Removal(folder_removal::Message::Cancelled),
-    );
+    let _ = update(&mut state, Message::Removal(removal::Message::Cancelled));
 
     assert_eq!(on_disk(&state).folders.len(), 1);
     assert!(state.removal.is_none());
@@ -926,4 +956,47 @@ fn credentials_and_settings_are_tabs_that_are_reused_and_closed_like_any_tab() {
     state.tabs.close_front();
     assert_eq!(state.tabs.len(), 2);
     assert_ne!(state.centre(), Centre::Credentials);
+}
+
+#[test]
+fn closing_a_new_connection_that_was_never_filled_in_removes_it() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(&mut state, tree::Message::NewConnectionPressed);
+    assert_eq!(on_disk(&state).connections.len(), 2);
+    let _ = update(&mut state, Message::PropertiesClosed);
+
+    assert_eq!(on_disk(&state).connections.len(), 1);
+    assert_eq!(state.tree.selected(), None);
+}
+
+#[test]
+fn a_new_connection_that_was_saved_stays_when_the_panel_closes() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(&mut state, tree::Message::NewConnectionPressed);
+    properties(
+        &mut state,
+        properties::Message::NameChanged("db-01".to_string()),
+    );
+    properties(&mut state, properties::Message::SavePressed);
+    let _ = update(&mut state, Message::PropertiesClosed);
+
+    assert_eq!(on_disk(&state).connections.len(), 2);
+}
+
+#[test]
+fn an_old_connection_is_never_removed_by_closing_its_panel() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+
+    tree(
+        &mut state,
+        tree::Message::ConnectionSelected("web-01".to_string()),
+    );
+    let _ = update(&mut state, Message::PropertiesClosed);
+
+    assert_eq!(on_disk(&state).connections.len(), 1);
 }

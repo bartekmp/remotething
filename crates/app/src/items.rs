@@ -9,12 +9,19 @@ use iced::Task;
 
 use crate::app::{Centre, Message, State};
 use crate::credentials::SecretAction;
-use crate::folder_removal;
 use crate::i18n::fl;
 use crate::import_preview;
 use crate::organise;
+use crate::removal;
 use crate::session;
 use crate::tree::{DropTarget, Selection};
+
+/// A new item, as it was when it was made: to tell whether it was ever changed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Fresh {
+    Connection(Connection),
+    Folder(Folder),
+}
 
 impl State {
     /// New items go into the selected folder, or beside the selected connection.
@@ -44,11 +51,13 @@ impl State {
             self.tree.expand(parent);
         }
 
+        let fresh = Fresh::Folder(folder.clone());
         let mut updated = self.store.clone();
         updated.folders.push(folder);
         if self.commit(updated) {
             self.select(Some(selection));
             self.properties_open = true;
+            self.fresh = Some(fresh);
         }
     }
 
@@ -68,12 +77,43 @@ impl State {
             self.tree.expand(parent);
         }
 
+        let fresh = Fresh::Connection(connection.clone());
         let mut updated = self.store.clone();
         updated.connections.push(connection);
         if self.commit(updated) {
             self.select(Some(selection));
             self.properties_open = true;
+            self.fresh = Some(fresh);
         }
+    }
+
+    /// Closes the properties panel. A new item that was never filled in or saved goes away,
+    /// instead of staying behind as "New connection".
+    pub(crate) fn close_properties(&mut self) {
+        self.properties_open = false;
+        let Some(fresh) = self.fresh.take() else {
+            return;
+        };
+        let (selection, untouched) = match &fresh {
+            Fresh::Connection(connection) => (
+                Selection::Connection(connection.id.clone()),
+                self.store.connections.contains(connection),
+            ),
+            Fresh::Folder(folder) => (
+                Selection::Folder(folder.id.clone()),
+                self.store.folders.contains(folder)
+                    && self.store.count_inside(&folder.id) == (0, 0),
+            ),
+        };
+        if !untouched || self.tree.selected() != Some(&selection) {
+            return;
+        }
+        let mut updated = self.store.clone();
+        let removed = match &fresh {
+            Fresh::Connection(connection) => updated.remove_connection(&connection.id),
+            Fresh::Folder(folder) => updated.remove_folder(&folder.id),
+        };
+        self.finish_removal(updated, removed);
     }
 
     /// Adds a copy of a connection right after it, selects it and opens it for editing.
@@ -131,34 +171,41 @@ impl State {
         }
     }
 
+    /// Asks before removing a folder or a connection.
     pub(crate) fn delete(&mut self, item: &Selection) {
-        if let Selection::Folder(id) = item {
-            let inside = self.store.count_inside(id);
-            if inside != (0, 0) {
-                // Content goes with the folder, so the user decides first.
-                let name = organise::name_of(&self.store, item).unwrap_or_default();
-                self.removal = Some(folder_removal::Question::new(id.clone(), name, inside));
-                return;
-            }
-        }
-        let mut updated = self.store.clone();
-        let removed = match item {
-            Selection::Folder(id) => updated.remove_folder(id),
-            Selection::Connection(id) => updated.remove_connection(id),
+        let name = organise::name_of(&self.store, item).unwrap_or_default();
+        let subject = match item {
+            Selection::Folder(id) => removal::Subject::Folder {
+                id: id.clone(),
+                inside: self.store.count_inside(id),
+            },
+            Selection::Connection(id) => removal::Subject::Connection(id.clone()),
         };
-        self.finish_removal(updated, removed);
+        self.removal = Some(removal::Question::new(subject, name));
     }
 
-    /// The answer to the question about removing a folder with content.
-    pub(crate) fn answer_removal(&mut self, answer: folder_removal::Message) {
+    /// The answer to the question about removing something.
+    pub(crate) fn answer_removal(&mut self, answer: removal::Message) -> Task<Message> {
         let Some(question) = self.removal.take() else {
-            return;
+            return Task::none();
         };
-        if answer == folder_removal::Message::Confirmed {
-            let mut updated = self.store.clone();
-            let removed = updated.remove_folder_tree(&question.folder_id);
-            self.finish_removal(updated, removed);
+        if answer != removal::Message::Confirmed {
+            return Task::none();
         }
+        match question.subject {
+            removal::Subject::Folder { id, .. } => {
+                let mut updated = self.store.clone();
+                let removed = updated.remove_folder_tree(&id);
+                self.finish_removal(updated, removed);
+            }
+            removal::Subject::Connection(id) => {
+                let mut updated = self.store.clone();
+                let removed = updated.remove_connection(&id);
+                self.finish_removal(updated, removed);
+            }
+            removal::Subject::Credential(id) => return self.remove_credential(&id),
+        }
+        Task::none()
     }
 
     fn finish_removal(&mut self, updated: Store, removed: remotething_core::Result<()>) {

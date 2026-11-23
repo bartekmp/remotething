@@ -243,9 +243,12 @@ credentials-interactive-note = For servers that ask for a password and a one-tim
 session-interactive-refused = The server did not accept the answers.
 session-cancel = Cancel
 
-removal-question = Remove the folder "{ $name }"?
+removal-folder = Remove the folder "{ $name }"?
+removal-connection = Remove the connection "{ $name }"?
+removal-credential = Remove the credential "{ $name }"?
+removal-credential-note = Its saved password or key passphrase is deleted too, and this cannot be undone.
 removal-contents = It holds { $folders } folders and { $connections } connections. They are removed with it, and this cannot be undone.
-removal-yes = Remove all
+removal-yes = Remove
 removal-no = Keep
 
 preview-title = Import connections

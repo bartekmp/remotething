@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.79.4 - 2026-11-23
+
+- Removing a connection, a folder or a credential asks first. Closing the properties panel of a new connection or folder you never filled in or saved removes it.
+
 ## 0.79.3 - 2026-11-23
 
 - The Shell field of a local shell says it takes a command or a path, and the list under it is a chooser for the shells found on this computer.

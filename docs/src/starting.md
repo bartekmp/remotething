@@ -84,7 +84,7 @@ Right-click an item and choose **Edit**. Change its fields in the properties pan
 - Leave **Port** empty to inherit it from the folder or use the protocol's default.
 - **(inherit)** for credential and jump host means the value comes from the folder above.
 - **Save a password here.** While the credential is **(inherit)**, the panel has a user name and a password field. Fill them in and press **Save**: a credential named after the connection is made, the password goes to the system keyring, and the connection is linked to it. No trip to the Credentials screen. To use a credential you already have, pick it in the list instead; the fields are then hidden.
-- **Delete** removes the item. A folder with content asks first, then goes with everything inside it. A connection that others use as their jump host cannot be removed, and neither can a folder holding one that something outside it uses.
+- **Delete** removes the item after asking. A folder goes with everything inside it. Closing the properties panel of a new item you never filled in or saved removes it without asking. A connection that others use as their jump host cannot be removed, and neither can a folder holding one that something outside it uses.
 
 If a change is refused, nothing is saved, the panel stays open and the reason appears at the top of the window.
 
@@ -98,7 +98,7 @@ Press **Credentials** under the tree toolbar. It opens in a tab of its own, whic
 - **Kind** is a password, a private key (with an optional passphrase), or "ask every time".
 - The password or passphrase goes to your system keyring, never to the connections file. Leave the field empty to keep the one already stored.
 - Choosing "ask every time" removes any stored secret for that credential.
-- A credential that a folder or connection still uses cannot be deleted.
+- A credential that a folder or connection still uses cannot be deleted. Deleting one asks first.
 
 The keyring is Secret Service on Linux (GNOME Keyring, KWallet) and Credential Manager on Windows. If the keyring is locked, your desktop asks you to unlock it; the app waits up to a minute for that.
 

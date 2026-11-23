@@ -14,7 +14,6 @@ use crate::display;
 use crate::features;
 use crate::file_clipboard;
 use crate::file_dialog;
-use crate::folder_removal;
 use crate::i18n::fl;
 use crate::image_clipboard;
 use crate::import_preview;
@@ -24,6 +23,7 @@ use crate::preferences::{self, Preferences, ThemeChoice};
 use crate::properties::{self, Draft};
 use crate::putty_import;
 use crate::recent::{self, Recent};
+use crate::removal;
 use crate::session;
 use crate::settings;
 use crate::tabs::{self, Page};
@@ -89,7 +89,9 @@ pub struct State {
     /// The imported terminal themes and the preview on the Terminal page.
     pub(crate) terminal_themes: crate::terminal_settings::State,
     /// A folder with content that waits for the user to confirm its removal.
-    pub(crate) removal: Option<folder_removal::Question>,
+    pub(crate) removal: Option<removal::Question>,
+    /// The item that was just made, until it is closed or changed.
+    pub(crate) fresh: Option<crate::items::Fresh>,
     /// Where the pointer is, in window coordinates.
     pub(crate) pointer: Point,
     pub(crate) window: Size,
@@ -153,7 +155,7 @@ pub enum Message {
     Menu(menu::Message),
     /// A file was dropped on the window.
     FileDropped(std::path::PathBuf),
-    Removal(folder_removal::Message),
+    Removal(removal::Message),
     PointerMoved(Point),
     /// The left mouse button went up, anywhere in the window.
     PointerReleased,
@@ -252,6 +254,7 @@ impl State {
             settings_page: settings::Tab::default(),
             terminal_themes,
             removal: None,
+            fresh: None,
             pointer: Point::ORIGIN,
             window: INITIAL_WINDOW,
             size_shown: false,
@@ -449,7 +452,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             state.save_preferences();
         }
         Message::FolderPicked(_, None) => {}
-        Message::Removal(message) => state.answer_removal(message),
+        Message::Removal(message) => return state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::RecordTick => state.tabs.record_tick(),
         Message::ClipboardTick => {
@@ -563,7 +566,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 return Task::none();
             }
             if is_escape && state.properties_open {
-                state.properties_open = false;
+                state.close_properties();
                 return Task::none();
             }
             // In a form, Tab and Shift+Tab move between the fields.
@@ -669,7 +672,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             state.save_preferences();
         }
         Message::SettingsPressed => state.open_settings(Centre::Settings),
-        Message::PropertiesClosed => state.properties_open = false,
+        Message::PropertiesClosed => state.close_properties(),
         Message::VaultOpened(Ok(unlocked)) => {
             state.secrets = unlocked.0;
             state.vault = None;

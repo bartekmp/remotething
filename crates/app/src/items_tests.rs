@@ -189,6 +189,9 @@ fn remove_in_the_menu_deletes_the_item_and_asks_about_a_full_folder() {
 
     right_click(&mut state, Some(folder("lab")));
     send(&mut state, Message::Menu(menu::Message::Remove));
+    // An empty folder is asked about too.
+    assert!(state.removal.is_some());
+    send(&mut state, Message::Removal(removal::Message::Confirmed));
     assert_eq!(on_disk(&state).folders.len(), 1);
 }
 

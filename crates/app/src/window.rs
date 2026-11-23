@@ -7,7 +7,6 @@ use iced::{Element, Length, Point};
 
 use crate::app::{Centre, Message, State};
 use crate::credentials;
-use crate::folder_removal;
 use crate::i18n::fl;
 use crate::icons::{self, Icon};
 use crate::import_preview;
@@ -15,6 +14,7 @@ use crate::menu;
 use crate::organise;
 use crate::properties;
 use crate::putty_import;
+use crate::removal;
 use crate::settings;
 use crate::tabs::Page;
 use crate::tabs_view;
@@ -96,7 +96,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
         layers = layers.push(crate::shortcuts::view().map(Message::Shortcuts));
     }
     if let Some(question) = &state.removal {
-        layers = layers.push(folder_removal::view(question).map(Message::Removal));
+        layers = layers.push(removal::view(question).map(Message::Removal));
     }
     layers.into()
 }
