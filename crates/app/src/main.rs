@@ -2,6 +2,9 @@
 //!
 //! Usage: remotething [--config <connections file>] | --version
 
+// On Windows, a window program: no console opens beside it.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod app;
 mod branding;
 mod capture_files;
