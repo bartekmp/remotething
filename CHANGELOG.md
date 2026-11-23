@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.76.1 - 2026-11-23
+
+- Programs in a terminal can copy to your clipboard again (OSC 52): selecting text in herdr or tmux fills it.
+
 ## 0.76.0 - 2026-11-23
 
 - The window opens with the size it had when you closed it, and maximized if it was.

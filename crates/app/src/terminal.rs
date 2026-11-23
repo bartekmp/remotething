@@ -8,7 +8,7 @@ use alacritty_terminal::grid::{Dimensions, Scroll};
 use alacritty_terminal::index::{Column, Line, Point, Side};
 use alacritty_terminal::selection::{Selection, SelectionType};
 use alacritty_terminal::term::cell::Flags;
-use alacritty_terminal::term::{Config, Term, TermMode};
+use alacritty_terminal::term::{ClipboardType, Config, Term, TermMode};
 use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor, Processor};
 
 /// A colour as the remote program asked for it; the view turns it into pixels.
@@ -56,14 +56,33 @@ impl Dimensions for GridSize {
 
 /// Collects what the terminal wants to tell the remote side, such as a cursor position report.
 #[derive(Clone, Default)]
-pub(crate) struct Replies(Arc<Mutex<Vec<u8>>>);
+pub(crate) struct Replies(Arc<Mutex<Vec<u8>>>, Arc<Mutex<Vec<CopiedText>>>);
+
+/// Text a program asked to put on the clipboard (OSC 52), as tmux and herdr do on a selection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CopiedText {
+    /// The selection that middle-click pastes, instead of the clipboard.
+    pub primary: bool,
+    pub text: String,
+}
 
 impl EventListener for Replies {
     fn send_event(&self, event: Event) {
-        if let Event::PtyWrite(text) = event
-            && let Ok(mut replies) = self.0.lock()
-        {
-            replies.extend_from_slice(text.as_bytes());
+        match event {
+            Event::PtyWrite(text) => {
+                if let Ok(mut replies) = self.0.lock() {
+                    replies.extend_from_slice(text.as_bytes());
+                }
+            }
+            Event::ClipboardStore(kind, text) => {
+                if let Ok(mut copied) = self.1.lock() {
+                    copied.push(CopiedText {
+                        primary: kind == ClipboardType::Selection,
+                        text,
+                    });
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -122,6 +141,14 @@ impl Screen {
             granularity: Granularity::default(),
             found: Vec::new(),
             current_found: None,
+        }
+    }
+
+    /// What programs asked to copy since the last call.
+    pub fn take_copied(&mut self) -> Vec<CopiedText> {
+        match self.replies.1.lock() {
+            Ok(mut copied) => std::mem::take(&mut *copied),
+            Err(_) => Vec::new(),
         }
     }
 
@@ -614,6 +641,20 @@ mod tests {
         screen.resize(100, 30);
 
         assert_eq!((screen.columns(), screen.lines()), (100, 30));
+    }
+
+    #[test]
+    fn a_program_can_put_text_on_the_clipboard() {
+        let mut screen = Screen::new(80, 24);
+        // "hello" in base64, for the clipboard and then for the selection.
+        screen.feed(b"\x1b]52;c;aGVsbG8=\x07\x1b]52;p;aGVsbG8=\x07");
+
+        let copied = screen.take_copied();
+
+        assert_eq!(copied.len(), 2);
+        assert_eq!(copied[0].text, "hello");
+        assert!(!copied[0].primary && copied[1].primary);
+        assert!(screen.take_copied().is_empty());
     }
 
     #[test]

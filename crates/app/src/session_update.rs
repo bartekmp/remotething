@@ -290,6 +290,20 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
                 if !replies.is_empty() {
                     live.send(ShellInput::Data(replies));
                 }
+                // A program copied text itself: tmux and herdr do, as the mouse is theirs.
+                let copies: Vec<_> = live
+                    .screen
+                    .take_copied()
+                    .into_iter()
+                    .map(|copied| {
+                        if copied.primary {
+                            iced::clipboard::write_primary(copied.text)
+                        } else {
+                            iced::clipboard::write(copied.text)
+                        }
+                    })
+                    .collect();
+                return Task::batch(copies);
             }
             Task::none()
         }
