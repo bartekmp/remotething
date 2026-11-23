@@ -370,6 +370,26 @@ pub fn pill(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
+/// A pill for the screen that is showing: filled like a selected row.
+pub fn pill_active(theme: &Theme, status: button::Status) -> button::Style {
+    let tokens = tokens(theme);
+    let hovered = matches!(status, button::Status::Hovered | button::Status::Pressed);
+    button::Style {
+        background: Some(tokens.selected.into()),
+        text_color: tokens.selected_text,
+        border: Border {
+            color: if hovered {
+                tokens.accent_hover
+            } else {
+                tokens.accent
+            },
+            width: 1.0,
+            radius: RADIUS_PILL.into(),
+        },
+        ..button::Style::default()
+    }
+}
+
 /// A button for an action that removes something.
 pub fn danger(theme: &Theme, status: button::Status) -> button::Style {
     let tokens = tokens(theme);
@@ -456,6 +476,18 @@ pub fn vertical_divider<'a, Message: 'a>() -> Element<'a, Message> {
     container(space::horizontal())
         .width(Length::Fixed(1.0))
         .height(Length::Fill)
+        .style(|theme: &Theme| container::Style {
+            background: Some(tokens(theme).surface_border.into()),
+            ..container::Style::default()
+        })
+        .into()
+}
+
+/// A thin horizontal line between two groups of a list.
+pub fn horizontal_divider<'a, Message: 'a>() -> Element<'a, Message> {
+    container(space::vertical())
+        .width(Length::Fill)
+        .height(Length::Fixed(1.0))
         .style(|theme: &Theme| container::Style {
             background: Some(tokens(theme).surface_border.into()),
             ..container::Style::default()

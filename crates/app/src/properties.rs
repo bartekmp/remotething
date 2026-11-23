@@ -311,12 +311,7 @@ pub fn view<'a>(
     };
     let is_connection = matches!(selection, Selection::Connection(_));
 
-    let heading = if is_connection {
-        fl!("properties-connection")
-    } else {
-        fl!("properties-folder")
-    };
-    let mut fields = column![text(heading).size(theme::TEXT_TITLE)].spacing(10);
+    let mut fields = column![].spacing(10);
 
     fields = fields.push(labelled(
         fl!("properties-name"),

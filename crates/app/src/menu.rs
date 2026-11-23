@@ -1,6 +1,7 @@
 //! The context menu of the connection tree, drawn over the window.
 
-use iced::widget::{button, column, container, mouse_area, opaque, pin, space, stack, text};
+use iced::Alignment;
+use iced::widget::{button, column, container, mouse_area, opaque, pin, row, space, stack, text};
 use iced::{Element, Length, Point, Size};
 use remotething_core::Store;
 
@@ -12,6 +13,8 @@ use crate::tree::Selection;
 const WIDTH: f32 = 200.0;
 const PADDING: f32 = 6.0;
 const ITEM_HEIGHT: f32 = 30.0;
+/// A line between groups of actions, with room around it.
+const SEPARATOR_HEIGHT: f32 = 9.0;
 /// The icon grid: cells of 30 px with 2 px between, five to a row in the menu.
 const ICON_ROW: f32 = 32.0;
 const ICONS_PER_ROW: usize = 5;
@@ -114,8 +117,17 @@ pub fn view<'a>(state: &'a State, store: &'a Store, window: Size) -> Element<'a,
         (icon_page(state, store), icons_height())
     } else {
         let actions = actions(state.target());
-        let items = actions.iter().map(|action| item(*action));
-        (column(items).into(), ITEM_HEIGHT * actions.len() as f32)
+        let mut items = column![];
+        let mut height = 0.0;
+        for action in actions {
+            if starts_group(*action) {
+                items = items.push(separator());
+                height += SEPARATOR_HEIGHT;
+            }
+            items = items.push(item(*action));
+            height += ITEM_HEIGHT;
+        }
+        (items.into(), height)
     };
     let size = Size::new(WIDTH, height + 2.0 * PADDING);
     let panel = container(content)
@@ -138,13 +150,47 @@ fn icons_height() -> f32 {
     (icons::CHOICES.len() + 1).div_ceil(ICONS_PER_ROW) as f32 * ICON_ROW
 }
 
+/// Moving and removing are set apart from the rest.
+fn starts_group(action: Message) -> bool {
+    matches!(action, Message::MoveUp | Message::Remove)
+}
+
+fn separator<'a>() -> Element<'a, Message> {
+    container(theme::horizontal_divider())
+        .height(Length::Fixed(SEPARATOR_HEIGHT))
+        .padding([4, 6])
+        .into()
+}
+
+fn icon_of(action: Message) -> icons::Icon {
+    match action {
+        Message::Connect => icons::PLUG,
+        Message::NewFolder => icons::FOLDER_PLUS,
+        Message::NewConnection => icons::CIRCLE_PLUS,
+        Message::Edit => icons::PENCIL,
+        Message::Rename => icons::PEN_LINE,
+        Message::Duplicate => icons::COPY,
+        Message::ChangeIcon => icons::PALETTE,
+        Message::MoveUp => icons::ARROW_UP,
+        Message::MoveDown => icons::ARROW_DOWN,
+        Message::Remove => icons::TRASH,
+        Message::IconPicked(_) | Message::Dismissed => icons::INFO,
+    }
+}
+
 fn item<'a>(action: Message) -> Element<'a, Message> {
     let style = if action == Message::Remove {
         text::danger
     } else {
         text::default
     };
-    button(text(label(action)).style(style))
+    let content = row![
+        icons::view(icon_of(action), theme::TEXT_BODY),
+        text(label(action)).style(style)
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+    button(content)
         .width(Length::Fill)
         .height(Length::Fixed(ITEM_HEIGHT))
         .padding([6, 10])

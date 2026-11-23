@@ -23,8 +23,6 @@ tree-new-connection-name = New connection
 tree-new-connection-host = host.example.net
 
 properties-empty = Select a folder or connection to edit it.
-properties-folder = Folder
-properties-connection = Connection
 properties-name = Name
 properties-host = Host
 properties-protocol = Protocol

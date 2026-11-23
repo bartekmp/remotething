@@ -109,14 +109,14 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
     let unfolded = state.tree_slide.value(state.now);
     if !state.tree_slide.is_running(state.now) {
         return if state.preferences.tree_collapsed {
-            rail(None)
+            rail(None, state.centre)
         } else {
             expanded_tree(state)
         };
     }
     let width = RAIL_WIDTH + (TREE_WIDTH - RAIL_WIDTH) * unfolded;
     if width < RAIL_UNTIL {
-        return rail(Some(width));
+        return rail(Some(width), state.centre);
     }
     // The panel is cut off by the edge of its box instead of being squeezed into it.
     container(expanded_tree(state))
@@ -147,22 +147,58 @@ fn sidebar_actions() -> [(Icon, String, Message); 3] {
     ]
 }
 
+/// Whether the credentials screen is the one showing, for the button that opens it.
+fn is_credentials(message: &Message, centre: Centre) -> bool {
+    matches!(message, Message::Tree(tree::Message::CredentialsPressed))
+        && centre == Centre::Credentials
+}
+
+/// The settings screen and the import previews it leads to.
+fn settings_showing(centre: Centre) -> bool {
+    matches!(
+        centre,
+        Centre::Settings | Centre::Putty | Centre::Wsl | Centre::Import
+    )
+}
+
 /// A button of the sidebar: the icon and its name.
-fn labelled_button<'a>(icon: Icon, label: String, message: Message) -> Element<'a, Message> {
+/// `active` marks the screen that is showing.
+fn labelled_button<'a>(
+    icon: Icon,
+    label: String,
+    message: Message,
+    active: bool,
+) -> Element<'a, Message> {
     let content = row![
         icons::view(icon, look::TEXT_BODY),
         text(label).size(look::TEXT_SMALL)
     ]
     .spacing(6)
     .align_y(Vertical::Center);
-    button(content).style(look::pill).on_press(message).into()
+    button(content)
+        .style(pill_style(active))
+        .on_press(message)
+        .into()
+}
+
+fn pill_style(active: bool) -> fn(&iced::Theme, button::Status) -> button::Style {
+    if active {
+        look::pill_active
+    } else {
+        look::pill
+    }
 }
 
 /// A button of the folded sidebar: the icon, with the name when the pointer rests on it.
-fn rail_button<'a>(icon: Icon, label: String, message: Message) -> Element<'a, Message> {
+fn rail_button<'a>(
+    icon: Icon,
+    label: String,
+    message: Message,
+    active: bool,
+) -> Element<'a, Message> {
     let icon_button = button(icons::view(icon, COLLAPSE_ICON_SIZE))
         .padding(8)
-        .style(look::pill)
+        .style(pill_style(active))
         .on_press(message);
     tooltip(
         icon_button,
@@ -176,16 +212,18 @@ fn rail_button<'a>(icon: Icon, label: String, message: Message) -> Element<'a, M
 
 /// The folded tree: the button that brings it back, the same actions as icons, and settings
 /// at the bottom. Pressing an action also unfolds the tree.
-fn rail<'a>(width: Option<f32>) -> Element<'a, Message> {
+fn rail<'a>(width: Option<f32>, centre: Centre) -> Element<'a, Message> {
     let expand = icon_button(icons::PANEL_LEFT_OPEN, Message::TreeCollapseToggled);
     let mut actions = column![].spacing(look::GAP).align_x(Horizontal::Center);
     for (icon, label, message) in sidebar_actions() {
-        actions = actions.push(rail_button(icon, label, message));
+        let active = is_credentials(&message, centre);
+        actions = actions.push(rail_button(icon, label, message, active));
     }
     let settings = rail_button(
         icons::SETTINGS,
         fl!("tree-settings"),
         Message::SettingsPressed,
+        settings_showing(centre),
     );
     let rail = container(
         column![expand, actions, space::vertical(), settings]
@@ -210,13 +248,19 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
     ]
     .align_y(Vertical::Center);
     let [folder, connection, credentials] = sidebar_actions();
+    let credentials_showing = is_credentials(&credentials.2, state.centre);
     let toolbar = column![
         row![
-            labelled_button(folder.0, folder.1, folder.2),
-            labelled_button(connection.0, connection.1, connection.2),
+            labelled_button(folder.0, folder.1, folder.2, false),
+            labelled_button(connection.0, connection.1, connection.2, false),
         ]
         .spacing(6),
-        labelled_button(credentials.0, credentials.1, credentials.2),
+        labelled_button(
+            credentials.0,
+            credentials.1,
+            credentials.2,
+            credentials_showing,
+        ),
     ]
     .spacing(6);
     let content = tree::view(&state.tree, &state.store).map(Message::Tree);
@@ -224,6 +268,7 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
         icons::SETTINGS,
         fl!("tree-settings"),
         Message::SettingsPressed,
+        settings_showing(state.centre),
     );
     side_panel(
         column![header, toolbar, content, settings].spacing(look::GAP),

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.77.0 - 2026-11-23
+
+- The sidebar shows which screen is open (Credentials, Settings), the right-click menu has icons and separators, and the Properties panel no longer repeats its title.
+
 ## 0.76.1 - 2026-11-23
 
 - Programs in a terminal can copy to your clipboard again (OSC 52): selecting text in herdr or tmux fills it.
