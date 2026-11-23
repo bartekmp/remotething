@@ -92,7 +92,7 @@ SSH connections open a terminal; see [SSH](ssh.md). RDP connections open a Windo
 
 ## Credentials
 
-Press **Credentials** under the tree toolbar. It opens in a tab of its own, which you switch to and close like any other (the **Close** button does the same). Pressing the button again goes to the tab that is already open.
+Press **Credentials** under the tree toolbar. It opens in a tab of its own, which you switch to and close like any other. Pressing the button again goes to the tab that is already open.
 
 - **New credential** adds one; fill in the form and press **Save**.
 - **Kind** is a password, a private key (with an optional passphrase), or "ask every time".

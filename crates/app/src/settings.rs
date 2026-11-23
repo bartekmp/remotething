@@ -122,7 +122,6 @@ pub enum Message {
     ImportPressed,
     ImportPuttyPressed,
     ImportWslPressed,
-    ClosePressed,
 }
 
 /// The folders the user can choose.
@@ -161,7 +160,6 @@ pub enum Event {
     ImportPutty,
     /// Open the screen that previews importing the running WSL distributions.
     ImportWsl,
-    Close,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,7 +247,6 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         Message::ImportPressed => Event::Import,
         Message::ImportPuttyPressed => Event::ImportPutty,
         Message::ImportWslPressed => Event::ImportWsl,
-        Message::ClosePressed => Event::Close,
     }
 }
 
@@ -259,14 +256,7 @@ pub fn view<'a>(
     dark: bool,
     page: Tab,
 ) -> Element<'a, Message> {
-    let header = row![
-        text(fl!("settings-title"))
-            .size(theme::TEXT_DISPLAY)
-            .width(Length::Fill),
-        button(text(fl!("settings-close")))
-            .style(theme::pill)
-            .on_press(Message::ClosePressed),
-    ];
+    let header = text(fl!("settings-title")).size(theme::TEXT_DISPLAY);
     let content = match page {
         Tab::General => general(preferences),
         Tab::Terminal => {
@@ -558,17 +548,6 @@ mod tests {
             Message::LanguagePicked(LanguageOption(None)),
         );
         assert_eq!(preferences.language, None);
-    }
-
-    #[test]
-    fn close_changes_nothing() {
-        let mut preferences = Preferences::default();
-
-        assert_eq!(
-            update(&mut preferences, Message::ClosePressed),
-            Event::Close
-        );
-        assert_eq!(preferences, Preferences::default());
     }
 
     #[test]

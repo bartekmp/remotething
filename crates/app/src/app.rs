@@ -644,7 +644,6 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 Some(credentials::Event::New) => state.add_credential(),
                 Some(credentials::Event::Save) => return state.save_credential(),
                 Some(credentials::Event::Delete) => return state.delete_credential(),
-                Some(credentials::Event::Close) => state.tabs.close_page(Page::Credentials),
                 None => {}
             }
         }
@@ -691,7 +690,6 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
                 state.tabs.rescale_desktops();
             }
             settings::Event::Terminal(message) => return state.terminal_message(message),
-            settings::Event::Close => state.tabs.close_page(Page::Settings),
             settings::Event::PageChanged(page) => state.settings_page = page,
             settings::Event::PickFolder(kind) => {
                 return Task::perform(

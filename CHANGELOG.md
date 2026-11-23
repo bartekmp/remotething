@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.5 - 2026-11-23
+
+- Credentials and Settings lose their Close button; close the tab instead.
+
 ## 0.80.4 - 2026-11-23
 
 - Without a graphics driver, the panels no longer get a grey wash from their shadows.

@@ -150,8 +150,4 @@ fn buttons_are_reported_to_the_window() {
         update(&mut state, &store, Message::DeletePressed),
         Some(Event::Delete)
     );
-    assert_eq!(
-        update(&mut state, &store, Message::ClosePressed),
-        Some(Event::Close)
-    );
 }

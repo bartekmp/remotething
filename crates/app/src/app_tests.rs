@@ -290,14 +290,14 @@ const WITH_CREDENTIAL: &str = r#"
 "#;
 
 #[test]
-fn the_credentials_button_opens_the_screen_and_close_returns() {
+fn the_credentials_button_opens_a_tab_and_closing_it_returns() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
 
     tree(&mut state, tree::Message::CredentialsPressed);
     assert_eq!(state.centre(), Centre::Credentials);
 
-    credentials(&mut state, credentials::Message::ClosePressed);
+    state.tabs.close_page(crate::tabs::Page::Credentials);
     assert_eq!(state.centre(), Centre::Sessions);
 }
 
@@ -399,19 +399,15 @@ fn a_start_up_notice_is_shown_when_loading_worked() {
     assert_eq!(state.error.as_deref(), Some("no keyring"));
 }
 
-fn settings(state: &mut State, message: settings::Message) {
-    let _ = update(state, Message::Settings(message));
-}
-
 #[test]
-fn the_settings_button_opens_the_screen_and_close_returns() {
+fn the_settings_button_opens_a_tab_and_closing_it_returns() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);
 
     let _ = update(&mut state, Message::SettingsPressed);
     assert_eq!(state.centre(), Centre::Settings);
 
-    settings(&mut state, settings::Message::ClosePressed);
+    state.tabs.close_page(crate::tabs::Page::Settings);
     assert_eq!(state.centre(), Centre::Sessions);
 }
 

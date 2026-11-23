@@ -61,7 +61,6 @@ pub enum Message {
     SecretChanged(Hidden),
     SavePressed,
     DeletePressed,
-    ClosePressed,
 }
 
 /// What the screen asks the window to do.
@@ -70,7 +69,6 @@ pub enum Event {
     New,
     Save,
     Delete,
-    Close,
 }
 
 /// What to do in the secret store after a credential was saved.
@@ -199,7 +197,6 @@ pub fn update(state: &mut State, store: &Store, message: Message) -> Option<Even
         Message::NewPressed => return Some(Event::New),
         Message::SavePressed => return Some(Event::Save),
         Message::DeletePressed => return Some(Event::Delete),
-        Message::ClosePressed => return Some(Event::Close),
         _ => {}
     }
 
@@ -217,14 +214,7 @@ pub fn update(state: &mut State, store: &Store, message: Message) -> Option<Even
 }
 
 pub fn view<'a>(state: &'a State, store: &'a Store) -> Element<'a, Message> {
-    let header = row![
-        text(fl!("credentials-title"))
-            .size(theme::TEXT_DISPLAY)
-            .width(Length::Fill),
-        button(text(fl!("credentials-close")))
-            .style(theme::pill)
-            .on_press(Message::ClosePressed),
-    ];
+    let header = text(fl!("credentials-title")).size(theme::TEXT_DISPLAY);
 
     let entries = store.credentials.iter().map(|credential| {
         let is_selected = state.selected() == Some(credential.id.as_str());
