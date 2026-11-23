@@ -42,7 +42,7 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 - **VNC** with clipboard and quality presets, and a note that VNC is not encrypted unless you tunnel it.
 - **Recordings and screenshots** of a desktop, off until you switch them on.
 
-<p align="center"><img src="docs/src/images/vnc.png" alt="A VNC desktop in a tab" width="720"></p>
+<p align="center"><img src="docs/src/images/rdp.png" alt="A Windows 11 desktop over RDP" width="49%"> <img src="docs/src/images/vnc.png" alt="A VNC desktop in a tab" width="49%"></p>
 
 ### Local shells
 

@@ -2,6 +2,8 @@
 
 Double-click a connection whose protocol is **RDP**. A tab opens and the Windows desktop appears in it.
 
+![A Windows 11 desktop in a tab](images/rdp.png)
+
 ## Signing in
 
 | Credential | What happens |
