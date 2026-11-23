@@ -331,7 +331,13 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::NameChanged(name) => draft.name = name,
         Message::HostChanged(host) => draft.host = host,
         Message::PortChanged(port) => draft.port = port,
-        Message::ProtocolPicked(choice) => draft.protocol = choice.0,
+        Message::ProtocolPicked(choice) => {
+            draft.protocol = choice.0;
+            // The address a new connection starts with means nothing as a shell.
+            if choice.0 == Protocol::Local && draft.host == fl!("tree-new-connection-host") {
+                draft.host.clear();
+            }
+        }
         Message::ParentPicked(choice) => draft.parent = choice.id,
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,

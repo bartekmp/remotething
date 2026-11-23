@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.79.1 - 2026-11-23
+
+- Choosing Local shell for a new connection clears the placeholder address from the Shell field.
+
 ## 0.79.0 - 2026-11-23
 
 - Credentials and Settings open as tabs, so you can switch to them and close them like a session.

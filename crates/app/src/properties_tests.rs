@@ -399,3 +399,22 @@ fn switching_away_from_a_local_shell_drops_its_settings() {
     let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
     assert!(connection.settings.local.is_empty());
 }
+
+#[test]
+fn choosing_a_local_shell_clears_the_address_a_new_connection_starts_with() {
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    draft.host = fl!("tree-new-connection-host");
+    update(
+        &mut draft,
+        Message::ProtocolPicked(ProtocolChoice(Protocol::Local)),
+    );
+    assert_eq!(draft.host, "");
+
+    // A name the user typed is theirs to keep.
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    update(
+        &mut draft,
+        Message::ProtocolPicked(ProtocolChoice(Protocol::Local)),
+    );
+    assert_eq!(draft.host, "web-01.example.net");
+}
