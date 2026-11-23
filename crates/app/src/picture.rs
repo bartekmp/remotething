@@ -72,10 +72,15 @@ pub(crate) fn detect_gpu() {
     let _ = GPU_DRAWING.set(found);
 }
 
+/// Whether the window is drawn on a GPU. True until start-up says otherwise.
+pub(crate) fn gpu_drawing() -> bool {
+    GPU_DRAWING.get().copied().unwrap_or(true)
+}
+
 /// The picture as a widget, scaled to fit and centred: through the texture on
 /// a GPU, as a plain image on the CPU renderer.
 pub(crate) fn view<'a, Message: 'a>(picture: &Picture) -> Element<'a, Message> {
-    if GPU_DRAWING.get().copied().unwrap_or(true) {
+    if gpu_drawing() {
         shader_widget(Screen(picture.clone()))
             .width(Length::Fill)
             .height(Length::Fill)

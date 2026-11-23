@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.4 - 2026-11-23
+
+- Without a graphics driver, the panels no longer get a grey wash from their shadows.
+
 ## 0.80.3 - 2026-11-23
 
 - The .deb and .rpm ship AppStream data, so software centres show the name, license and author.

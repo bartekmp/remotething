@@ -165,6 +165,16 @@ fn tokens(theme: &Theme) -> &'static Tokens {
     }
 }
 
+/// A shadow's colour. The CPU renderer draws a blurred shadow as a grey wash
+/// over the panel it belongs to, so there it gets none.
+fn shadow_color(color: Color) -> Color {
+    if crate::picture::gpu_drawing() {
+        color
+    } else {
+        Color::TRANSPARENT
+    }
+}
+
 /// A floating panel: rounded, hairline border, soft shadow.
 pub fn panel(theme: &Theme) -> container::Style {
     let tokens = tokens(theme);
@@ -177,7 +187,7 @@ pub fn panel(theme: &Theme) -> container::Style {
             radius: RADIUS_PANEL.into(),
         },
         shadow: Shadow {
-            color: tokens.shadow,
+            color: shadow_color(tokens.shadow),
             offset: Vector::new(0.0, 8.0),
             blur_radius: 28.0,
         },
@@ -205,7 +215,7 @@ pub fn list_row(is_selected: bool) -> impl Fn(&Theme) -> container::Style {
 pub fn floating(theme: &Theme) -> container::Style {
     container::Style {
         shadow: Shadow {
-            color: tokens(theme).shadow,
+            color: shadow_color(tokens(theme).shadow),
             offset: Vector::new(0.0, 4.0),
             blur_radius: 12.0,
         },
@@ -284,7 +294,7 @@ pub fn ghost_tab(theme: &Theme) -> container::Style {
             radius: RADIUS_CONTROL.into(),
         },
         shadow: Shadow {
-            color: tokens.shadow,
+            color: shadow_color(tokens.shadow),
             offset: Vector::new(0.0, 4.0),
             blur_radius: 10.0,
         },
@@ -304,7 +314,7 @@ pub fn carried_tab(theme: &Theme) -> container::Style {
             radius: RADIUS_CONTROL.into(),
         },
         shadow: Shadow {
-            color: tokens.shadow,
+            color: shadow_color(tokens.shadow),
             offset: Vector::new(0.0, 3.0),
             blur_radius: 8.0,
         },
@@ -601,7 +611,7 @@ fn menu_style(theme: &Theme) -> menu::Style {
         selected_text_color: tokens.selected_text,
         selected_background: tokens.selected.into(),
         shadow: Shadow {
-            color: tokens.shadow,
+            color: shadow_color(tokens.shadow),
             offset: Vector::new(0.0, 4.0),
             blur_radius: 16.0,
         },
