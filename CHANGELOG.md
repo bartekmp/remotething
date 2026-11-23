@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.79.2 - 2026-11-23
+
+- A tab you drag shows a silhouette of itself that follows the pointer.
+
 ## 0.79.1 - 2026-11-23
 
 - Choosing Local shell for a new connection clears the placeholder address from the Shell field.

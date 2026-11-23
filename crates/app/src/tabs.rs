@@ -153,6 +153,13 @@ impl State {
         task
     }
 
+    /// The title of the tab being carried, once the pointer has left it: for the ghost that
+    /// follows the pointer.
+    pub fn carried_title(&self) -> Option<&str> {
+        let index = self.index_of(self.dragged?)?;
+        (self.hovered != Some(index)).then(|| self.tabs[index].title.as_str())
+    }
+
     /// How many tabs are open.
     #[cfg(test)]
     pub fn len(&self) -> usize {

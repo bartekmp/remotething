@@ -5,7 +5,7 @@ members = ["crates/app", "crates/capture", "crates/core", "crates/files", "crate
 exclude = ["spikes"]
 
 [workspace.package]
-version = "0.79.1"
+version = "0.79.2"
 edition = "2024"
 publish = false
 

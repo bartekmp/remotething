@@ -82,6 +82,9 @@ pub fn view(state: &State) -> Element<'_, Message> {
     if let Some(label) = carried_label(state) {
         layers = layers.push(label);
     }
+    if let Some(ghost) = carried_tab(state) {
+        layers = layers.push(ghost);
+    }
     if let Some(menu) = &state.menu {
         layers = layers.push(menu::view(menu, &state.store, state.window).map(Message::Menu));
     }
@@ -336,6 +339,23 @@ fn properties_panel(state: &State, below_banner: bool) -> Element<'_, Message> {
     pin(opaque(panel.height(Length::Fixed(height))))
         .position(Point::new(x, top))
         .into()
+}
+
+/// The silhouette of the tab being dragged, following the pointer.
+fn carried_tab(state: &State) -> Option<Element<'_, Message>> {
+    let title = state.tabs.carried_title()?;
+    let ghost = container(text(title).wrapping(text::Wrapping::None))
+        .width(Length::Fixed(crate::tab_bar::TAB_WIDTH))
+        .height(Length::Fixed(crate::tab_bar::TAB_HEIGHT))
+        .padding([0, 10])
+        .align_y(Vertical::Center)
+        .clip(true)
+        .style(look::ghost_tab);
+    let position = Point::new(
+        state.pointer.x + CARRIED_OFFSET,
+        state.pointer.y + CARRIED_OFFSET,
+    );
+    Some(pin(ghost).position(position).into())
 }
 
 /// The name of the row being dragged, following the pointer.

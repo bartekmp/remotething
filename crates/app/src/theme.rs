@@ -272,6 +272,26 @@ pub fn pane_frame(has_keyboard: bool) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
+/// The ghost of a tab that follows the pointer while it is carried: see-through, with an accent edge.
+pub fn ghost_tab(theme: &Theme) -> container::Style {
+    let tokens = tokens(theme);
+    container::Style {
+        text_color: Some(tokens.text),
+        background: Some(alpha(tokens.panel, 0.92).into()),
+        border: Border {
+            color: tokens.accent,
+            width: 1.0,
+            radius: RADIUS_CONTROL.into(),
+        },
+        shadow: Shadow {
+            color: tokens.shadow,
+            offset: Vector::new(0.0, 4.0),
+            blur_radius: 10.0,
+        },
+        ..container::Style::default()
+    }
+}
+
 /// The tab being carried: raised above the bar with a shadow and an accent edge.
 pub fn carried_tab(theme: &Theme) -> container::Style {
     let tokens = tokens(theme);

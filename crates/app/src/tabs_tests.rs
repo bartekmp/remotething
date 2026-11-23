@@ -683,3 +683,19 @@ fn the_size_shown_while_resizing_is_only_for_terminals_and_desktops() {
     let _ = fixture.state.open_launcher();
     assert_eq!(fixture.state.front_view_size(), None);
 }
+
+#[test]
+fn a_tab_is_carried_once_the_pointer_leaves_it() {
+    let mut state = State::default();
+    let _ = state.open_launcher();
+    let _ = state.open_launcher();
+    assert_eq!(state.carried_title(), None);
+
+    // Pressed, with the pointer still on it.
+    state.dragged = Some(state.tabs[1].id);
+    state.hovered = Some(1);
+    assert_eq!(state.carried_title(), None);
+
+    state.hovered = None;
+    assert_eq!(state.carried_title(), Some(state.tabs[1].title.as_str()));
+}
