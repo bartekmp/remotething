@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.79.3 - 2026-11-23
+
+- The Shell field of a local shell says it takes a command or a path, and the list under it is a chooser for the shells found on this computer.
+
 ## 0.79.2 - 2026-11-23
 
 - A tab you drag shows a silhouette of itself that follows the pointer.

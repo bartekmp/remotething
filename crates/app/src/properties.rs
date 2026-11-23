@@ -488,17 +488,16 @@ fn shell_fields(draft: &Draft) -> Element<'_, Message> {
         .cloned()
         .map(ShellChoice)
         .collect();
-    let picked = installed
-        .iter()
-        .find(|choice| choice.0 == draft.host.trim())
-        .cloned();
     column![
         labelled(
             fl!("properties-shell"),
             column![
                 theme::input(&fl!("properties-shell-default"), &draft.host)
                     .on_input(Message::HostChanged),
-                theme::pick(installed, picked, Message::ShellPicked).width(Length::Fill),
+                // A chooser, not a second value: picking fills in the field above.
+                theme::pick(installed, None::<ShellChoice>, Message::ShellPicked)
+                    .placeholder(fl!("properties-shell-detected"))
+                    .width(Length::Fill),
             ]
             .spacing(4),
         ),
