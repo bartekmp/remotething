@@ -1,15 +1,18 @@
 [package]
 name = "remotething"
-description = "The Remotething desktop app."
+description = "Remote desktops, terminals and file transfers in one tree."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
-authors = ["Bartosz Pollok"]
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 license-file = "../../LICENSE"
 
 [package.metadata.deb]
-maintainer = "Bartosz Pollok"
-copyright = "2026, Bartosz Pollok. All rights reserved."
+maintainer = "bartekmp"
+copyright = "2026, bartekmp. Licensed under the GNU General Public License, version 3."
 section = "net"
 priority = "optional"
 # `$auto` only sees linked libraries. The window toolkit loads these at run time.
@@ -30,7 +33,9 @@ assets = [
 ]
 
 [package.metadata.generate-rpm]
-license = "Proprietary"
+license = "GPL-3.0-only"
+url = "https://github.com/bartekmp/remotething"
+summary = "Remote desktops, terminals and file transfers in one tree"
 assets = [
     { source = "target/release/remotething", dest = "/usr/bin/remotething", mode = "755" },
     { source = "packaging/remotething.desktop", dest = "/usr/share/applications/remotething.desktop", mode = "644" },

@@ -4,6 +4,10 @@ description = "Windows Remote Desktop sessions over IronRDP. Knows nothing about
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [lints]
 workspace = true

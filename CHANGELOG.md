@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.0 - 2026-11-23
+
+- Remotething is now free software under the GNU General Public License, version 3. The packages (.deb, .rpm, Flatpak) carry the author, license and project address.
+
 ## 0.79.4 - 2026-11-23
 
 - Removing a connection, a folder or a credential asks first. Closing the properties panel of a new connection or folder you never filled in or saved removes it.

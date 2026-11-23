@@ -1,4 +1,4 @@
-# Dependency policy: permissive licences only, so the source never has to be opened.
+# Dependency policy: permissive licences only. They all combine with the GPL-3.0 licence of this project.
 
 [advisories]
 # None of these are vulnerabilities; they are "unmaintained" notices on crates
@@ -39,7 +39,7 @@ allow = [
 ]
 
 [licenses.private]
-# Our own crates are proprietary and never published.
+# Our own crates are GPL-3.0 and never published.
 ignore = true
 
 [bans]

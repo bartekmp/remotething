@@ -41,4 +41,4 @@ CI builds a Windows zip for every merge to `main`. The program is not code-signe
 
 ## License
 
-Proprietary; see [LICENSE](LICENSE).
+GNU General Public License, version 3 only; see [LICENSE](LICENSE). Bundled fonts and icons keep their own licences, listed in [NOTICE](NOTICE).

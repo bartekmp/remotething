@@ -87,7 +87,7 @@ A nightly run on Jenkins needs the three variables as credentials bound to the j
 2. A file over about 400 lines or a function over about 60 gets split.
 3. Every public item in a library crate has a doc comment; the build fails without one.
 4. A feature lands with its tests and its doc page in the same change.
-5. Dependencies must have a permissive licence; `deny.toml` is the list.
+5. Dependencies must have a permissive licence that combines with the GPL-3.0 of this project; `deny.toml` is the list.
 6. Colours, radii and sizes come from `crates/app/src/theme.rs`, never from a screen.
 
 ## Git

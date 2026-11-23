@@ -174,7 +174,12 @@ fn package_windows() -> bool {
 
     // `zip` adds to an existing archive, so start from nothing.
     let _ = std::fs::remove_file(&archive);
-    let files = [executable, root.join("LICENSE"), root.join("README.md")];
+    let files = [
+        executable,
+        root.join("LICENSE"),
+        root.join("NOTICE"),
+        root.join("README.md"),
+    ];
 
     let mut zip = Command::new("zip");
     // -j: store the files without their directories.

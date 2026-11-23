@@ -5,9 +5,13 @@ members = ["crates/app", "crates/capture", "crates/core", "crates/files", "crate
 exclude = ["spikes"]
 
 [workspace.package]
-version = "0.79.4"
+version = "0.80.0"
 edition = "2024"
 publish = false
+authors = ["bartekmp"]
+license = "GPL-3.0-only"
+repository = "https://github.com/bartekmp/remotething"
+homepage = "https://github.com/bartekmp/remotething"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

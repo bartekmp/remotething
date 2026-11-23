@@ -295,7 +295,7 @@ details-received = Received
 details-sent = Sent
 details-via = Through { $hosts }
 
-about-rights = © 2026 Bartosz Pollok. All rights reserved.
+about-rights = © 2026 bartekmp. Free software under the GNU GPL, version 3.
 
 properties-quality = Remote desktop quality
 quality-lan = Best picture (fast network)
