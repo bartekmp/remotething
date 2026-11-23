@@ -10,7 +10,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [package.metadata.deb]
-maintainer = "bartekmp"
+maintainer = "bartekmp <remotething@lel.lu>"
 copyright = "2026, bartekmp. Licensed under the GNU General Public License, version 3."
 section = "net"
 priority = "optional"

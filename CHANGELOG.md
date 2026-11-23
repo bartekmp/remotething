@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.2 - 2026-11-23
+
+- The .deb lists a maintainer contact address.
+
 ## 0.80.1 - 2026-11-23
 
 - Tab moves between the user name and password in the sign-in form of a tab. The packages ship the license text.
