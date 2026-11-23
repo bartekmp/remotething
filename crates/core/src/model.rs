@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::forward::Forward;
@@ -119,6 +120,9 @@ pub struct Settings {
     /// Local port forwards opened with an SSH session. Empty means "inherit".
     #[serde(default, rename = "forward", skip_serializing_if = "Vec::is_empty")]
     pub forwards: Vec<Forward>,
+    /// Settings for local shells.
+    #[serde(default, skip_serializing_if = "LocalSettings::is_empty")]
+    pub local: LocalSettings,
     /// Settings for remote desktops (RDP and VNC). Files from before VNC called this `rdp`.
     #[serde(
         default,
@@ -126,6 +130,27 @@ pub struct Settings {
         alias = "rdp"
     )]
     pub desktop: DesktopSettings,
+}
+
+/// Settings for local shells. The shell itself is the connection's host.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalSettings {
+    /// The folder the shell starts in. `None` means the home folder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directory: Option<String>,
+    /// What the shell is started with, such as `-l`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arguments: Vec<String>,
+    /// Variables set for the shell, on top of what the app has.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub environment: BTreeMap<String, String>,
+}
+
+impl LocalSettings {
+    /// True when nothing is set, so the table can be left out of the file.
+    pub fn is_empty(&self) -> bool {
+        *self == LocalSettings::default()
+    }
 }
 
 /// Settings for remote desktops.
@@ -161,6 +186,8 @@ pub enum Protocol {
     Nfs,
     /// A WSL distribution on this Windows machine, in a local terminal. The host is its name.
     Wsl,
+    /// A shell on this machine, in a local terminal. The host is the shell; empty is the user's own.
+    Local,
     /// Windows Remote Desktop.
     Rdp,
     /// VNC remote framebuffer.
@@ -195,7 +222,7 @@ impl Protocol {
             // The portmapper, which tells where the NFS services are.
             Protocol::Nfs => 111,
             // A distribution is reached through wsl.exe, not over the network.
-            Protocol::Wsl => 0,
+            Protocol::Wsl | Protocol::Local => 0,
             Protocol::Rdp => 3389,
             Protocol::Vnc => 5900,
         }

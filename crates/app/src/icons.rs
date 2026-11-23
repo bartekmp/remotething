@@ -95,6 +95,7 @@ pub const COPY: Icon = icon("copy", '\u{e0a2}');
 pub const PALETTE: Icon = icon("palette", '\u{e1dc}');
 pub const ARROW_DOWN: Icon = icon("arrow-down", '\u{e046}');
 pub const TRASH: Icon = icon("trash-2", '\u{e18d}');
+pub const SQUARE_TERMINAL: Icon = icon("square-terminal", '\u{e209}');
 pub const PLUS: Icon = icon("plus", '\u{e140}');
 pub const ARROW_UP: Icon = icon("arrow-up", '\u{e04e}');
 pub const REFRESH: Icon = icon("refresh-cw", '\u{e148}');
@@ -125,7 +126,7 @@ pub fn for_connection(chosen: Option<&str>, protocol: Protocol) -> Icon {
         return icon;
     }
     let default = match protocol {
-        Protocol::Ssh | Protocol::Wsl => "terminal",
+        Protocol::Ssh | Protocol::Wsl | Protocol::Local => "terminal",
         Protocol::Sftp | Protocol::Ftp | Protocol::Ftps | Protocol::Smb | Protocol::Nfs => "folder",
         Protocol::Rdp | Protocol::Vnc => "monitor",
     };

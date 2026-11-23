@@ -56,6 +56,7 @@ impl Fixture {
             credential: credential.map(str::to_string),
             jump: None,
             forwards: Vec::new(),
+            local: remotething_core::LocalSettings::default(),
             desktop_quality: Quality::Balanced,
         };
         State::start(connection, &self.context()).0
@@ -349,6 +350,7 @@ fn tunnelled(fixture: &mut Fixture) -> ResolvedConnection {
         credential: None,
         jump: Some("bastion".to_string()),
         forwards: Vec::new(),
+        local: remotething_core::LocalSettings::default(),
         desktop_quality: Quality::Balanced,
     }
 }

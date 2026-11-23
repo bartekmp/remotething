@@ -21,7 +21,7 @@ impl QuickTarget {
         self.port.unwrap_or(self.protocol.default_port())
     }
 
-    /// A short label such as `ops@web-01`.
+    /// A short label such as `ops@web-01`. Empty for the user's own local shell.
     pub fn label(&self) -> String {
         match &self.username {
             Some(username) => format!("{username}@{}", self.host),
@@ -36,12 +36,16 @@ impl QuickTarget {
 /// - `ssh user@host`, `ssh host`, with `-p 2222` anywhere after `ssh`
 /// - `rdp host`, `vnc host`
 /// - `ssh://user@host:2222`, `sftp://user@host`, `ftp://host`, `ftps://host`, `smb://host`, `nfs://host`, `rdp://host`, `vnc://host:5901`
+/// - `local` for the user's shell on this machine, `local zsh` or `local://tmux` for another
 /// - `user@host` and `user@host:2222`, taken as SSH
 /// - an IPv6 address goes in brackets when a port follows: `ssh://[::1]:2222`
 pub fn parse_quick(text: &str) -> Option<QuickTarget> {
     let text = text.trim();
     if let Some((scheme, rest)) = text.split_once("://") {
         let protocol = protocol_named(scheme)?;
+        if protocol == Protocol::Local {
+            return local_target(rest.trim_end_matches('/'));
+        }
         return target(protocol, rest.trim_end_matches('/'), None);
     }
 
@@ -54,6 +58,11 @@ pub fn parse_quick(text: &str) -> Option<QuickTarget> {
         }
         return target(Protocol::Ssh, first, None);
     };
+
+    if protocol == Protocol::Local {
+        // The shell is the rest of the text, as typed: it may be a path with spaces.
+        return local_target(text[first.len()..].trim());
+    }
 
     let mut address = None;
     let mut port = None;
@@ -75,6 +84,7 @@ fn protocol_named(word: &str) -> Option<Protocol> {
         "ssh" => Some(Protocol::Ssh),
         "sftp" => Some(Protocol::Sftp),
         "wsl" => Some(Protocol::Wsl),
+        "local" => Some(Protocol::Local),
         "ftp" => Some(Protocol::Ftp),
         "ftps" => Some(Protocol::Ftps),
         "smb" => Some(Protocol::Smb),
@@ -83,6 +93,16 @@ fn protocol_named(word: &str) -> Option<Protocol> {
         "vnc" => Some(Protocol::Vnc),
         _ => None,
     }
+}
+
+/// A shell on this machine. No shell named means the user's own.
+fn local_target(shell: &str) -> Option<QuickTarget> {
+    Some(QuickTarget {
+        protocol: Protocol::Local,
+        username: None,
+        host: shell.to_string(),
+        port: None,
+    })
 }
 
 /// Splits `user@host:port`. A port given with `-p` wins over one in the address.
@@ -254,5 +274,22 @@ mod tests {
         assert_eq!(target.port_or_default(), 3389);
 
         assert_eq!(parse_quick("ssh ops@web-01").unwrap().label(), "ops@web-01");
+    }
+
+    #[test]
+    fn local_is_the_users_shell_or_the_one_named() {
+        assert_eq!(
+            parsed("local"),
+            (Protocol::Local, None, String::new(), None)
+        );
+        assert_eq!(
+            parsed("local zsh"),
+            (Protocol::Local, None, "zsh".to_string(), None)
+        );
+        assert_eq!(
+            parsed("local://tmux/"),
+            (Protocol::Local, None, "tmux".to_string(), None)
+        );
+        assert_eq!(parsed("local /opt/my shell/sh").2, "/opt/my shell/sh");
     }
 }

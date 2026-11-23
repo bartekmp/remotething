@@ -64,7 +64,7 @@ With `ask`, nothing is stored and you are prompted on every connect.
 | `id` | yes | Unique among connections |
 | `name` | yes | Label shown in the tree |
 | `parent` | no | Id of the enclosing folder |
-| `protocol` | yes | `ssh`, `sftp`, `ftp`, `ftps`, `smb`, `nfs`, `wsl`, `rdp` or `vnc` |
+| `protocol` | yes | `ssh`, `sftp`, `ftp`, `ftps`, `smb`, `nfs`, `wsl`, `local`, `rdp` or `vnc` |
 | `host` | yes | Host name or IP address |
 | `icon` | no | Icon shown in the tree; see [Icons](#icons) |
 
@@ -85,6 +85,7 @@ These keys can be set on a folder or on a connection.
 | `port` | TCP port | 22 for SSH, 3389 for RDP, 5900 for VNC |
 | `credential` | Id of a stored credential | No credential |
 | `jump` | Id of a connection to tunnel through | Direct connection |
+| `local.directory`, `local.arguments`, `local.environment` | For `local` shells: the start folder (`~` is home), a list of arguments, and a table of variables. `host` is the shell; `""` is your default shell | Home folder, no arguments, no variables |
 | `desktop.quality` | For RDP and VNC: `lan`, `balanced` or `low-bandwidth` (files written before VNC call it `rdp.quality`, which still works) | `balanced` |
 
 A connection uses its own value first. If it has none, it takes the value from its folder, then from that folder's parent, and so on up the tree.

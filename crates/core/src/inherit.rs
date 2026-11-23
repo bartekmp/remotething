@@ -1,7 +1,7 @@
 //! Folder inheritance: a value left unset is taken from the nearest folder that sets it.
 
 use crate::forward::Forward;
-use crate::model::{Folder, Protocol, Quality, Settings, Store};
+use crate::model::{Folder, LocalSettings, Protocol, Quality, Settings, Store};
 use crate::{Error, Result};
 
 /// A connection with every inherited value filled in, ready to connect.
@@ -23,6 +23,8 @@ pub struct ResolvedConnection {
     pub jump: Option<String>,
     /// Local port forwards to open with an SSH session.
     pub forwards: Vec<Forward>,
+    /// What a local shell starts with.
+    pub local: LocalSettings,
     /// RDP quality preset; `Balanced` when no level sets one.
     pub desktop_quality: Quality,
 }
@@ -41,6 +43,9 @@ impl Settings {
         }
         if self.forwards.is_empty() {
             self.forwards = fallback.forwards.clone();
+        }
+        if self.local.is_empty() {
+            self.local = fallback.local.clone();
         }
         if self.desktop.quality.is_none() {
             self.desktop.quality = fallback.desktop.quality;
@@ -74,6 +79,7 @@ impl Store {
             credential: settings.credential,
             jump: settings.jump,
             forwards: settings.forwards,
+            local: settings.local,
             desktop_quality: settings.desktop.quality.unwrap_or_default(),
         })
     }
@@ -268,5 +274,37 @@ mod tests {
 
         assert_eq!(store.resolve("plain").unwrap().forwards, [forward(1000)]);
         assert_eq!(store.resolve("own").unwrap().forwards, [forward(2000)]);
+    }
+
+    #[test]
+    fn a_local_shell_takes_its_settings_from_the_folder_unless_it_has_its_own() {
+        let from_folder = Settings {
+            local: LocalSettings {
+                directory: Some("/srv".to_string()),
+                ..LocalSettings::default()
+            },
+            ..Settings::default()
+        };
+        let own = Settings {
+            local: LocalSettings {
+                directory: Some("/home".to_string()),
+                ..LocalSettings::default()
+            },
+            ..Settings::default()
+        };
+        let store = Store {
+            folders: vec![folder("tools", None, from_folder)],
+            connections: vec![
+                connection("inherits", Some("tools"), Settings::default()),
+                connection("own", Some("tools"), own),
+            ],
+            ..Store::default()
+        };
+
+        let inherits = store.resolve("inherits").unwrap();
+        let own = store.resolve("own").unwrap();
+
+        assert_eq!(inherits.local.directory.as_deref(), Some("/srv"));
+        assert_eq!(own.local.directory.as_deref(), Some("/home"));
     }
 }

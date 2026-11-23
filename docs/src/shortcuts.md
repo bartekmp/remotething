@@ -8,6 +8,7 @@
 | --- | --- |
 | **Ctrl+Shift+P** | Go to a connection or an action (the command palette) |
 | **Ctrl+Shift+T** | New tab, listing recent connections |
+| **Ctrl+Shift+L** | New local terminal, with your default shell |
 | **Ctrl+Shift+W** | Close the tab in front. **Ctrl+W** does the same, except while a terminal has the keyboard |
 | **Ctrl+Tab**, **Ctrl+Shift+Tab** | Next and previous tab |
 | **Alt+1** to **Alt+9** | Tab by number; 9 is the last |

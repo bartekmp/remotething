@@ -17,6 +17,7 @@ fn connection(id: &str, protocol: Protocol) -> ResolvedConnection {
         credential: None,
         jump: None,
         forwards: Vec::new(),
+        local: remotething_core::LocalSettings::default(),
         desktop_quality: Quality::Balanced,
     }
 }

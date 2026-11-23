@@ -338,3 +338,64 @@ fn a_draft_prints_without_the_password() {
 
     assert!(!format!("{draft:?}").contains("s3cret"));
 }
+
+fn local_draft() -> Draft {
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    draft.protocol = Protocol::Local;
+    draft.host = String::new();
+    draft.directory = "~/src".to_string();
+    draft.arguments = r#"-l --rcfile "my rc""#.to_string();
+    draft.environment = "LANG=pl_PL.UTF-8 EDITOR=vim".to_string();
+    draft
+}
+
+#[test]
+fn a_local_shell_keeps_its_folder_arguments_and_variables_and_may_have_no_host() {
+    let saved = local_draft().apply(&store(), &web()).unwrap();
+
+    let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
+    let local = &connection.settings.local;
+    assert_eq!(connection.protocol, Protocol::Local);
+    assert!(connection.host.is_empty());
+    assert_eq!(local.directory.as_deref(), Some("~/src"));
+    assert_eq!(local.arguments, ["-l", "--rcfile", "my rc"]);
+    assert_eq!(local.environment["EDITOR"], "vim");
+
+    // Opening the saved shell again shows the same text.
+    let again = Draft::load(&saved, &web()).unwrap();
+    // The quotes may change, the words do not.
+    assert_eq!(
+        local_shell::split_words(&again.arguments).unwrap(),
+        ["-l", "--rcfile", "my rc"]
+    );
+    assert_eq!(again.directory, "~/src");
+}
+
+#[test]
+fn a_shell_setting_that_does_not_parse_is_refused_with_a_reason() {
+    let mut draft = local_draft();
+    draft.environment = "NOVALUE".to_string();
+    assert!(
+        draft
+            .apply(&store(), &web())
+            .unwrap_err()
+            .contains("NOVALUE")
+    );
+
+    let mut draft = local_draft();
+    draft.arguments = "\"open".to_string();
+    assert!(draft.apply(&store(), &web()).is_err());
+}
+
+#[test]
+fn switching_away_from_a_local_shell_drops_its_settings() {
+    let local = local_draft().apply(&store(), &web()).unwrap();
+    let mut draft = Draft::load(&local, &web()).unwrap();
+    draft.protocol = Protocol::Ssh;
+    draft.host = "web-01.example.net".to_string();
+
+    let saved = draft.apply(&local, &web()).unwrap();
+
+    let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
+    assert!(connection.settings.local.is_empty());
+}

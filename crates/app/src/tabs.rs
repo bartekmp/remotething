@@ -5,7 +5,9 @@
 use iced::Task;
 use iced::keyboard::key::Named;
 use iced::keyboard::{Key, Modifiers};
-use remotething_core::{Protocol, Quality, QuickTarget, ResolvedConnection, parse_quick};
+use remotething_core::{
+    LocalSettings, Protocol, Quality, QuickTarget, ResolvedConnection, parse_quick,
+};
 
 use crate::desktop;
 use crate::desktop_files;
@@ -135,6 +137,26 @@ impl State {
             title,
             content,
             unsaved: None,
+        });
+        self.active = self.tabs.len() - 1;
+        task
+    }
+
+    /// Opens a tab with the user's own shell on this machine. It is not in the tree, but can be saved.
+    pub fn open_local_terminal(&mut self, context: &Context<'_>) -> Task<Message> {
+        let target = QuickTarget {
+            protocol: Protocol::Local,
+            username: None,
+            host: String::new(),
+            port: None,
+        };
+        let id = self.new_id();
+        let (title, content, task) = start_quick(id, &target, context);
+        self.tabs.push(Tab {
+            id,
+            title,
+            content,
+            unsaved: Some(target),
         });
         self.active = self.tabs.len() - 1;
         task
@@ -619,7 +641,7 @@ fn start_connection(
 ) -> (String, Content, Task<Message>) {
     let title = connection.name.clone();
     match connection.protocol {
-        Protocol::Ssh | Protocol::Sftp | Protocol::Wsl => {
+        Protocol::Ssh | Protocol::Sftp | Protocol::Wsl | Protocol::Local => {
             let (session, task) = session::State::start_as(connection, typed_username, context);
             let task = task.map(move |message| Message::Session(id, message));
             (title, Content::Session(Box::new(session)), task)
@@ -649,16 +671,22 @@ fn start_quick(
     target: &QuickTarget,
     context: &Context<'_>,
 ) -> (String, Content, Task<Message>) {
+    let name = if target.protocol == Protocol::Local {
+        crate::local_shell::title(&target.host)
+    } else {
+        target.label()
+    };
     let connection = ResolvedConnection {
         // Not in the tree, so it has no id yet.
         id: String::new(),
-        name: target.label(),
+        name,
         protocol: target.protocol,
         host: target.host.clone(),
         port: target.port_or_default(),
         credential: None,
         jump: None,
         forwards: Vec::new(),
+        local: LocalSettings::default(),
         desktop_quality: Quality::default(),
     };
     start_connection(id, connection, target.username.clone(), context)

@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.78.0 - 2026-11-23
+
+- Local terminals: **New local terminal** (Ctrl+Shift+L, the new-tab box, the palette) opens your shell in a tab, and a **Local shell** connection can be saved with the shell (bash, zsh, tmux, herdr, …), arguments, start folder and variables.
+
 ## 0.77.0 - 2026-11-23
 
 - The sidebar shows which screen is open (Credentials, Settings), the right-click menu has icons and separators, and the Properties panel no longer repeats its title.

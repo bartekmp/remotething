@@ -3,7 +3,7 @@
 use iced::alignment::Vertical;
 use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
-use remotething_core::{Connection, QuickTarget, Store, parse_quick};
+use remotething_core::{Connection, Protocol, QuickTarget, Store, parse_quick};
 
 use crate::i18n::fl;
 use crate::icons;
@@ -69,6 +69,7 @@ pub fn view<'a>(store: &'a Store, recent: &[String], query: &'a str) -> Element<
     };
 
     let quick = parse_quick(query).map(quick_entry);
+    let local = local_entry();
     let found = entries(store, recent, query);
     let list: Element<'a, Message> = if let Some(quick) = quick {
         // A connection string is not a search, so nothing else is offered.
@@ -86,6 +87,7 @@ pub fn view<'a>(store: &'a Store, recent: &[String], query: &'a str) -> Element<
 
     let content = column![
         search,
+        local,
         text(heading)
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
@@ -99,15 +101,42 @@ pub fn view<'a>(store: &'a Store, recent: &[String], query: &'a str) -> Element<
         .into()
 }
 
+/// The shell of this machine, always on offer.
+fn local_entry<'a>() -> Element<'a, Message> {
+    let line = row![
+        icons::view(icons::SQUARE_TERMINAL, 16),
+        text(fl!("launcher-local")),
+        text(fl!("launcher-local-note")).style(theme::secondary_text),
+    ]
+    .spacing(10)
+    .align_y(Vertical::Center);
+    button(line)
+        .width(Length::Fill)
+        .padding([8, 10])
+        .style(theme::entry(false))
+        .on_press(Message::QuickPicked(QuickTarget {
+            protocol: Protocol::Local,
+            username: None,
+            host: String::new(),
+            port: None,
+        }))
+        .into()
+}
+
 /// The one entry shown for a typed connection string.
 fn quick_entry<'a>(target: QuickTarget) -> Element<'a, Message> {
     let icon = icons::for_connection(None, target.protocol);
+    let label = if target.protocol == Protocol::Local {
+        crate::local_shell::title(&target.host)
+    } else {
+        target.label()
+    };
     let badge = container(text(protocol_label(target.protocol)).size(11))
         .padding([2, 6])
         .style(theme::chip);
     let line = row![
         icons::view(icon, 16),
-        text(fl!("launcher-quick", target = target.label())),
+        text(fl!("launcher-quick", target = label)),
         text(fl!("launcher-quick-note"))
             .style(theme::secondary_text)
             .width(Length::Fill),

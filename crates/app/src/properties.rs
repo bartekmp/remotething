@@ -5,14 +5,15 @@ use std::fmt;
 use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
 use remotething_core::{
-    Credential, CredentialKind, Forward, Protocol, Quality, Settings, Store, format_forwards,
-    parse_forwards,
+    Credential, CredentialKind, Forward, LocalSettings, Protocol, Quality, Settings, Store,
+    format_forwards, parse_forwards,
 };
 use remotething_secrets::Secret;
 
 use crate::credentials::Hidden;
 use crate::i18n::fl;
 use crate::icons;
+use crate::local_shell;
 use crate::quality_choice::{self, QualityChoice};
 use crate::theme;
 use crate::tree::{Selection, protocol_label};
@@ -20,7 +21,7 @@ use crate::tree::{Selection, protocol_label};
 /// Space kept free beside the fields for the scrollbar of the panel.
 const SCROLLBAR_ROOM: f32 = 14.0;
 
-const PROTOCOLS: [ProtocolChoice; 9] = [
+const PROTOCOLS: [ProtocolChoice; 10] = [
     ProtocolChoice(Protocol::Ssh),
     ProtocolChoice(Protocol::Sftp),
     ProtocolChoice(Protocol::Ftp),
@@ -28,6 +29,7 @@ const PROTOCOLS: [ProtocolChoice; 9] = [
     ProtocolChoice(Protocol::Smb),
     ProtocolChoice(Protocol::Nfs),
     ProtocolChoice(Protocol::Wsl),
+    ProtocolChoice(Protocol::Local),
     ProtocolChoice(Protocol::Rdp),
     ProtocolChoice(Protocol::Vnc),
 ];
@@ -49,6 +51,12 @@ pub struct Draft {
     pub forwards: String,
     /// RDP only. `None` means "inherit".
     pub desktop_quality: Option<Quality>,
+    /// Local shells only. Empty means the home folder.
+    pub directory: String,
+    /// Local shells only, as typed: `-l --rcfile "my rc"`.
+    pub arguments: String,
+    /// Local shells only, as typed: `LANG=pl_PL.UTF-8 EDITOR=vim`.
+    pub environment: String,
     /// `None` means the default icon for the kind of item.
     pub icon: Option<String>,
     /// The user name of a password typed here to be saved as a credential. Connections only.
@@ -70,6 +78,10 @@ pub enum Message {
     CredentialPicked(Choice),
     JumpPicked(Choice),
     ForwardsChanged(String),
+    DirectoryChanged(String),
+    ArgumentsChanged(String),
+    EnvironmentChanged(String),
+    ShellPicked(ShellChoice),
     NewUsernameChanged(String),
     NewPasswordChanged(Hidden),
     QualityPicked(QualityChoice),
@@ -94,6 +106,16 @@ pub struct Choice {
 impl fmt::Display for Choice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.label)
+    }
+}
+
+/// A shell found on this machine, for the drop-down beside the shell's name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShellChoice(String);
+
+impl fmt::Display for ShellChoice {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.0)
     }
 }
 
@@ -155,6 +177,9 @@ impl Draft {
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
             forwards: format_forwards(&settings.forwards),
+            directory: settings.local.directory.clone().unwrap_or_default(),
+            arguments: local_shell::join_words(&settings.local.arguments),
+            environment: local_shell::format_environment(&settings.local.environment),
             desktop_quality: settings.desktop.quality,
             icon: icon.clone(),
             new_username: String::new(),
@@ -186,6 +211,7 @@ impl Draft {
         let port = parse_port(&self.port)?;
         let forwards = parse_forwards(&self.forwards)
             .map_err(|bad| fl!("properties-error-forwards", text = bad.0))?;
+        let local = self.local_settings()?;
 
         let mut updated = store.clone();
         let mut password_for = None;
@@ -197,11 +223,13 @@ impl Draft {
                     folder.parent = self.parent.clone();
                     folder.icon = self.icon.clone();
                     self.write_settings(&mut folder.settings, port, &forwards);
+                    // Folders have no fields for a shell: what they hold stays.
                 }
             }
             Selection::Connection(id) => {
                 let host = self.host.trim();
-                if host.is_empty() {
+                // A local shell with no name is the user's own.
+                if host.is_empty() && self.protocol != Protocol::Local {
                     return Err(fl!("properties-error-host"));
                 }
                 let connection = updated.connections.iter_mut().find(|c| &c.id == id);
@@ -212,6 +240,7 @@ impl Draft {
                     connection.parent = self.parent.clone();
                     connection.icon = self.icon.clone();
                     self.write_settings(&mut connection.settings, port, &forwards);
+                    connection.settings.local = local;
                     if self.credential.is_none() && !self.new_password.0.is_empty() {
                         password_for = Some(connection.id.clone());
                     }
@@ -248,6 +277,23 @@ impl Draft {
             .find(|connection| connection.id == connection_id)?;
         connection.settings.credential = Some(id.clone());
         Some((id, Secret::new(self.new_password.0.clone())))
+    }
+
+    /// What the shell fields say, or nothing when this is not a local shell.
+    fn local_settings(&self) -> Result<LocalSettings, String> {
+        if self.protocol != Protocol::Local {
+            return Ok(LocalSettings::default());
+        }
+        let directory = Some(self.directory.trim().to_string()).filter(|text| !text.is_empty());
+        let arguments = local_shell::split_words(&self.arguments)
+            .map_err(|_| fl!("properties-error-arguments"))?;
+        let environment = local_shell::parse_environment(&self.environment)
+            .map_err(|bad| fl!("properties-error-environment", text = bad))?;
+        Ok(LocalSettings {
+            directory,
+            arguments,
+            environment,
+        })
     }
 
     fn write_settings(&self, settings: &mut Settings, port: Option<u16>, forwards: &[Forward]) {
@@ -290,6 +336,10 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
+        Message::DirectoryChanged(text) => draft.directory = text,
+        Message::ArgumentsChanged(text) => draft.arguments = text,
+        Message::EnvironmentChanged(text) => draft.environment = text,
+        Message::ShellPicked(choice) => draft.host = choice.0,
         Message::NewUsernameChanged(user) => draft.new_username = user,
         Message::NewPasswordChanged(password) => draft.new_password = password,
         Message::QualityPicked(choice) => draft.desktop_quality = choice.0,
@@ -318,63 +368,75 @@ pub fn view<'a>(
         theme::input("", &draft.name).on_input(Message::NameChanged),
     ));
 
-    if is_connection {
+    let is_local = is_connection && draft.protocol == Protocol::Local;
+    let protocol = labelled(
+        fl!("properties-protocol"),
+        theme::pick(
+            PROTOCOLS,
+            Some(ProtocolChoice(draft.protocol)),
+            Message::ProtocolPicked,
+        ),
+    );
+    if is_local {
+        // The protocol decides what the fields below it mean, so it comes first.
+        fields = fields.push(protocol);
+        fields = fields.push(shell_fields(draft));
+    } else if is_connection {
         fields = fields.push(labelled(
             fl!("properties-host"),
             theme::input("", &draft.host).on_input(Message::HostChanged),
         ));
-        fields = fields.push(labelled(
-            fl!("properties-protocol"),
-            theme::pick(
-                PROTOCOLS,
-                Some(ProtocolChoice(draft.protocol)),
-                Message::ProtocolPicked,
-            ),
-        ));
+        fields = fields.push(protocol);
     }
 
-    fields = fields.push(labelled(
-        fl!("properties-port"),
-        theme::input(&fl!("properties-port-inherit"), &draft.port).on_input(Message::PortChanged),
-    ));
+    // A shell on this machine has no address, sign-in or tunnel.
+    if !is_local {
+        fields = fields.push(labelled(
+            fl!("properties-port"),
+            theme::input(&fl!("properties-port-inherit"), &draft.port)
+                .on_input(Message::PortChanged),
+        ));
+    }
     fields = fields.push(choice_field(
         fl!("properties-parent"),
         parent_choices(store, selection),
         &draft.parent,
         Message::ParentPicked,
     ));
-    fields = fields.push(choice_field(
-        fl!("properties-credential"),
-        credential_choices(store),
-        &draft.credential,
-        Message::CredentialPicked,
-    ));
-    // With no credential chosen, a password can be typed right here.
-    if is_connection && draft.credential.is_none() {
-        fields = fields.push(save_password(draft));
-    }
-    fields = fields.push(choice_field(
-        fl!("properties-jump"),
-        jump_choices(store, selection),
-        &draft.jump,
-        Message::JumpPicked,
-    ));
-    fields = fields.push(labelled(
-        fl!("properties-forwards"),
-        theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
-            .on_input(Message::ForwardsChanged),
-    ));
-    // Folders can set it for the connections inside; a connection only if it is a remote desktop.
-    if !is_connection || draft.protocol.is_desktop() {
-        fields = fields.push(labelled(
-            fl!("properties-quality"),
-            theme::pick(
-                quality_choice::CHOICES,
-                Some(QualityChoice(draft.desktop_quality)),
-                Message::QualityPicked,
-            )
-            .width(Length::Fill),
+    if !is_local {
+        fields = fields.push(choice_field(
+            fl!("properties-credential"),
+            credential_choices(store),
+            &draft.credential,
+            Message::CredentialPicked,
         ));
+        // With no credential chosen, a password can be typed right here.
+        if is_connection && draft.credential.is_none() {
+            fields = fields.push(save_password(draft));
+        }
+        fields = fields.push(choice_field(
+            fl!("properties-jump"),
+            jump_choices(store, selection),
+            &draft.jump,
+            Message::JumpPicked,
+        ));
+        fields = fields.push(labelled(
+            fl!("properties-forwards"),
+            theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
+                .on_input(Message::ForwardsChanged),
+        ));
+        // Folders can set it for the connections inside; a connection only if it is a remote desktop.
+        if !is_connection || draft.protocol.is_desktop() {
+            fields = fields.push(labelled(
+                fl!("properties-quality"),
+                theme::pick(
+                    quality_choice::CHOICES,
+                    Some(QualityChoice(draft.desktop_quality)),
+                    Message::QualityPicked,
+                )
+                .width(Length::Fill),
+            ));
+        }
     }
 
     // The picker is big and rarely needed, so it comes after the fields people fill in.
@@ -410,6 +472,47 @@ pub fn view<'a>(
         buttons
     ]
     .spacing(theme::GAP)
+    .into()
+}
+
+/// What a local shell is started with: which, with what, where and with which variables.
+fn shell_fields(draft: &Draft) -> Element<'_, Message> {
+    let installed: Vec<ShellChoice> = local_shell::installed()
+        .iter()
+        .cloned()
+        .map(ShellChoice)
+        .collect();
+    let picked = installed
+        .iter()
+        .find(|choice| choice.0 == draft.host.trim())
+        .cloned();
+    column![
+        labelled(
+            fl!("properties-shell"),
+            column![
+                theme::input(&fl!("properties-shell-default"), &draft.host)
+                    .on_input(Message::HostChanged),
+                theme::pick(installed, picked, Message::ShellPicked).width(Length::Fill),
+            ]
+            .spacing(4),
+        ),
+        labelled(
+            fl!("properties-arguments"),
+            theme::input(&fl!("properties-arguments-hint"), &draft.arguments)
+                .on_input(Message::ArgumentsChanged),
+        ),
+        labelled(
+            fl!("properties-directory"),
+            theme::input(&fl!("properties-directory-hint"), &draft.directory)
+                .on_input(Message::DirectoryChanged),
+        ),
+        labelled(
+            fl!("properties-environment"),
+            theme::input(&fl!("properties-environment-hint"), &draft.environment)
+                .on_input(Message::EnvironmentChanged),
+        ),
+    ]
+    .spacing(10)
     .into()
 }
 

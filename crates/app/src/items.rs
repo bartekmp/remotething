@@ -189,6 +189,16 @@ impl State {
             .map(Message::Tabs)
     }
 
+    /// Opens a tab with the user's own shell on this machine.
+    pub(crate) fn open_local_terminal(&mut self) -> Task<Message> {
+        let context = session::Context {
+            store: &self.store,
+            secrets: &self.secrets,
+            known_hosts: &mut self.known_hosts,
+        };
+        self.tabs.open_local_terminal(&context).map(Message::Tabs)
+    }
+
     pub(crate) fn rename(&mut self, item: &Selection, name: &str) {
         match organise::renamed(&self.store, item, name) {
             Ok(updated) => self.commit_and_reload(updated),
@@ -234,9 +244,15 @@ impl State {
             });
             id
         });
+        // A local shell with no name typed is the user's own.
+        let name = if target.protocol == Protocol::Local {
+            crate::local_shell::title(&target.host)
+        } else {
+            target.host.clone()
+        };
         let connection = Connection {
-            id: updated.new_connection_id(&target.host),
-            name: target.host.clone(),
+            id: updated.new_connection_id(&name),
+            name,
             parent: None,
             protocol: target.protocol,
             host: target.host.clone(),

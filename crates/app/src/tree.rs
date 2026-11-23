@@ -395,6 +395,7 @@ pub fn protocol_label(protocol: Protocol) -> String {
         Protocol::Smb => fl!("protocol-smb"),
         Protocol::Nfs => fl!("protocol-nfs"),
         Protocol::Wsl => fl!("protocol-wsl"),
+        Protocol::Local => fl!("protocol-local"),
         Protocol::Rdp => fl!("protocol-rdp"),
         Protocol::Vnc => fl!("protocol-vnc"),
     }

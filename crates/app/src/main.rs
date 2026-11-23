@@ -49,6 +49,7 @@ mod jump;
 mod keys;
 mod keysym;
 mod launcher;
+mod local_shell;
 mod menu;
 mod meter;
 mod motion;

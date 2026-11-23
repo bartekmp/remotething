@@ -109,3 +109,33 @@ async fn a_program_that_does_not_exist_is_an_error_not_a_hang() {
 
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn the_program_starts_in_the_folder_with_the_variables_it_was_given() {
+    let folder = tempfile::tempdir().unwrap();
+    let launch = Launch {
+        program: "/bin/sh".to_string(),
+        arguments: vec!["-c".to_string(), "pwd; echo $GREETING".to_string()],
+        directory: Some(folder.path().to_path_buf()),
+        environment: vec![("GREETING".to_string(), "hello there".to_string())],
+    };
+    let mut running = open_with(&launch, SIZE).unwrap();
+
+    let (printed, _) = until_closed(&mut running.events).await;
+
+    // The folder may be reached through a link, so compare the last part.
+    let name = folder.path().file_name().unwrap().to_string_lossy();
+    assert!(printed.contains(name.as_ref()), "{printed:?}");
+    assert!(printed.contains("hello there"), "{printed:?}");
+}
+
+#[tokio::test]
+async fn a_folder_that_does_not_exist_is_an_error() {
+    let launch = Launch {
+        program: "/bin/sh".to_string(),
+        directory: Some(PathBuf::from("/no/such/folder")),
+        ..Launch::default()
+    };
+
+    assert!(open_with(&launch, SIZE).is_err());
+}

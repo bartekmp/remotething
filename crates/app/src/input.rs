@@ -10,6 +10,8 @@ use crate::app::{Centre, Message, State};
 pub(crate) enum Shortcut {
     /// Ctrl+Shift+T.
     NewTab,
+    /// Ctrl+Shift+L: a shell on this machine in a new tab.
+    LocalTerminal,
     /// Ctrl+Shift+W: always closes the tab in front.
     CloseTab,
     /// Ctrl+W: closes the tab in front unless a terminal would want the key.
@@ -67,6 +69,7 @@ impl Shortcut {
         }
         match (character.to_lowercase().as_str(), modifiers.shift()) {
             ("t", true) => Some(Shortcut::NewTab),
+            ("l", true) => Some(Shortcut::LocalTerminal),
             ("w", true) => Some(Shortcut::CloseTab),
             ("p", true) => Some(Shortcut::Palette),
             ("s", true) => Some(Shortcut::Split),
@@ -98,6 +101,10 @@ pub(crate) fn on_shortcut(state: &mut State, shortcut: Shortcut, captured: bool)
         Shortcut::NewTab => {
             state.centre = Centre::Sessions;
             state.tabs.open_launcher().map(Message::Tabs)
+        }
+        Shortcut::LocalTerminal => {
+            state.centre = Centre::Sessions;
+            state.open_local_terminal()
         }
         Shortcut::CloseTab => {
             state.tabs.close_front();
@@ -226,6 +233,7 @@ pub(crate) fn open_palette_item(state: &mut State, item: crate::palette::Item) -
             state.open(&id)
         }
         Item::NewTab => on_shortcut(state, Shortcut::NewTab, false),
+        Item::LocalTerminal => on_shortcut(state, Shortcut::LocalTerminal, false),
         Item::Credentials => {
             state.centre = Centre::Credentials;
             Task::none()

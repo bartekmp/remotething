@@ -24,6 +24,7 @@ pub enum Item {
     /// Opens the connection with this id.
     Connection(String),
     NewTab,
+    LocalTerminal,
     Credentials,
     Settings,
 }
@@ -98,6 +99,11 @@ pub fn entries(store: &Store, recent: &[String], query: &str) -> Vec<Entry> {
     let query = query.trim().to_lowercase();
     let actions = [
         (Item::NewTab, fl!("palette-new-tab"), icons::PLUS),
+        (
+            Item::LocalTerminal,
+            fl!("palette-local-terminal"),
+            icons::SQUARE_TERMINAL,
+        ),
         (Item::Credentials, fl!("palette-credentials"), icons::KEY),
         (Item::Settings, fl!("palette-settings"), icons::SETTINGS),
     ];

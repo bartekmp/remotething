@@ -4,6 +4,7 @@
 //! On Windows the pseudo-terminal is ConPTY, the one Windows Terminal uses.
 
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
@@ -36,14 +37,52 @@ fn size_of(size: TerminalSize) -> PtySize {
     }
 }
 
+/// What to start, and where.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Launch {
+    /// The program, found on the search path when it has no folder.
+    pub program: String,
+    /// What it is started with.
+    pub arguments: Vec<String>,
+    /// The folder it starts in. `None` is the folder of this app.
+    pub directory: Option<PathBuf>,
+    /// Variables set on top of the ones this app has.
+    pub environment: Vec<(String, String)>,
+}
+
 /// Starts `program` with `arguments` in a terminal of `size`.
 pub fn open(program: &str, arguments: &[String], size: TerminalSize) -> Result<LocalShell, String> {
+    open_with(
+        &Launch {
+            program: program.to_string(),
+            arguments: arguments.to_vec(),
+            ..Launch::default()
+        },
+        size,
+    )
+}
+
+/// Starts a program as `launch` says, in a terminal of `size`.
+pub fn open_with(launch: &Launch, size: TerminalSize) -> Result<LocalShell, String> {
+    let program = launch.program.as_str();
+    // A missing folder would otherwise show up as a shell that ends at once.
+    if let Some(directory) = &launch.directory
+        && !directory.is_dir()
+    {
+        return Err(format!("{}: not a folder", directory.display()));
+    }
     let pair = native_pty_system()
         .openpty(size_of(size))
         .map_err(|error| error.to_string())?;
     let mut command = CommandBuilder::new(program);
-    command.args(arguments);
+    command.args(&launch.arguments);
     command.env("TERM", "xterm-256color");
+    for (name, value) in &launch.environment {
+        command.env(name, value);
+    }
+    if let Some(directory) = &launch.directory {
+        command.cwd(directory);
+    }
     let mut child = pair
         .slave
         .spawn_command(command)

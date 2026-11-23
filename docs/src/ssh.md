@@ -114,6 +114,19 @@ A strip under the terminal shows `user@host:port` and the current download and u
 
 Rates update once per second. The same strip is used by [Remote Desktop](rdp.md).
 
+## Local shells
+
+A connection with the protocol **Local shell** opens a terminal on this machine, with no network involved. Fields:
+
+| Field | Meaning |
+|---|---|
+| Shell | A program such as `bash`, `zsh`, `fish`, `pwsh` or `tmux`, or a full path. The drop-down lists the ones found on your search path. Empty is your default shell (`$SHELL`; on Windows PowerShell, else `cmd`) |
+| Arguments | Typed like a command line, with quotes for what has spaces: `-l --rcfile "my rc"` |
+| Start in | The folder to start in; `~` is your home folder, which is also the default |
+| Variables | `NAME=value` pairs, with quotes for values that have spaces: `LANG=pl_PL.UTF-8 EDITOR=vim` |
+
+For a quick shell without saving anything, press **Ctrl+Shift+L**, pick **New local terminal** in the new-tab box or the palette, or type `local` there (`local zsh` or `local://tmux` for another shell). The tab can be saved as a connection from its right-click menu, like a typed SSH address. A local tab is a terminal like an SSH one, without **Browse files** and port forwards.
+
 ## WSL distributions (Windows)
 
 A connection with the protocol **WSL** opens a terminal in a WSL distribution the way Windows Terminal does: it runs `wsl.exe -d NAME` in a local terminal. There is no address and no SSH server involved, so it works with any distribution, and a stopped one starts when you connect. The host of the connection is the distribution's name. Typing `wsl://Ubuntu-24.04` in the new-tab box opens one too.

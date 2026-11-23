@@ -431,3 +431,25 @@ tabs-menu-stack = Stack the panes
 tabs-menu-side-by-side = Put the panes side by side
 shortcuts-rotate = Stack or unstack the split panes
 shortcuts-text-size = Terminal text size (also Ctrl+mouse wheel)
+protocol-local = Local shell
+local-terminal-title = Terminal
+local-details-shell = Shell
+local-details-directory = Folder
+properties-shell = Shell
+properties-shell-default = Your default shell
+properties-arguments = Arguments
+properties-arguments-hint = -l --rcfile "my rc"
+properties-directory = Start in
+properties-directory-hint = Home folder
+properties-environment = Variables
+properties-environment-hint = LANG=pl_PL.UTF-8 EDITOR=vim
+properties-error-arguments = The arguments have an opening quote with no closing one.
+properties-error-environment = A variable must look like NAME=value, but this does not: { $text }
+palette-local-terminal = New local terminal
+shortcuts-local-terminal = New local terminal
+launcher-local = New local terminal
+launcher-local-note = your default shell
+palette-local-terminal = New local terminal
+shortcuts-local-terminal = New local terminal
+launcher-local = New local terminal
+launcher-local-note = your default shell

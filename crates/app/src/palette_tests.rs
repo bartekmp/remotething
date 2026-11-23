@@ -41,6 +41,7 @@ fn without_a_query_the_recent_connections_come_before_the_actions() {
         [
             connection("db-01"),
             Item::NewTab,
+            Item::LocalTerminal,
             Item::Credentials,
             Item::Settings
         ]

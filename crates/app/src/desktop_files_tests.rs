@@ -39,6 +39,7 @@ impl Fixture {
             credential: None,
             jump: None,
             forwards: Vec::new(),
+            local: remotething_core::LocalSettings::default(),
             desktop_quality: Quality::Balanced,
         };
         let context = Context {

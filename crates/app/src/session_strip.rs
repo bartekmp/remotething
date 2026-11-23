@@ -5,6 +5,7 @@ use remotething_core::Protocol;
 use crate::features;
 use crate::i18n::fl;
 use crate::jump;
+use crate::local_shell;
 use crate::meter;
 use crate::note::Note;
 use crate::session::{Message, Method, State};
@@ -15,6 +16,12 @@ pub(crate) fn bar(state: &State, live: &Live) -> Bar<Message> {
     let connection = &state.connection;
     let summary = if connection.protocol == Protocol::Wsl {
         format!("WSL · {}", connection.host)
+    } else if connection.protocol == Protocol::Local {
+        format!(
+            "{} · {}",
+            fl!("protocol-local"),
+            local_shell::title(&connection.host)
+        )
     } else if state.username.is_empty() {
         format!("{}:{}", connection.host, connection.port)
     } else {
@@ -88,7 +95,24 @@ fn route(state: &State, live: &Live) -> String {
 
 fn details(state: &State, live: &Live) -> Vec<(String, String)> {
     let connection = &state.connection;
-    let mut lines = if connection.protocol == Protocol::Wsl {
+    let mut lines = if connection.protocol == Protocol::Local {
+        let launch = local_shell::launch(connection);
+        let mut lines = vec![
+            (fl!("details-protocol"), fl!("protocol-local")),
+            (fl!("local-details-shell"), launch.program),
+        ];
+        if let Some(directory) = launch.directory {
+            lines.push((
+                fl!("local-details-directory"),
+                directory.display().to_string(),
+            ));
+        }
+        lines.push((
+            fl!("details-terminal"),
+            format!("{} × {}", live.screen.columns(), live.screen.lines()),
+        ));
+        lines
+    } else if connection.protocol == Protocol::Wsl {
         // A terminal on this machine: no address, no server, no key to show.
         vec![
             (fl!("details-protocol"), "WSL".to_string()),

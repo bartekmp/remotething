@@ -303,7 +303,7 @@ impl State {
     /// Starts over: works out the jump hosts first, then how to sign in to the target.
     pub(crate) fn begin(&mut self, context: &Context<'_>) -> Task<Message> {
         self.jumps = Vec::new();
-        if self.connection.protocol == Protocol::Wsl {
+        if matches!(self.connection.protocol, Protocol::Wsl | Protocol::Local) {
             return self.open_local();
         }
         let Some(jump) = &self.connection.jump else {
@@ -344,16 +344,26 @@ impl State {
         Task::none()
     }
 
-    /// Opens a terminal in a WSL distribution on this machine: no sign-in, no network.
+    /// Opens a terminal on this machine, in a shell or a WSL distribution: no sign-in, no network.
     fn open_local(&mut self) -> Task<Message> {
         self.stage = Stage::Connecting;
-        let distribution = self.connection.host.clone();
+        let connection = self.connection.clone();
         Task::perform(
             async move {
-                let (program, arguments) =
-                    crate::wsl_source::terminal_command(&distribution).map_err(Failure::Other)?;
+                let launch = if connection.protocol == Protocol::Wsl {
+                    let (program, arguments) =
+                        crate::wsl_source::terminal_command(&connection.host)
+                            .map_err(Failure::Other)?;
+                    remotething_remote::local::Launch {
+                        program,
+                        arguments,
+                        ..Default::default()
+                    }
+                } else {
+                    crate::local_shell::launch(&connection)
+                };
                 let opened = tokio::task::spawn_blocking(move || {
-                    remotething_remote::local::open(&program, &arguments, INITIAL_SIZE)
+                    remotething_remote::local::open_with(&launch, INITIAL_SIZE)
                 })
                 .await
                 .map_err(|error| Failure::Other(error.to_string()))?

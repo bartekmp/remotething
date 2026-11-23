@@ -21,6 +21,7 @@ pub fn lines() -> Vec<(String, String)> {
     vec![
         ("Ctrl+Shift+P".to_string(), fl!("shortcuts-palette")),
         ("Ctrl+Shift+T".to_string(), fl!("shortcuts-new-tab")),
+        ("Ctrl+Shift+L".to_string(), fl!("shortcuts-local-terminal")),
         (
             "Ctrl+Shift+W, Ctrl+W".to_string(),
             fl!("shortcuts-close-tab"),
