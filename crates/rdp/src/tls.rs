@@ -85,8 +85,8 @@ fn public_key_of(certificate: &[u8]) -> Result<Vec<u8>> {
     let certificate = x509_cert::Certificate::from_der(certificate)
         .map_err(|error| protocol(error.to_string()))?;
     let key = certificate
-        .tbs_certificate
-        .subject_public_key_info
+        .tbs_certificate()
+        .subject_public_key_info()
         .subject_public_key
         .as_bytes()
         .ok_or_else(|| protocol("the public key is not byte aligned".to_string()))?;

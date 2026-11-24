@@ -24,10 +24,10 @@ ironrdp-pdu = "0.11"
 ironrdp-session = "0.13"
 # `ring` keeps the build free of cmake and a C toolchain for aws-lc.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
-sha2 = "0.10"
+sha2 = "0.11"
 thiserror = "2"
 tokio = { version = "1", features = ["sync"] }
-x509-cert = { version = "0.2", default-features = false, features = ["std"] }
+x509-cert = { version = "0.3", default-features = false, features = ["std"] }
 ironrdp-cliprdr = "0.9"
 
 [dev-dependencies]

@@ -18,13 +18,13 @@ remotething-secrets = { path = "../secrets" }
 # Lets the file systems be used as trait objects.
 async-trait = "0.1"
 # Fingerprints of FTPS certificates, which are pinned like SSH host keys.
-sha2 = "0.10"
+sha2 = "0.11"
 # The SMB protocol, version 2 and 3, in pure Rust.
 smb2 = "0.43"
 # The SFTP protocol, spoken over a channel of an SSH connection.
 russh-sftp = "3"
 # The FTP protocol, with explicit TLS (FTPS) through rustls.
-suppaftp = { version = "12", default-features = false, features = ["tokio-rustls-ring"] }
+suppaftp = { version = "13", default-features = false, features = ["tokio-rustls-ring"] }
 thiserror = "2"
 tokio = { version = "1", features = ["fs", "io-util", "net", "sync", "time"] }
 # The NFS protocol, version 3, in pure Rust.
