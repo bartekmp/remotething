@@ -5,7 +5,7 @@ members = ["crates/app", "crates/capture", "crates/core", "crates/files", "crate
 exclude = ["spikes"]
 
 [workspace.package]
-version = "0.80.15"
+version = "0.80.16"
 edition = "2024"
 publish = false
 authors = ["bartekmp"]

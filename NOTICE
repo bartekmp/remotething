@@ -14,5 +14,5 @@ crates/app/assets/fonts/Inter-LICENSE.txt. The bundled Noto Sans Mono
 typeface is under the same licence; see
 crates/app/assets/fonts/NotoSansMono-LICENSE.txt. The bundled Lucide icons are
 licensed under the ISC License; see crates/app/assets/fonts/lucide-LICENSE.txt.
-The Rust dependencies keep their own permissive licences; `deny.toml` is the
-list of those allowed.
+The Rust dependencies keep their own permissive licences; their texts are in
+THIRD-PARTY-LICENSES.txt, and `deny.toml` is the list of those allowed.

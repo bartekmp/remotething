@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.16 - 2026-11-24
+
+- Packages (.deb, .rpm, Flatpak, Windows zip) now include `THIRD-PARTY-LICENSES.txt`: the licence texts of the libraries, fonts and icons.
+
 ## 0.80.15 - 2026-11-24
 
 ## 0.80.14 - 2026-11-24

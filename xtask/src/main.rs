@@ -6,7 +6,7 @@ mod version;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package flatpak | package windows | bump major|minor|patch | prune | version-check <git ref>>";
+const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package flatpak | package windows | bump major|minor|patch | licenses | prune | version-check <git ref>>";
 
 const LINUX_TARGET: &str = "x86_64-unknown-linux-gnu";
 const WINDOWS_TARGET: &str = "x86_64-pc-windows-msvc";
@@ -32,6 +32,7 @@ fn main() -> ExitCode {
         ["package", "flatpak"] => package_flatpak(),
         ["package", "windows"] => package_windows(),
         ["bump", part] => bump(part),
+        ["licenses"] => licenses(),
         ["prune"] => prune_builds(),
         ["version-check", base] => version_check(base),
         _ => {
@@ -45,6 +46,19 @@ fn main() -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+/// Rewrites `THIRD-PARTY-LICENSES.txt`, the licence texts of the dependencies, which the
+/// packages ship. Commit the result when `Cargo.lock` changes. Needs `cargo-about`.
+fn licenses() -> bool {
+    cargo(&[
+        "about",
+        "generate",
+        "--locked",
+        "--output-file",
+        "THIRD-PARTY-LICENSES.txt",
+        "about.hbs",
+    ])
 }
 
 /// Deletes old build outputs of the workspace's crates, keeping the newest of each.
@@ -66,6 +80,36 @@ fn lint() -> bool {
             "warnings",
         ])
         && cargo(&["deny", "check"])
+        && licenses_are_current()
+}
+
+/// Fails when `THIRD-PARTY-LICENSES.txt` no longer matches `Cargo.lock`.
+fn licenses_are_current() -> bool {
+    let fresh = target_directory().join("THIRD-PARTY-LICENSES.txt");
+    let generated = cargo(&[
+        "about",
+        "generate",
+        "--locked",
+        "--output-file",
+        &fresh.to_string_lossy(),
+        "about.hbs",
+    ]);
+    if !generated {
+        return false;
+    }
+
+    // Git stores the file with LF only; some licence texts arrive with CRLF.
+    let without_returns = |path: PathBuf| {
+        std::fs::read_to_string(path)
+            .ok()
+            .map(|text| text.replace('\r', ""))
+    };
+    let current = without_returns(workspace_root().join("THIRD-PARTY-LICENSES.txt"));
+    if current.is_none() || current != without_returns(fresh) {
+        eprintln!("THIRD-PARTY-LICENSES.txt is out of date: run `cargo xtask licenses`");
+        return false;
+    }
+    true
 }
 
 /// cargo-xwin supplies the MSVC SDK; it needs XWIN_ACCEPT_LICENSE=1.
@@ -188,6 +232,7 @@ fn package_windows() -> bool {
         executable,
         root.join("LICENSE"),
         root.join("NOTICE"),
+        root.join("THIRD-PARTY-LICENSES.txt"),
         root.join("README.md"),
     ];
 

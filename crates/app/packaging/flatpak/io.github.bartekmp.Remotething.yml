@@ -40,6 +40,8 @@ modules:
     build-commands:
       - cargo build --release -p remotething
       - install -Dm755 target/release/remotething /app/bin/remotething
+      - install -Dm644 LICENSE /app/share/licenses/io.github.bartekmp.Remotething/LICENSE
+      - install -Dm644 THIRD-PARTY-LICENSES.txt /app/share/licenses/io.github.bartekmp.Remotething/THIRD-PARTY-LICENSES.txt
       - install -Dm644 crates/app/packaging/flatpak/io.github.bartekmp.Remotething.desktop /app/share/applications/io.github.bartekmp.Remotething.desktop
       - install -Dm644 crates/app/packaging/flatpak/io.github.bartekmp.Remotething.metainfo.xml /app/share/metainfo/io.github.bartekmp.Remotething.metainfo.xml
       - install -Dm644 crates/app/packaging/remotething.svg /app/share/icons/hicolor/scalable/apps/io.github.bartekmp.Remotething.svg

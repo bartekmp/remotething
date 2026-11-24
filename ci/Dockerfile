@@ -11,7 +11,8 @@ RUN apt-get update \
 RUN rustup component add rustfmt clippy \
     && rustup target add x86_64-pc-windows-msvc \
     && cargo install --locked cargo-xwin@0.24.1 cargo-nextest@0.9.148 cargo-deny@0.20.2 \
-        cargo-deb@3.8.0 cargo-generate-rpm@0.21.1
+        cargo-deb@3.8.0 cargo-generate-rpm@0.21.1 \
+    && cargo install --locked cargo-about@0.9.3 --features cli
 
 # cargo-xwin downloads the Microsoft CRT and Windows SDK on first use.
 # Building with XWIN_ACCEPT_LICENSE=1 means you accept Microsoft's licence:

@@ -6,6 +6,7 @@ Install Rust through rustup; `rust-toolchain.toml` selects the version. Then:
 
 ```sh
 cargo install --locked cargo-nextest cargo-deny cargo-deb cargo-generate-rpm
+cargo install --locked cargo-about --features cli
 ```
 
 ## Commands
@@ -14,7 +15,8 @@ The same commands run locally and in Jenkins. Pull requests run lint, tests and 
 
 | Command | Does |
 | --- | --- |
-| `cargo xtask lint` | `rustfmt`, `clippy -D warnings`, `cargo deny` |
+| `cargo xtask lint` | `rustfmt`, `clippy -D warnings`, `cargo deny`, licence file up to date |
+| `cargo xtask licenses` | Rewrites `THIRD-PARTY-LICENSES.txt`; run it after `Cargo.lock` changes and commit the result |
 | `cargo xtask test` | Unit tests through `cargo nextest` |
 | `cargo xtask build linux` | Release build for Linux |
 | `cargo xtask build windows` | Cross-build for Windows; needs `cargo-xwin`, `llvm-rc` (for the icon) and `XWIN_ACCEPT_LICENSE=1` |
