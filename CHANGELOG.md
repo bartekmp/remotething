@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.12 - 2026-11-24
+
+- Fixed the Windows build, which stopped on the version information.
+
 ## 0.80.11 - 2026-11-24
 
 - Settings → About shows the link to the project on GitHub. Pressing it opens it in the browser.

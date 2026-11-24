@@ -21,7 +21,8 @@ fn package(name: &str) -> String {
 
 /// The resource script: icon 1 is the one Explorer shows.
 fn resource_script() -> String {
-    let icon = PathBuf::from(package("MANIFEST_DIR")).join("packaging/remotething.ico");
+    let manifest_directory = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let icon = PathBuf::from(manifest_directory).join("packaging/remotething.ico");
     let icon = icon.display().to_string().replace('\\', "/");
     let (major, minor, patch) = (
         package("VERSION_MAJOR"),
