@@ -1,7 +1,7 @@
 # Build image: lint, test, Linux native and Windows cross-compile, packaging.
 # Keep in step with rust-toolchain.toml. Every tool is pinned: the image builds the same
 # way next month. Raise a version on purpose, and read what changed.
-FROM rust:1.96.0-bookworm
+FROM rust:1.99.1-bookworm
 
 # clang and lld compile and link the C and assembly parts of `ring` for the MSVC target.
 RUN apt-get update \

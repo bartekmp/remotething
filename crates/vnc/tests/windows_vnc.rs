@@ -69,7 +69,13 @@ async fn the_server_sends_a_cursor_shape() {
         {
             match event {
                 Event::Cursor(Some(cursor)) => {
-                    let visible = cursor.rgba.chunks_exact(4).filter(|p| p[3] > 0).count();
+                    let visible = cursor
+                        .rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .filter(|p| p[3] > 0)
+                        .count();
                     shapes.push(format!(
                         "{}x{} hot {},{} visible pixels {}",
                         cursor.width, cursor.height, cursor.hotspot_x, cursor.hotspot_y, visible

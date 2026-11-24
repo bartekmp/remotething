@@ -71,8 +71,8 @@ pub fn from_dib(dib: &[u8]) -> Option<Picture> {
         }
     }
     // Plain 32-bit DIBs leave the fourth byte unused, which then reads as fully transparent.
-    if bits == 32 && rgba.chunks_exact(4).all(|pixel| pixel[3] == 0) {
-        for pixel in rgba.chunks_exact_mut(4) {
+    if bits == 32 && rgba.as_chunks::<4>().0.iter().all(|pixel| pixel[3] == 0) {
+        for pixel in rgba.as_chunks_mut::<4>().0 {
             pixel[3] = 255;
         }
     }
@@ -103,7 +103,7 @@ pub fn to_dib(picture: &Picture) -> Option<Vec<u8>> {
     dib.extend_from_slice(&[0u8; 20]);
     for line in (0..height as usize).rev() {
         let row = &picture.rgba[line * width as usize * 4..(line + 1) * width as usize * 4];
-        for pixel in row.chunks_exact(4) {
+        for pixel in row.as_chunks::<4>().0 {
             dib.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
         }
     }

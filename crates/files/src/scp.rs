@@ -167,7 +167,7 @@ impl RemoteFs for ScpFs {
             .write_all(&[0])
             .await
             .map_err(|e| failed(e.to_string()))?;
-        let header = read_header(&mut stream).await.map_err(&failed)?;
+        let header = read_header(&mut stream).await.map_err(failed)?;
         stream
             .write_all(&[0])
             .await
@@ -190,7 +190,7 @@ impl RemoteFs for ScpFs {
         if done < header.size {
             return Err(failed("the connection ended early".to_string()));
         }
-        read_ack(&mut stream).await.map_err(&failed)?;
+        read_ack(&mut stream).await.map_err(failed)?;
         // A server that has nothing more may already have closed; the file is complete.
         let _ = stream.write_all(&[0]).await;
         Ok(Transferred {
@@ -224,7 +224,7 @@ impl RemoteFs for ScpFs {
             .map_err(|error| remote("cannot upload", remote_file, error))?;
         let failed = |reason: String| remote("cannot upload", remote_file, reason);
 
-        read_ack(&mut stream).await.map_err(&failed)?;
+        read_ack(&mut stream).await.map_err(failed)?;
         let name = remote_file.rsplit('/').next().unwrap_or(remote_file);
         // The name is only a label: scp -t stores under the path it was started with.
         let header = format!("C0644 {total} {}\n", name.replace('\n', " "));
@@ -232,7 +232,7 @@ impl RemoteFs for ScpFs {
             .write_all(header.as_bytes())
             .await
             .map_err(|e| failed(e.to_string()))?;
-        read_ack(&mut stream).await.map_err(&failed)?;
+        read_ack(&mut stream).await.map_err(failed)?;
 
         let done = copy(&mut source, &mut stream, 0, total, progress)
             .await
@@ -244,7 +244,7 @@ impl RemoteFs for ScpFs {
             .write_all(&[0])
             .await
             .map_err(|e| failed(e.to_string()))?;
-        read_ack(&mut stream).await.map_err(&failed)?;
+        read_ack(&mut stream).await.map_err(failed)?;
         stream.shutdown().await.map_err(|e| failed(e.to_string()))?;
         Ok(Transferred {
             bytes: done,

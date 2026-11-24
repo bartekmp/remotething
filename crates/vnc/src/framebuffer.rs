@@ -7,9 +7,11 @@ pub(crate) fn rgb565_to_rgba(data: &[u8]) -> Vec<u8> {
     // A channel's top bits are repeated into its low bits, so full intensity stays full.
     let widen5 = |value: u16| ((value << 3) | (value >> 2)) as u8;
     let widen6 = |value: u16| ((value << 2) | (value >> 4)) as u8;
-    data.chunks_exact(2)
+    data.as_chunks::<2>()
+        .0
+        .iter()
         .flat_map(|pair| {
-            let pixel = u16::from_le_bytes([pair[0], pair[1]]);
+            let pixel = u16::from_le_bytes(*pair);
             [
                 widen5(pixel >> 11 & 0x1f),
                 widen6(pixel >> 5 & 0x3f),
@@ -40,7 +42,7 @@ impl Framebuffer {
     /// A black picture.
     pub(crate) fn new(width: u16, height: u16) -> Self {
         let mut rgba = vec![0; usize::from(width) * usize::from(height) * 4];
-        for pixel in rgba.chunks_exact_mut(4) {
+        for pixel in rgba.as_chunks_mut::<4>().0 {
             pixel[3] = 255;
         }
         Self {
@@ -80,7 +82,7 @@ impl Framebuffer {
             let from = line * row;
             self.rgba[to..to + row].copy_from_slice(&data[from..from + row]);
             // The server does not send alpha.
-            for pixel in self.rgba[to..to + row].chunks_exact_mut(4) {
+            for pixel in self.rgba[to..to + row].as_chunks_mut::<4>().0 {
                 pixel[3] = 255;
             }
         }

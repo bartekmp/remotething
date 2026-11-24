@@ -288,7 +288,7 @@ fn is_timeout(error: &std::io::Error) -> bool {
 fn copy_frame(image: &DecodedImage) -> Frame {
     let mut rgba = image.data().to_vec();
     // The decoder leaves alpha undefined; the window needs opaque pixels.
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         pixel[3] = 255;
     }
     Frame {

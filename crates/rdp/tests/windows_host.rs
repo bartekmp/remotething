@@ -10,7 +10,7 @@ use common::{env, target, trusting};
 use remotething_rdp::{Button, Error, Event, Input, Quality, connect};
 
 fn colours(rgba: &[u8]) -> usize {
-    rgba.chunks_exact(4).collect::<HashSet<_>>().len()
+    rgba.as_chunks::<4>().0.iter().collect::<HashSet<_>>().len()
 }
 
 #[test]

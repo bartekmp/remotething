@@ -374,7 +374,7 @@ impl shader::Primitive for Drawing {
 
 fn floats_to_bytes(values: [f32; 4]) -> [u8; 16] {
     let mut bytes = [0u8; 16];
-    for (chunk, value) in bytes.chunks_exact_mut(4).zip(values) {
+    for (chunk, value) in bytes.as_chunks_mut::<4>().0.iter_mut().zip(values) {
         chunk.copy_from_slice(&value.to_ne_bytes());
     }
     bytes
