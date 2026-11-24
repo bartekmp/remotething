@@ -17,7 +17,7 @@ The same commands run locally and in Jenkins. Pull requests run lint, tests and 
 | `cargo xtask lint` | `rustfmt`, `clippy -D warnings`, `cargo deny` |
 | `cargo xtask test` | Unit tests through `cargo nextest` |
 | `cargo xtask build linux` | Release build for Linux |
-| `cargo xtask build windows` | Cross-build for Windows; needs `cargo-xwin` and `XWIN_ACCEPT_LICENSE=1` |
+| `cargo xtask build windows` | Cross-build for Windows; needs `cargo-xwin`, `llvm-rc` (for the icon) and `XWIN_ACCEPT_LICENSE=1` |
 | `cargo xtask package linux` | `.deb` and `.rpm` in `dist/`, from the Linux build |
 | `cargo xtask package windows` | Portable zip in `dist/`, from the Windows build |
 | `cargo xtask bump minor` or `patch` | Raises the version; see below |
