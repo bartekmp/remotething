@@ -1,5 +1,5 @@
 //! Against a real VNC server on Windows (TightVNC and the like). Ignored unless given:
-//! `RT_VNC_HOST=192.168.0.35 RT_VNC_PASSWORD=... cargo test -p remotething-vnc --test windows_vnc -- --ignored`
+//! `RT_VNC_HOST=<windows-host> RT_VNC_PASSWORD=... cargo test -p remotething-vnc --test windows_vnc -- --ignored`
 
 use std::time::{Duration, Instant};
 

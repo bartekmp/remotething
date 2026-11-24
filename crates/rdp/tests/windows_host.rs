@@ -1,5 +1,5 @@
 //! Against a real Windows host. Ignored unless the host is given:
-//! `RT_RDP_HOST=192.168.0.35 RT_RDP_USER=... RT_RDP_PASSWORD=... cargo test -p remotething-rdp -- --ignored`
+//! `RT_RDP_HOST=<windows-host> RT_RDP_USER=... RT_RDP_PASSWORD=... cargo test -p remotething-rdp -- --ignored`
 
 use std::collections::HashSet;
 use std::time::{Duration, Instant};

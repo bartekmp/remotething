@@ -68,7 +68,7 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 | Any Linux with Flatpak | `flatpak install --user remotething-<version>.flatpak` |
 | Windows 10 and 11, 64-bit | run `remotething-<version>-windows-x86_64-setup.exe` (or unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe`) |
 
-Linux packages are built with `cargo xtask package linux` and `cargo xtask package flatpak` (they land in `dist/`); CI builds the Windows zip for every merge to `main`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
+Linux packages are built with `cargo xtask package linux` and `cargo xtask package flatpak` (they land in `dist/`); CI builds the Windows zip for every merge to `main`, and the Windows release workflow adds the installer. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
 
 Or build and run from source with a current Rust toolchain:
 
@@ -80,9 +80,10 @@ cargo run --release -p remotething
 
 - [User guide](docs/src/introduction.md) (`mdbook build docs` builds it as a site)
 - [Keyboard shortcuts](docs/src/shortcuts.md) and [troubleshooting](docs/src/troubleshooting.md)
+- [Security](docs/src/security.md) and how to [report a problem](SECURITY.md)
 - [Architecture](ARCHITECTURE.md) and [contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 
 ## License
 
-GNU General Public License, version 3 only; see [LICENSE](LICENSE). Bundled fonts and icons keep their own licences, listed in [NOTICE](NOTICE).
+GNU General Public License, version 3 only; see [LICENSE](LICENSE). Bundled fonts and icons keep their own licences, listed in [NOTICE](NOTICE); the libraries' licence texts are in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).

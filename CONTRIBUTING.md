@@ -73,7 +73,7 @@ cp assets/logo/remotething.svg docs/src/logo.svg
 Some RDP tests need a Windows machine with Remote Desktop switched on. They are ignored unless the host is given, and the password stays in the environment, never in a file:
 
 ```sh
-RT_RDP_HOST=192.168.0.35 RT_RDP_USER=test RT_RDP_PASSWORD=... \
+RT_RDP_HOST=<windows-host> RT_RDP_USER=test RT_RDP_PASSWORD=... \
   cargo test -p remotething-rdp --test windows_host -- --ignored
   # Files both ways: types into the host's Run dialog, pastes in Explorer, leaves C:\rtrecv behind.
   cargo test -p remotething-rdp --test windows_files -- --ignored --test-threads 1
