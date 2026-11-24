@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.8 - 2026-11-24
+
+- Cleaned two warnings of the Windows build.
+
 ## 0.80.7 - 2026-11-24
 
 - The Windows build links the C runtime in, so it no longer needs the Visual C++ Redistributable.

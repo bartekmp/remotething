@@ -1,8 +1,8 @@
 //! Where PuTTY keeps its sessions, and how to read them. Only reads; PuTTY's data is never changed.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use remotething_core::{PuttySession, decode_reg_bytes, parse_reg, parse_session_file};
+use remotething_core::{PuttySession, decode_reg_bytes, parse_reg};
 
 /// The sessions PuTTY has on this computer.
 ///
@@ -16,7 +16,11 @@ pub fn default_sessions() -> Result<Vec<PuttySession>, String> {
 #[cfg(not(windows))]
 fn default_sessions_impl() -> Result<Vec<PuttySession>, String> {
     let home = std::env::var_os("HOME").ok_or("HOME is not set")?;
-    sessions_in_directory(&PathBuf::from(home).join(".putty").join("sessions"))
+    sessions_in_directory(
+        &std::path::PathBuf::from(home)
+            .join(".putty")
+            .join("sessions"),
+    )
 }
 
 #[cfg(windows)]
@@ -36,7 +40,8 @@ fn default_sessions_impl() -> Result<Vec<PuttySession>, String> {
     sessions
 }
 
-/// Every session file in a folder, by name.
+/// Every session file in a folder, by name. Windows keeps sessions in the registry instead.
+#[cfg(any(not(windows), test))]
 pub fn sessions_in_directory(directory: &Path) -> Result<Vec<PuttySession>, String> {
     let entries = std::fs::read_dir(directory)
         .map_err(|error| format!("cannot read {}: {error}", directory.display()))?;
@@ -48,7 +53,7 @@ pub fn sessions_in_directory(directory: &Path) -> Result<Vec<PuttySession>, Stri
         let name = entry.file_name().to_string_lossy().into_owned();
         // A file that cannot be read is left out, like a session that is not SSH.
         if let Ok(text) = std::fs::read_to_string(entry.path()) {
-            sessions.push(parse_session_file(&name, &text));
+            sessions.push(remotething_core::parse_session_file(&name, &text));
         }
     }
     sessions.sort_by(|first, second| first.name.cmp(&second.name));
