@@ -51,6 +51,7 @@ mod jump;
 mod keys;
 mod keysym;
 mod launcher;
+mod link;
 mod local_shell;
 mod menu;
 mod meter;

@@ -691,6 +691,7 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
             settings::Event::Terminal(message) => return state.terminal_message(message),
             settings::Event::PageChanged(page) => state.settings_page = page,
+            settings::Event::OpenRepository => crate::link::open(crate::link::REPOSITORY),
             settings::Event::PickFolder(kind) => {
                 return Task::perform(
                     crate::file_dialog::pick_folder(fl!("settings-folder-pick")),

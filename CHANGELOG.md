@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.11 - 2026-11-24
+
+- Settings → About shows the link to the project on GitHub. Pressing it opens it in the browser.
+
 ## 0.80.10 - 2026-11-24
 
 - The Windows `.exe` carries version information (name, version, author, license) in its Properties.

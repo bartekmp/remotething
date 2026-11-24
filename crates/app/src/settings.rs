@@ -122,6 +122,8 @@ pub enum Message {
     ImportPressed,
     ImportPuttyPressed,
     ImportWslPressed,
+    /// The project's address on the About page.
+    RepositoryPressed,
 }
 
 /// The folders the user can choose.
@@ -160,6 +162,8 @@ pub enum Event {
     ImportPutty,
     /// Open the screen that previews importing the running WSL distributions.
     ImportWsl,
+    /// Open the project's page in the browser.
+    OpenRepository,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -247,6 +251,7 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         Message::ImportPressed => Event::Import,
         Message::ImportPuttyPressed => Event::ImportPutty,
         Message::ImportWslPressed => Event::ImportWsl,
+        Message::RepositoryPressed => Event::OpenRepository,
     }
 }
 
@@ -504,10 +509,13 @@ fn about<'a>() -> Element<'a, Message> {
             .style(theme::secondary_text),
     ]
     .spacing(2);
-    row![branding::logo(56.0), name]
+    let logo_and_name = row![branding::logo(56.0), name]
         .spacing(12)
-        .align_y(iced::Alignment::Center)
-        .into()
+        .align_y(iced::Alignment::Center);
+    let repository = button(text(crate::link::REPOSITORY).size(theme::TEXT_SMALL))
+        .style(theme::pill)
+        .on_press(Message::RepositoryPressed);
+    column![logo_and_name, repository].spacing(12).into()
 }
 
 fn language_options(codes: Vec<String>) -> Vec<LanguageOption> {
@@ -519,6 +527,17 @@ fn language_options(codes: Vec<String>) -> Vec<LanguageOption> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_repository_address_asks_for_the_browser() {
+        let mut preferences = Preferences::default();
+
+        assert_eq!(
+            update(&mut preferences, Message::RepositoryPressed),
+            Event::OpenRepository
+        );
+        assert_eq!(preferences, Preferences::default());
+    }
 
     #[test]
     fn picking_a_theme_changes_the_preferences() {
