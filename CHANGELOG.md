@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.13 - 2026-11-24
+
+- New password files use a stronger key derivation (64 MiB, 3 passes); the connections file is readable by you alone on Linux; release builds check integer overflow. New Security page in the guide and a SECURITY.md.
+
 ## 0.80.12 - 2026-11-24
 
 - Fixed the Windows build, which stopped on the version information.

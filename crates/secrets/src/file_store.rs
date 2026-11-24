@@ -51,13 +51,34 @@ struct Cost {
 }
 
 impl Cost {
-    /// The `argon2` crate's defaults: 19 MiB, 2 passes, 1 lane (the OWASP minimum).
-    const DEFAULT: Cost = Cost {
-        memory_kib: Params::DEFAULT_M_COST,
-        iterations: Params::DEFAULT_T_COST,
-        parallelism: Params::DEFAULT_P_COST,
+    /// For new files: 64 MiB, 3 passes, 1 lane. That is well above the OWASP
+    /// minimum (19 MiB, 2 passes) and takes a fraction of a second to unlock.
+    const STRONG: Cost = Cost {
+        memory_kib: 64 * 1024,
+        iterations: 3,
+        parallelism: 1,
+    };
+
+    /// What a new file gets. Tests create hundreds of stores, so they get the
+    /// library's cheap defaults; a test checks that `STRONG` stays strong.
+    const DEFAULT: Cost = if cfg!(test) {
+        Cost {
+            memory_kib: Params::DEFAULT_M_COST,
+            iterations: Params::DEFAULT_T_COST,
+            parallelism: Params::DEFAULT_P_COST,
+        }
+    } else {
+        Cost::STRONG
     };
 }
+
+// A weaker setting for new files, or one that a file could not carry, fails the build.
+const _: () = {
+    assert!(Cost::STRONG.memory_kib >= 64 * 1024);
+    assert!(Cost::STRONG.iterations >= 3);
+    assert!(Cost::STRONG.memory_kib <= MAX_MEMORY_KIB);
+    assert!(Cost::STRONG.iterations <= MAX_ITERATIONS);
+};
 
 type Key = Zeroizing<[u8; KEY_LENGTH]>;
 

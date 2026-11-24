@@ -32,13 +32,31 @@ impl Store {
         let temporary = Path::new(&temporary);
 
         let write = || -> std::io::Result<()> {
-            let mut file = File::create(temporary)?;
+            let mut file = create_private(temporary)?;
             file.write_all(text.as_bytes())?;
             file.sync_all()?;
             fs::rename(temporary, path)
         };
         write().map_err(|source| io_error(path, source))
     }
+}
+
+/// On Unix the file is for its owner alone: it lists hosts and user names.
+#[cfg(unix)]
+fn create_private(path: &Path) -> std::io::Result<File> {
+    use std::os::unix::fs::OpenOptionsExt as _;
+
+    fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn create_private(path: &Path) -> std::io::Result<File> {
+    File::create(path)
 }
 
 fn io_error(path: &Path, source: std::io::Error) -> Error {
@@ -144,6 +162,21 @@ jump = "bastion"               # another connection's id
         let saved = fs::read_to_string(&path).unwrap();
         assert!(saved.contains("quality"), "{saved}");
         assert!(!saved.contains("rdp"), "{saved}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_saved_file_is_for_its_owner_alone() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("connections.toml");
+        let store: Store = toml::from_str(PLAN_EXAMPLE).unwrap();
+
+        store.save(&path).unwrap();
+
+        let mode = fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
     }
 
     #[test]
