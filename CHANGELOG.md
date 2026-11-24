@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.10 - 2026-11-24
+
+- The Windows `.exe` carries version information (name, version, author, license) in its Properties.
+
 ## 0.80.9 - 2026-11-24
 
 - The Windows `.exe` carries the app icon.
