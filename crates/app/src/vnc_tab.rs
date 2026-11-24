@@ -424,10 +424,11 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             Task::none()
         }
         Message::Submitted => {
-            let Stage::Asking(form) = &state.stage else {
+            let Stage::Asking(form) = &mut state.stage else {
                 return Task::none();
             };
-            state.password = Some(Secret::new(form.password.clone()));
+            // Moved, not copied: no second copy of the typed password is left in the form.
+            state.password = Some(Secret::new(std::mem::take(&mut form.password)));
             state.connect(context)
         }
         Message::Opened(Ok(opened)) => state.go_live(opened),

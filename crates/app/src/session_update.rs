@@ -182,6 +182,142 @@ impl Live {
         }
         self.type_in(bytes);
     }
+    /// Something the terminal widget reports: the mouse, a resize, scrolling or a selection.
+    fn on_terminal_event(&mut self, event: terminal_view::Event) -> Task<Message> {
+        if let terminal_view::Event::Mouse(report) = event {
+            if let Some(bytes) = terminal_mouse::encode(&report, self.screen.mouse_mode()) {
+                self.type_in(bytes);
+            }
+            return Task::none();
+        }
+        self.cache.clear();
+        match event {
+            terminal_view::Event::Mouse(_) => {}
+            terminal_view::Event::Resized(size) => {
+                self.screen
+                    .resize(usize::from(size.columns), usize::from(size.lines));
+                self.record(|recording| recording.resize(size.columns, size.lines));
+                self.send(ShellInput::Resize(size));
+            }
+            terminal_view::Event::Scrolled(lines) if self.screen.wheel_sends_arrows() => {
+                let application = self.screen.application_cursor();
+                self.type_in(keys::wheel_arrows(lines, application));
+            }
+            terminal_view::Event::Scrolled(lines) => self.screen.scroll(lines),
+            // The window changes the text size; see `State::zoom_terminal`.
+            terminal_view::Event::Zoomed(_) => {}
+            terminal_view::Event::SelectionStarted {
+                column,
+                line,
+                granularity,
+            } => {
+                self.screen.start_selection_by(column, line, granularity);
+            }
+            terminal_view::Event::SelectionExtended { column, line } => {
+                self.screen.extend_selection(column, line);
+            }
+            // Copy on select: the text goes to the selection that middle-click pastes.
+            terminal_view::Event::PasteRequested => {
+                return iced::clipboard::read_primary().map(Message::Pasted);
+            }
+            terminal_view::Event::SelectionEnded => {
+                if let Some(text) = self.screen.selected_text() {
+                    return iced::clipboard::write_primary(text);
+                }
+            }
+        }
+        Task::none()
+    }
+
+    /// Bytes the shell printed: draw them, answer what the terminal must answer, and
+    /// pass on what a program copied to the clipboard.
+    fn on_output(&mut self, bytes: &[u8]) -> Task<Message> {
+        self.received += bytes.len() as u64;
+        self.record(|recording| recording.output(bytes));
+        let replies = self.screen.feed(bytes);
+        // New output moves the lines under the highlights.
+        self.screen.clear_found();
+        self.cache.clear();
+        if !replies.is_empty() {
+            self.send(ShellInput::Data(replies));
+        }
+        // A program copied text itself: tmux and herdr do, as the mouse is theirs.
+        let copies: Vec<_> = self
+            .screen
+            .take_copied()
+            .into_iter()
+            .map(|copied| {
+                if copied.primary {
+                    iced::clipboard::write_primary(copied.text)
+                } else {
+                    iced::clipboard::write(copied.text)
+                }
+            })
+            .collect();
+        Task::batch(copies)
+    }
+}
+
+impl State {
+    /// The sign-in form was sent: check the user name, keep what was typed, go on.
+    fn on_submitted(&mut self, context: &mut Context<'_>) -> Task<Message> {
+        let Stage::Asking(form) = &mut self.stage else {
+            return Task::none();
+        };
+        let username = form.username.trim().to_string();
+        if username.is_empty() {
+            form.note = Some(fl!("session-username-missing"));
+            return Task::none();
+        }
+        let secret = Secret::new(std::mem::take(&mut form.secret));
+        if let Some(index) = self.asking_jump {
+            self.jumps[index].set_typed(username, secret);
+            return self.ask_for_jumps(context);
+        }
+        self.username = username;
+        self.set_secret(Some(secret));
+        self.connect(context)
+    }
+
+    /// The server refused the credentials. What can be done depends on the method.
+    fn on_refused(&mut self) -> Task<Message> {
+        match self.method {
+            Method::Password(_) => {
+                self.set_secret(None);
+                self.ask(Some(fl!("session-refused")))
+            }
+            // Typing something would not help: the server does not accept this key.
+            Method::KeyFile { .. } => {
+                self.stage = Stage::Ended(fl!("session-key-refused"));
+                Task::none()
+            }
+            Method::Agent => {
+                self.stage = Stage::Ended(fl!("session-agent-refused"));
+                Task::none()
+            }
+            Method::Interactive => {
+                self.stage = Stage::Ended(fl!("session-interactive-refused"));
+                Task::none()
+            }
+        }
+    }
+
+    /// The user trusts the key the server showed: remember it and go on.
+    fn on_trust(&mut self, context: &mut Context<'_>) -> Task<Message> {
+        let Stage::HostKey { key, .. } = &self.stage else {
+            return Task::none();
+        };
+        // The key may belong to a jump host rather than to the target.
+        let (host, port) = (&key.endpoint.host, key.endpoint.port);
+        match context.known_hosts.trust(host, port, &key.key) {
+            Ok(()) => self.connect(context),
+            Err(error) => {
+                let reason = format!("{} {error}", fl!("session-trust-failed"));
+                self.stage = Stage::Ended(reason);
+                Task::none()
+            }
+        }
+    }
 }
 
 pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) -> Task<Message> {
@@ -216,97 +352,24 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             }
             Task::none()
         }
-        Message::Submitted => {
-            let Stage::Asking(form) = &mut state.stage else {
-                return Task::none();
-            };
-            let username = form.username.trim().to_string();
-            if username.is_empty() {
-                form.note = Some(fl!("session-username-missing"));
-                return Task::none();
-            }
-            let secret = Secret::new(std::mem::take(&mut form.secret));
-            if let Some(index) = state.asking_jump {
-                state.jumps[index].set_typed(username, secret);
-                return state.ask_for_jumps(context);
-            }
-            state.username = username;
-            state.set_secret(Some(secret));
-            state.connect(context)
-        }
+        Message::Submitted => state.on_submitted(context),
         Message::Opened(Ok(opened)) => state.go_live(opened),
         Message::Opened(Err(Failure::HostKey { key, changed })) => {
             state.stage = Stage::HostKey { key, changed };
             Task::none()
         }
         Message::Opened(Err(Failure::KeyLocked)) => state.ask(Some(fl!("session-key-locked"))),
-        Message::Opened(Err(Failure::Refused)) => match state.method {
-            Method::Password(_) => {
-                state.set_secret(None);
-                state.ask(Some(fl!("session-refused")))
-            }
-            // Typing something would not help: the server does not accept this key.
-            Method::KeyFile { .. } => {
-                state.stage = Stage::Ended(fl!("session-key-refused"));
-                Task::none()
-            }
-            Method::Agent => {
-                state.stage = Stage::Ended(fl!("session-agent-refused"));
-                Task::none()
-            }
-            Method::Interactive => {
-                state.stage = Stage::Ended(fl!("session-interactive-refused"));
-                Task::none()
-            }
-        },
+        Message::Opened(Err(Failure::Refused)) => state.on_refused(),
         Message::Opened(Err(Failure::Other(reason))) => {
             state.stage = Stage::Ended(reason);
             Task::none()
         }
-        Message::TrustPressed => {
-            let Stage::HostKey { key, .. } = &state.stage else {
-                return Task::none();
-            };
-            // The key may belong to a jump host rather than to the target.
-            let (host, port) = (&key.endpoint.host, key.endpoint.port);
-            match context.known_hosts.trust(host, port, &key.key) {
-                Ok(()) => state.connect(context),
-                Err(error) => {
-                    let reason = format!("{} {error}", fl!("session-trust-failed"));
-                    state.stage = Stage::Ended(reason);
-                    Task::none()
-                }
-            }
-        }
+        Message::TrustPressed => state.on_trust(context),
         Message::ReconnectPressed => state.begin(context),
-        Message::Shell(ShellEvent::Output(bytes)) => {
-            if let Stage::Connected(live) = &mut state.stage {
-                live.received += bytes.len() as u64;
-                live.record(|recording| recording.output(&bytes));
-                let replies = live.screen.feed(&bytes);
-                // New output moves the lines under the highlights.
-                live.screen.clear_found();
-                live.cache.clear();
-                if !replies.is_empty() {
-                    live.send(ShellInput::Data(replies));
-                }
-                // A program copied text itself: tmux and herdr do, as the mouse is theirs.
-                let copies: Vec<_> = live
-                    .screen
-                    .take_copied()
-                    .into_iter()
-                    .map(|copied| {
-                        if copied.primary {
-                            iced::clipboard::write_primary(copied.text)
-                        } else {
-                            iced::clipboard::write(copied.text)
-                        }
-                    })
-                    .collect();
-                return Task::batch(copies);
-            }
-            Task::none()
-        }
+        Message::Shell(ShellEvent::Output(bytes)) => match &mut state.stage {
+            Stage::Connected(live) => live.on_output(&bytes),
+            _ => Task::none(),
+        },
         Message::Tick => {
             let Stage::Connected(live) = &mut state.stage else {
                 // The session ended: no more readings.
@@ -386,54 +449,10 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             });
             Task::none()
         }
-        Message::Terminal(event) => {
-            let Stage::Connected(live) = &mut state.stage else {
-                return Task::none();
-            };
-            if let terminal_view::Event::Mouse(report) = event {
-                if let Some(bytes) = terminal_mouse::encode(&report, live.screen.mouse_mode()) {
-                    live.type_in(bytes);
-                }
-                return Task::none();
-            }
-            live.cache.clear();
-            match event {
-                terminal_view::Event::Mouse(_) => {}
-                terminal_view::Event::Resized(size) => {
-                    live.screen
-                        .resize(usize::from(size.columns), usize::from(size.lines));
-                    live.record(|recording| recording.resize(size.columns, size.lines));
-                    live.send(ShellInput::Resize(size));
-                }
-                terminal_view::Event::Scrolled(lines) if live.screen.wheel_sends_arrows() => {
-                    let application = live.screen.application_cursor();
-                    live.type_in(keys::wheel_arrows(lines, application));
-                }
-                terminal_view::Event::Scrolled(lines) => live.screen.scroll(lines),
-                // The window changes the text size; see `State::zoom_terminal`.
-                terminal_view::Event::Zoomed(_) => {}
-                terminal_view::Event::SelectionStarted {
-                    column,
-                    line,
-                    granularity,
-                } => {
-                    live.screen.start_selection_by(column, line, granularity);
-                }
-                terminal_view::Event::SelectionExtended { column, line } => {
-                    live.screen.extend_selection(column, line);
-                }
-                // Copy on select: the text goes to the selection that middle-click pastes.
-                terminal_view::Event::PasteRequested => {
-                    return iced::clipboard::read_primary().map(Message::Pasted);
-                }
-                terminal_view::Event::SelectionEnded => {
-                    if let Some(text) = live.screen.selected_text() {
-                        return iced::clipboard::write_primary(text);
-                    }
-                }
-            }
-            Task::none()
-        }
+        Message::Terminal(event) => match &mut state.stage {
+            Stage::Connected(live) => live.on_terminal_event(event),
+            _ => Task::none(),
+        },
         Message::Pasted(text) => {
             if let (Stage::Connected(live), Some(text)) = (&mut state.stage, text)
                 && !text.is_empty()

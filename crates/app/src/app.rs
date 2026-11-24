@@ -9,16 +9,15 @@ use iced::{Point, Size, Subscription, Task, Theme, keyboard};
 use remotething_core::Store;
 use remotething_secrets::{KnownHosts, SecretStore};
 
+use crate::clipboard_actions;
 use crate::credentials::{self};
 use crate::display;
 use crate::features;
-use crate::file_clipboard;
-use crate::file_dialog;
 use crate::i18n::fl;
-use crate::image_clipboard;
 use crate::import_preview;
 use crate::input;
 use crate::menu;
+use crate::panel_actions;
 use crate::preferences::{self, Preferences, ThemeChoice};
 use crate::properties::{self, Draft};
 use crate::putty_import;
@@ -26,6 +25,7 @@ use crate::recent::{self, Recent};
 use crate::removal;
 use crate::session;
 use crate::settings;
+use crate::settings_actions;
 use crate::tabs::{self, Page};
 use crate::terminal_view;
 use crate::theme as look;
@@ -33,10 +33,11 @@ use crate::tree::{self, Selection};
 use crate::tree_actions;
 use crate::vault;
 use crate::video_recording;
+use crate::window_actions;
 use crate::wsl_import;
 
 /// The name offered when exporting.
-const EXPORT_FILE_NAME: &str = "remotething-connections.json";
+pub(crate) const EXPORT_FILE_NAME: &str = "remotething-connections.json";
 /// The window size iced starts with, until the first size event arrives.
 const INITIAL_WINDOW: Size = Size::new(1024.0, 768.0);
 
@@ -98,7 +99,7 @@ pub struct State {
     /// Whether the size of the window is shown, while it is being resized.
     pub(crate) size_shown: bool,
     /// Counts the resizes, so only the timer of the latest one hides the size.
-    resize_count: u64,
+    pub(crate) resize_count: u64,
 }
 
 /// An unlocked secret store on its way from the worker thread to the window.
@@ -399,7 +400,7 @@ impl State {
     }
 
     /// Whether keys go to a remote desktop: one is in front, and nothing else wants them.
-    fn desktop_has_keys(&self) -> bool {
+    pub(crate) fn desktop_has_keys(&self) -> bool {
         self.centre() == Centre::Sessions
             && self.vault.is_none()
             && self.menu.is_none()
@@ -455,70 +456,17 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         Message::Removal(message) => return state.answer_removal(message),
         Message::PointerMoved(position) => state.pointer = position,
         Message::RecordTick => state.tabs.record_tick(),
-        Message::ClipboardTick => {
-            // Files first: copying them in a file manager often puts their paths there as text too.
-            return Task::perform(
-                async {
-                    tokio::task::spawn_blocking(file_clipboard::read)
-                        .await
-                        .ok()
-                        .flatten()
-                },
-                Message::ClipboardFilesRead,
-            );
-        }
+        Message::ClipboardTick => return clipboard_actions::on_tick(),
         Message::ClipboardFilesRead(files) => {
-            let offered = files.is_some_and(|files| state.tabs.desktop_clipboard_files(files));
-            if !offered {
-                return iced::clipboard::read().map(Message::ClipboardRead);
-            }
+            return clipboard_actions::on_files_read(state, files);
         }
-        Message::ClipboardRead(text) => match text.filter(|text| !text.is_empty()) {
-            Some(text) => state.tabs.desktop_clipboard(text),
-            // No text: there may be a picture.
-            None => {
-                return Task::perform(
-                    async {
-                        tokio::task::spawn_blocking(image_clipboard::read)
-                            .await
-                            .ok()
-                            .flatten()
-                    },
-                    Message::ClipboardPictureRead,
-                );
-            }
-        },
+        Message::ClipboardRead(text) => return clipboard_actions::on_text_read(state, text),
         Message::ClipboardPictureRead(picture) => {
-            if let Some(picture) = picture {
-                state.tabs.desktop_clipboard_picture(picture);
-            }
+            clipboard_actions::on_picture_read(state, picture)
         }
-        Message::WindowResized(size) => {
-            if size == state.window {
-                return Task::none();
-            }
-            state.window = size;
-            state.size_shown = true;
-            state.tabs.size_badge = true;
-            state.resize_count += 1;
-            let count = state.resize_count;
-            return Task::perform(
-                async { tokio::time::sleep(SIZE_SHOWN_FOR).await },
-                move |()| Message::ResizeSettled(count),
-            );
-        }
-        Message::ResizeSettled(count) => {
-            if count == state.resize_count {
-                state.size_shown = false;
-                state.tabs.size_badge = false;
-                return iced::window::oldest()
-                    .and_then(iced::window::is_maximized)
-                    .map(Message::WindowMaximized);
-            }
-        }
-        Message::WindowMaximized(maximized) => {
-            state.remember_window(maximized);
-        }
+        Message::WindowResized(size) => return window_actions::on_resized(state, size),
+        Message::ResizeSettled(count) => return window_actions::on_resize_settled(state, count),
+        Message::WindowMaximized(maximized) => state.remember_window(maximized),
         Message::FileDropped(path) => return input::on_file_dropped(state, path),
         Message::ScaleChanged(scale) => {
             display::set_scale(scale);
@@ -536,62 +484,14 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             text,
             captured,
         } => {
-            if state.shortcuts_open {
-                input::on_shortcuts_key(state, &key);
-                return Task::none();
-            }
-            if state.palette.is_some() {
-                return input::on_palette_key(state, &key, modifiers);
-            }
-            // A remote desktop in front gets every key except the app's own tab shortcuts.
-            let app_shortcut =
-                input::Shortcut::of(&key, modifiers).is_some_and(input::Shortcut::beats_a_desktop);
-            if !captured && !app_shortcut && state.desktop_has_keys() {
-                state
-                    .tabs
-                    .desktop_key(&key, physical, text.as_deref(), true);
-                return Task::none();
-            }
-            if let Some(shortcut) = input::Shortcut::of(&key, modifiers) {
-                return input::on_shortcut(state, shortcut, captured);
-            }
-            let is_escape = key == keyboard::Key::Named(keyboard::key::Named::Escape);
-            if is_escape && (state.menu.is_some() || state.tree.is_busy()) {
-                state.menu = None;
-                state.tree.escape();
-                return Task::none();
-            }
-            if is_escape && state.removal.is_some() {
-                state.removal = None;
-                return Task::none();
-            }
-            if is_escape && state.properties_open {
-                state.close_properties();
-                return Task::none();
-            }
-            // In a form, Tab and Shift+Tab move between the fields.
-            let is_tab = key == keyboard::Key::Named(keyboard::key::Named::Tab);
-            let in_form = state.properties_open
-                || state.vault.is_some()
-                || state.centre() != Centre::Sessions
-                || state.tabs.front_is_asking();
-            if is_tab && in_form && !captured && !modifiers.control() && !modifiers.alt() {
-                return if modifiers.shift() {
-                    iced::widget::operation::focus_previous()
-                } else {
-                    iced::widget::operation::focus_next()
-                };
-            }
-            // Everything else belongs to the terminal in front, when one is showing.
-            let terminal_shows =
-                state.centre() == Centre::Sessions && state.vault.is_none() && state.menu.is_none();
-            if captured || !terminal_shows {
-                return Task::none();
-            }
-            return state
-                .tabs
-                .key(&key, modifiers, text.as_deref())
-                .map(Message::Tabs);
+            return input::on_key_pressed(
+                state,
+                &key,
+                physical,
+                modifiers,
+                text.as_deref(),
+                captured,
+            );
         }
         Message::Tabs(tabs::Message::Session(
             _,
@@ -613,59 +513,10 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             return task;
         }
         Message::Shortcuts(crate::shortcuts::Message::Dismissed) => state.shortcuts_open = false,
-        Message::Palette(message) => {
-            let Some(palette) = &mut state.palette else {
-                return Task::none();
-            };
-            let entries =
-                crate::palette::entries(&state.store, state.recent.ids(), palette.query());
-            match crate::palette::update(palette, message, &entries) {
-                Some(crate::palette::Event::Chosen(item)) => {
-                    state.palette = None;
-                    return input::open_palette_item(state, item);
-                }
-                Some(crate::palette::Event::Close) => state.palette = None,
-                None => {}
-            }
-        }
-        Message::Properties(message) => {
-            let Some(draft) = &mut state.draft else {
-                return Task::none();
-            };
-            let selected = state.tree.selected().cloned();
-            match (properties::update(draft, message), selected) {
-                (Some(properties::Event::Save), _) => return state.save_draft(),
-                (Some(properties::Event::Delete), Some(item)) => state.delete(&item),
-                _ => {}
-            }
-        }
-        Message::Credentials(message) => {
-            match credentials::update(&mut state.credentials, &state.store, message) {
-                Some(credentials::Event::New) => state.add_credential(),
-                Some(credentials::Event::Save) => return state.save_credential(),
-                Some(credentials::Event::Delete) => return state.delete_credential(),
-                None => {}
-            }
-        }
-        Message::Vault(message) => {
-            let Some(prompt) = &mut state.vault else {
-                return Task::none();
-            };
-            match vault::update(prompt, message) {
-                Some(vault::Event::Open(request)) => {
-                    // Key derivation is slow on purpose; keep it off the UI thread.
-                    return Task::perform(
-                        async move { vault::open(request).map(Unlocked) },
-                        Message::VaultOpened,
-                    );
-                }
-                Some(vault::Event::Skip) => {
-                    state.vault = None;
-                    state.error = Some(fl!("vault-skipped"));
-                }
-                None => {}
-            }
-        }
+        Message::Palette(message) => return panel_actions::on_palette(state, message),
+        Message::Properties(message) => return panel_actions::on_properties(state, message),
+        Message::Credentials(message) => return panel_actions::on_credentials(state, message),
+        Message::Vault(message) => return panel_actions::on_vault(state, message),
         Message::SystemModeChanged(mode) => state.system_mode = mode,
         Message::TreeCollapseToggled => {
             state.preferences.tree_collapsed = !state.preferences.tree_collapsed;
@@ -673,92 +524,18 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         }
         Message::SettingsPressed => state.open_settings(Centre::Settings),
         Message::PropertiesClosed => state.close_properties(),
-        Message::VaultOpened(Ok(unlocked)) => {
-            state.secrets = unlocked.0;
-            state.vault = None;
-            state.error = None;
+        Message::VaultOpened(result) => panel_actions::on_vault_opened(state, result),
+        Message::Settings(message) => {
+            let event = settings::update(&mut state.preferences, message);
+            return settings_actions::on_settings_event(state, event);
         }
-        Message::VaultOpened(Err(reason)) => {
-            if let Some(prompt) = &mut state.vault {
-                prompt.fail(reason);
-            }
-        }
-        Message::Settings(message) => match settings::update(&mut state.preferences, message) {
-            settings::Event::Changed => {
-                state.save_preferences();
-                display::set_interface_percent(state.preferences.interface_scale);
-                state.tabs.rescale_desktops();
-            }
-            settings::Event::Terminal(message) => return state.terminal_message(message),
-            settings::Event::PageChanged(page) => state.settings_page = page,
-            settings::Event::OpenRepository => crate::link::open(crate::link::REPOSITORY),
-            settings::Event::PickFolder(kind) => {
-                return Task::perform(
-                    crate::file_dialog::pick_folder(fl!("settings-folder-pick")),
-                    move |folder| Message::FolderPicked(kind, folder),
-                );
-            }
-            settings::Event::Export => {
-                let dialog =
-                    file_dialog::save(fl!("settings-export"), EXPORT_FILE_NAME.to_string());
-                return Task::perform(dialog, Message::ExportFilePicked);
-            }
-            settings::Event::ImportPutty => {
-                let (screen, task) = putty_import::State::open();
-                state.putty = screen;
-                state.open_settings(Centre::Putty);
-                return task.map(Message::Putty);
-            }
-            settings::Event::ImportWsl => {
-                let (screen, task) = wsl_import::State::open();
-                state.wsl = screen;
-                state.open_settings(Centre::Wsl);
-                return task.map(Message::Wsl);
-            }
-            settings::Event::Import => {
-                let dialog = file_dialog::open(fl!("settings-import"));
-                return Task::perform(dialog, Message::ImportFilePicked);
-            }
-        },
         // `None` is a cancelled dialog.
         Message::ExportFilePicked(None) | Message::ImportFilePicked(None) => {}
         Message::ExportFilePicked(Some(file)) => state.export_to(&file),
         Message::ImportFilePicked(Some(file)) => state.preview_import(&file),
-        Message::Preview(message) => {
-            let Some(screen) = &mut state.import else {
-                return Task::none();
-            };
-            match import_preview::update(screen, message) {
-                Some(import_preview::Event::Close) => {
-                    state.import = None;
-                    state.settings_screen = Centre::Settings;
-                }
-                Some(import_preview::Event::Apply(tree)) => {
-                    state.import = None;
-                    state.settings_screen = Centre::Settings;
-                    state.import_tree(tree);
-                }
-                None => {}
-            }
-        }
-        Message::Putty(message) => {
-            let (task, event) = putty_import::update(&mut state.putty, message);
-            match event {
-                Some(putty_import::Event::Close) => state.settings_screen = Centre::Settings,
-                Some(putty_import::Event::Apply(plan, names)) => state.apply_putty(&plan, &names),
-                None => {}
-            }
-            return task.map(Message::Putty);
-        }
-        Message::Wsl(message) => {
-            let (task, event) = wsl_import::update(&mut state.wsl, message);
-            match event {
-                Some(wsl_import::Event::Close) => state.settings_screen = Centre::Settings,
-                Some(wsl_import::Event::Apply(plan, names)) => state.apply_wsl(&plan, &names),
-                None => {}
-            }
-            return task.map(Message::Wsl);
-        }
+        Message::Preview(message) => settings_actions::on_preview(state, message),
+        Message::Putty(message) => return settings_actions::on_putty(state, message),
+        Message::Wsl(message) => return settings_actions::on_wsl(state, message),
         Message::SecretStored(Ok(())) => {}
         Message::SecretStored(Err(reason)) => {
             state.error = Some(format!("{} {reason}", fl!("error-secret")));
@@ -770,9 +547,6 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
 pub fn title(_state: &State) -> String {
     fl!("app-title")
 }
-
-/// How long the size of the window stays on screen after the last resize.
-const SIZE_SHOWN_FOR: std::time::Duration = std::time::Duration::from_millis(900);
 
 /// How much bigger than normal the window is drawn.
 pub fn scale_factor(state: &State) -> f32 {

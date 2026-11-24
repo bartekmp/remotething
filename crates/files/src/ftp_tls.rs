@@ -156,4 +156,66 @@ mod tests {
     fn a_pin_never_equals_an_rdp_pin() {
         assert_ne!(PIN_PREFIX, "rdp-cert-sha256:");
     }
+
+    /// A verifier that has `trusted` pinned for `ftp:21`, and the place it reports to.
+    fn verifier(trusted: Option<&[u8]>) -> (tempfile::TempDir, PinnedCertificate, Finding) {
+        let directory = tempfile::tempdir().unwrap();
+        let mut known = KnownHosts::load(&directory.path().join("known_hosts.toml")).unwrap();
+        if let Some(certificate) = trusted {
+            known
+                .trust("ftp", 21, &describe("ftp", 21, certificate).key)
+                .unwrap();
+        }
+        let finding = Finding::default();
+        let verifier = PinnedCertificate {
+            provider: Arc::new(crypto::ring::default_provider()),
+            known,
+            host: "ftp".to_string(),
+            port: 21,
+            finding: Arc::clone(&finding),
+        };
+        (directory, verifier, finding)
+    }
+
+    fn verify(verifier: &PinnedCertificate, certificate: &[u8]) -> bool {
+        verifier
+            .verify_server_cert(
+                &CertificateDer::from(certificate),
+                &[],
+                &ServerName::try_from("ftp").unwrap(),
+                &[],
+                UnixTime::now(),
+            )
+            .is_ok()
+    }
+
+    #[test]
+    fn the_pinned_certificate_is_let_through() {
+        let (_directory, verifier, finding) = verifier(Some(b"pinned"));
+
+        assert!(verify(&verifier, b"pinned"));
+        assert!(finding.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn an_unknown_certificate_is_refused_and_reported() {
+        let (_directory, verifier, finding) = verifier(None);
+
+        assert!(!verify(&verifier, b"stranger"));
+        assert!(matches!(
+            finding.lock().unwrap().as_ref(),
+            Some(Error::UnknownCertificate(_))
+        ));
+    }
+
+    #[test]
+    fn another_certificate_than_the_pinned_one_is_refused_as_a_change() {
+        let (_directory, verifier, finding) = verifier(Some(b"pinned"));
+
+        assert!(!verify(&verifier, b"impostor"));
+        assert!(matches!(
+            finding.lock().unwrap().as_ref(),
+            Some(Error::CertificateChanged(_))
+        ));
+    }
 }

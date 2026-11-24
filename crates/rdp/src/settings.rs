@@ -69,3 +69,57 @@ pub(crate) fn connector_config(target: &Target) -> connector::Config {
         work_dir: String::new(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use remotething_secrets::Secret;
+
+    use super::*;
+    use crate::quality::Quality;
+
+    fn target() -> Target {
+        Target {
+            host: "win".to_string(),
+            port: 3389,
+            username: "test".to_string(),
+            password: Secret::new("hunter2".to_string()),
+            domain: Some("CORP".to_string()),
+            width: 1280,
+            height: 800,
+            quality: Quality::Balanced,
+            scale: 100,
+        }
+    }
+
+    #[test]
+    fn the_connection_is_network_level_authentication_only() {
+        let config = connector_config(&target());
+
+        assert!(config.enable_credssp);
+        // No fallback to the weak, older security of RDP.
+        assert!(!config.enable_standard_rdp_security);
+        assert!(!config.enable_tls);
+    }
+
+    #[test]
+    fn the_account_and_desktop_come_from_the_target() {
+        let config = connector_config(&target());
+
+        assert_eq!(config.domain.as_deref(), Some("CORP"));
+        assert_eq!(config.desktop_size.width, 1280);
+        assert_eq!(config.desktop_size.height, 800);
+        assert!(matches!(
+            config.credentials,
+            Credentials::UsernamePassword { ref username, ref password }
+                if username == "test" && password == "hunter2"
+        ));
+    }
+
+    #[test]
+    fn nothing_is_played_or_recorded_on_this_computer() {
+        let config = connector_config(&target());
+
+        assert!(!config.enable_audio_playback);
+        assert!(!config.enable_audio_capture);
+    }
+}

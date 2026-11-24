@@ -205,6 +205,69 @@ pub(crate) fn on_palette_key(
 
 /// The keys while the shortcuts list is open: Escape or F1 close it, and nothing reaches
 /// the terminal or desktop behind it.
+/// A key went down. The first thing that wants it gets it, in this order: an open
+/// help or palette, the remote desktop in front, the app's shortcuts, the panels
+/// that Escape closes, the fields of a form, and last the terminal in front.
+pub(crate) fn on_key_pressed(
+    state: &mut State,
+    key: &keyboard::Key,
+    physical: keyboard::key::Physical,
+    modifiers: keyboard::Modifiers,
+    text: Option<&str>,
+    captured: bool,
+) -> Task<Message> {
+    if state.shortcuts_open {
+        on_shortcuts_key(state, key);
+        return Task::none();
+    }
+    if state.palette.is_some() {
+        return on_palette_key(state, key, modifiers);
+    }
+    // A remote desktop in front gets every key except the app's own tab shortcuts.
+    let app_shortcut = Shortcut::of(key, modifiers).is_some_and(Shortcut::beats_a_desktop);
+    if !captured && !app_shortcut && state.desktop_has_keys() {
+        state.tabs.desktop_key(key, physical, text, true);
+        return Task::none();
+    }
+    if let Some(shortcut) = Shortcut::of(key, modifiers) {
+        return on_shortcut(state, shortcut, captured);
+    }
+    let is_escape = *key == keyboard::Key::Named(keyboard::key::Named::Escape);
+    if is_escape && (state.menu.is_some() || state.tree.is_busy()) {
+        state.menu = None;
+        state.tree.escape();
+        return Task::none();
+    }
+    if is_escape && state.removal.is_some() {
+        state.removal = None;
+        return Task::none();
+    }
+    if is_escape && state.properties_open {
+        state.close_properties();
+        return Task::none();
+    }
+    // In a form, Tab and Shift+Tab move between the fields.
+    let is_tab = *key == keyboard::Key::Named(keyboard::key::Named::Tab);
+    let in_form = state.properties_open
+        || state.vault.is_some()
+        || state.centre() != Centre::Sessions
+        || state.tabs.front_is_asking();
+    if is_tab && in_form && !captured && !modifiers.control() && !modifiers.alt() {
+        return if modifiers.shift() {
+            iced::widget::operation::focus_previous()
+        } else {
+            iced::widget::operation::focus_next()
+        };
+    }
+    // Everything else belongs to the terminal in front, when one is showing.
+    let terminal_shows =
+        state.centre() == Centre::Sessions && state.vault.is_none() && state.menu.is_none();
+    if captured || !terminal_shows {
+        return Task::none();
+    }
+    state.tabs.key(key, modifiers, text).map(Message::Tabs)
+}
+
 pub(crate) fn on_shortcuts_key(state: &mut State, key: &keyboard::Key) {
     let escape = *key == keyboard::Key::Named(keyboard::key::Named::Escape);
     let help = Shortcut::of(key, keyboard::Modifiers::empty()) == Some(Shortcut::Help);
