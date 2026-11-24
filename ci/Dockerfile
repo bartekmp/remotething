@@ -5,7 +5,7 @@ FROM rust:1.96.0-bookworm
 
 # clang and lld compile and link the C and assembly parts of `ring` for the MSVC target.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends clang lld llvm zip \
+    && apt-get install -y --no-install-recommends clang lld llvm nsis zip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup component add rustfmt clippy \

@@ -6,7 +6,7 @@ mod version;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package flatpak | package windows | bump major|minor|patch | licenses | prune | version-check <git ref>>";
+const USAGE: &str = "usage: cargo xtask <lint | test | build linux | build windows | package linux | package flatpak | package windows | package installer | bump major|minor|patch | licenses | prune | version-check <git ref>>";
 
 const LINUX_TARGET: &str = "x86_64-unknown-linux-gnu";
 const WINDOWS_TARGET: &str = "x86_64-pc-windows-msvc";
@@ -31,6 +31,7 @@ fn main() -> ExitCode {
         ["package", "linux"] => package_linux(),
         ["package", "flatpak"] => package_flatpak(),
         ["package", "windows"] => package_windows(),
+        ["package", "installer"] => package_installer(),
         ["bump", part] => bump(part),
         ["licenses"] => licenses(),
         ["prune"] => prune_builds(),
@@ -240,6 +241,36 @@ fn package_windows() -> bool {
     // -j: store the files without their directories.
     zip.arg("-j").arg(&archive).args(&files);
     run(zip, "zip")
+}
+
+/// Builds the Windows setup program with NSIS into `dist/`. Run `build windows` first.
+/// Needs `makensis`; the result is unsigned.
+fn package_installer() -> bool {
+    let Some(dist) = dist_directory() else {
+        return false;
+    };
+    let root = workspace_root();
+    let packaging = root.join("crates/app/packaging");
+    let executable = target_directory()
+        .join(WINDOWS_TARGET)
+        .join("release")
+        .join("remotething.exe");
+    let setup = dist.join(format!("remotething-{VERSION}-windows-x86_64-setup.exe"));
+
+    let mut makensis = Command::new("makensis");
+    makensis
+        .arg("-INPUTCHARSET")
+        .arg("UTF8")
+        .arg(format!("-DVERSION={VERSION}"))
+        .arg(format!("-DEXE={}", executable.display()))
+        .arg(format!(
+            "-DICON={}",
+            packaging.join("remotething.ico").display()
+        ))
+        .arg(format!("-DLICENSES={}", root.display()))
+        .arg(format!("-DOUTFILE={}", setup.display()))
+        .arg(packaging.join("windows/installer.nsi"));
+    run(makensis, "makensis")
 }
 
 /// Raises the version in the manifest and the lockfile, and moves the

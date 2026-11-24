@@ -1,0 +1,85 @@
+# Manual: Actions > "Windows release" > Run workflow, with the version (for example 0.81.0).
+# Releases the head of main: the version must already be in Cargo.toml (run
+# `cargo xtask bump` first). Creates the tag v<version> if it is missing, builds the Windows
+# installer and zip in the CI image, signs the installer when SignPath is configured, and
+# attaches both to the GitHub release. An existing tag is built as it is.
+name: Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without the v (the one in Cargo.toml on main)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-tags: true
+
+      # An existing tag wins, so an old version can be rebuilt.
+      - name: Choose the commit
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            git checkout "refs/tags/v$VERSION"
+          fi
+          grep -qx "version = \"$VERSION\"" Cargo.toml
+
+      # XWIN_ACCEPT_LICENSE=1 accepts Microsoft's licence for the C runtime and Windows SDK:
+      # https://go.microsoft.com/fwlink/?LinkId=2086102
+      - name: Build the CI image
+        run: docker build --build-arg XWIN_ACCEPT_LICENSE=1 -t remotething-ci ci
+
+      - name: Build and package
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work remotething-ci \
+            sh -c 'cargo xtask build windows && cargo xtask package windows && cargo xtask package installer'
+
+      - name: Keep the setup program apart for signing
+        run: |
+          mkdir unsigned
+          cp "dist/remotething-$VERSION-windows-x86_64-setup.exe" unsigned/
+
+      - name: Upload the unsigned setup program
+        id: unsigned
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-setup
+          path: unsigned/*.exe
+
+      # Set the variable SIGNPATH_ORGANIZATION_ID and the secret SIGNPATH_API_TOKEN to turn
+      # signing on. Without them the release carries the unsigned installer.
+      - name: Sign the setup program
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: remotething
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          output-artifact-directory: signed
+
+      - name: Put the signed setup program in dist
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: cp signed/*.exe dist/
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Creates the tag on the built commit when the release is new.
+          gh release view "v$VERSION" || gh release create "v$VERSION" --target "$(git rev-parse HEAD)" --title "v$VERSION" --notes "Windows build of $VERSION."
+          gh release upload "v$VERSION" --clobber \
+            "dist/remotething-$VERSION-windows-x86_64-setup.exe" \
+            "dist/remotething-$VERSION-windows-x86_64.zip"

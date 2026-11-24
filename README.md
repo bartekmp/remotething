@@ -66,7 +66,7 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 | Ubuntu or Kubuntu 26.04 and later | `sudo apt install ./remotething_<version>_amd64.deb` |
 | Fedora and other RPM systems | `sudo dnf install ./remotething-<version>.x86_64.rpm` |
 | Any Linux with Flatpak | `flatpak install --user remotething-<version>.flatpak` |
-| Windows 10 and 11, 64-bit | unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe` |
+| Windows 10 and 11, 64-bit | run `remotething-<version>-windows-x86_64-setup.exe` (or unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe`) |
 
 Linux packages are built with `cargo xtask package linux` and `cargo xtask package flatpak` (they land in `dist/`); CI builds the Windows zip for every merge to `main`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
 

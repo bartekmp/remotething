@@ -25,7 +25,10 @@ Without a Vulkan or OpenGL driver the app still runs, with slower software rende
 
 ## Windows
 
-Unzip `remotething-<version>-windows-x86_64.zip` anywhere and run `remotething.exe`. Windows 10 and 11, 64-bit.
+Windows 10 and 11, 64-bit. Releases on GitHub have two downloads:
+
+- `remotething-<version>-windows-x86_64-setup.exe` installs for your user only, without administrator rights, and adds a Start menu entry. `setup.exe /S` installs silently. Uninstall it from **Installed apps**; your connections and settings stay.
+- `remotething-<version>-windows-x86_64.zip` holds the program alone. Unzip it anywhere and run `remotething.exe`.
 
 The program is not code-signed yet, so SmartScreen shows a warning the first time. Choose **More info**, then **Run anyway**.
 
@@ -37,4 +40,4 @@ remotething --version
 
 ## Not available yet
 
-An AppImage and a Windows installer are planned.
+An AppImage is planned.
