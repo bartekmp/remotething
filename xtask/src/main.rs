@@ -67,15 +67,22 @@ fn lint() -> bool {
 }
 
 /// cargo-xwin supplies the MSVC SDK; it needs XWIN_ACCEPT_LICENSE=1.
+/// The C runtime is linked in, so the `.exe` runs without the Visual C++ Redistributable.
 fn build_windows() -> bool {
-    cargo(&[
+    let args = [
         "xwin",
         "build",
         "--workspace",
         "--release",
         "--target",
         WINDOWS_TARGET,
-    ])
+    ];
+    let mut command = Command::new("cargo");
+    command
+        .args(args)
+        .env("RUSTFLAGS", "-C target-feature=+crt-static")
+        .current_dir(workspace_root());
+    run(command, &format!("cargo {}", args.join(" ")))
 }
 
 /// Wraps the Linux release build as `.deb` and `.rpm` in `dist/`. Run `build linux` first.
