@@ -22,7 +22,7 @@ sha2 = "0.11"
 # The SMB protocol, version 2 and 3, in pure Rust.
 smb2 = "0.43"
 # The SFTP protocol, spoken over a channel of an SSH connection.
-russh-sftp = "3"
+russh-sftp = "4"
 # The FTP protocol, with explicit TLS (FTPS) through rustls.
 suppaftp = { version = "13", default-features = false, features = ["tokio-rustls-ring"] }
 thiserror = "2"
