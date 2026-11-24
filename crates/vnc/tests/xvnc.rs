@@ -3,6 +3,7 @@
 
 use std::io::Write;
 use std::process::{Child, Command, Stdio};
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::{Duration, Instant};
 
@@ -11,8 +12,13 @@ use remotething_vnc::{Button, Error, Event, Input, Quality, Target, connect};
 
 const PASSWORD: &str = "open sesame";
 
-/// Keeps ports apart between tests, which run side by side.
-static NEXT_PORT: AtomicU16 = AtomicU16::new(5980);
+/// Keeps ports apart between tests, which run side by side: in one process (`cargo test`)
+/// by counting up, and between processes (`cargo nextest`, one process per test) by a
+/// starting point that depends on the process.
+static NEXT_PORT: LazyLock<AtomicU16> = LazyLock::new(|| {
+    let slot = u16::try_from(std::process::id() % 1000).expect("below a thousand");
+    AtomicU16::new(5980 + slot * 8)
+});
 
 /// A running server, stopped when dropped.
 struct Server {

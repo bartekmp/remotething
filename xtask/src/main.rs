@@ -18,9 +18,10 @@ fn main() -> ExitCode {
 
     let succeeded = match args.as_slice() {
         ["lint"] => lint(),
-        ["test"] => cargo(&["nextest", "run", "--workspace"]),
+        ["test"] => cargo(&["nextest", "run", "--locked", "--workspace"]),
         ["build", "linux"] => cargo(&[
             "build",
+            "--locked",
             "--workspace",
             "--release",
             "--target",
@@ -57,6 +58,7 @@ fn lint() -> bool {
     cargo(&["fmt", "--all", "--check"])
         && cargo(&[
             "clippy",
+            "--locked",
             "--workspace",
             "--all-targets",
             "--",
@@ -72,6 +74,7 @@ fn build_windows() -> bool {
     let args = [
         "xwin",
         "build",
+        "--locked",
         "--workspace",
         "--release",
         "--target",
