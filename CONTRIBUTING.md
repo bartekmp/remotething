@@ -11,7 +11,7 @@ cargo install --locked cargo-about --features cli
 
 ## Commands
 
-The same commands run locally and in Jenkins. Pull requests run lint, tests and the Linux build; the slower Windows build and package run on `main` and tags. Run `cargo xtask build windows` yourself when a change touches Windows-only code.
+The same commands run locally, in Jenkins and in GitHub Actions (`ci.yml`: lint, format and unit tests on every push to `main` and every pull request). Pull requests run lint, tests and the Linux build; the slower Windows build and package run on `main` and tags. Run `cargo xtask build windows` yourself when a change touches Windows-only code.
 
 | Command | Does |
 | --- | --- |
