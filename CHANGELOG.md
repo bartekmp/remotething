@@ -7,7 +7,7 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## 0.82.0 - 2026-11-25
 
-- In the file pane's details view, a header names the columns and their left edges can be dragged to resize them.
+- In the file pane's details view, a header names the columns and their left edges can be dragged to resize them. The widths are remembered.
 
 ## 0.81.1 - 2026-11-25
 

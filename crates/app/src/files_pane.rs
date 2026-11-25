@@ -227,7 +227,7 @@ impl State {
             closable: true,
             zoomed: false,
             details: true,
-            columns: Default::default(),
+            columns: crate::files_columns::Widths::saved(),
             column_drag: None,
             pending_replace: None,
             status: None,
@@ -470,7 +470,9 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
             Task::none()
         }
         Message::ColumnReleased => {
-            state.column_drag = None;
+            if state.column_drag.take().is_some() {
+                state.columns.settle();
+            }
             Task::none()
         }
         Message::LocalToggled => files_dual::toggle(state),

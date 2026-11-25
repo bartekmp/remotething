@@ -1,5 +1,8 @@
 //! The detail columns of a file pane: their widths, and the header whose edges are dragged.
 
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use iced::widget::{container, mouse_area, row, space, text};
 use iced::{Element, Length};
 
@@ -27,17 +30,45 @@ pub(crate) struct Widths {
     pub(crate) size: f32,
 }
 
-impl Default for Widths {
-    fn default() -> Self {
-        Self {
-            permissions: 80.0,
-            modified: 118.0,
-            size: 64.0,
-        }
-    }
-}
+/// The widths the next file pane starts with: the saved ones, then whatever was dragged last.
+static SAVED: Mutex<Widths> = Mutex::new(Widths::STANDARD);
+/// Set when the saved widths changed and the settings file has not heard of it yet.
+static CHANGED: AtomicBool = AtomicBool::new(false);
 
 impl Widths {
+    const STANDARD: Widths = Widths {
+        permissions: 80.0,
+        modified: 118.0,
+        size: 64.0,
+    };
+
+    /// The widths a new file pane starts with.
+    pub(crate) fn saved() -> Self {
+        *SAVED
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Makes `widths` what new panes start with, such as the ones read from the settings.
+    pub(crate) fn set_saved(widths: Widths) {
+        *SAVED
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = widths;
+    }
+
+    /// Remembers the widths of a pane whose column edge was just let go of.
+    pub(crate) fn settle(self) {
+        if self != Self::saved() {
+            Self::set_saved(self);
+            CHANGED.store(true, Ordering::Relaxed);
+        }
+    }
+
+    /// True once after the widths were changed by dragging, for the settings to be saved.
+    pub(crate) fn take_changed() -> bool {
+        CHANGED.swap(false, Ordering::Relaxed)
+    }
+
     fn of(&mut self, column: Column) -> &mut f32 {
         match column {
             Column::Permissions => &mut self.permissions,
