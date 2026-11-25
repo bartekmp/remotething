@@ -281,6 +281,12 @@ impl State {
         features::apply(&self.preferences, &self.path);
         self.apply_terminal_look();
         display::set_interface_percent(self.preferences.interface_scale);
+        let columns = self.preferences.file_columns;
+        crate::files_columns::Widths::set_saved(crate::files_columns::Widths {
+            permissions: f32::from(columns.permissions),
+            modified: f32::from(columns.modified),
+            size: f32::from(columns.size),
+        });
         let unfolded = if self.preferences.tree_collapsed {
             0.0
         } else {
@@ -288,6 +294,20 @@ impl State {
         };
         self.tree_slide = crate::motion::Tween::at(unfolded);
         self
+    }
+
+    /// Saves the file pane's column widths once a drag has ended.
+    fn save_dragged_columns(&mut self) {
+        if !crate::files_columns::Widths::take_changed() {
+            return;
+        }
+        let saved = crate::files_columns::Widths::saved();
+        self.preferences.file_columns = preferences::FileColumns {
+            permissions: saved.permissions.round() as u16,
+            modified: saved.modified.round() as u16,
+            size: saved.size.round() as u16,
+        };
+        self.save_preferences();
     }
 
     /// Sends the sliding panels where the state says they belong. Called after every message,
@@ -420,6 +440,7 @@ impl State {
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     let task = handle(state, message);
     state.sync_motion();
+    state.save_dragged_columns();
     task
 }
 

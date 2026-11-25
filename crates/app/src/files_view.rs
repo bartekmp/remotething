@@ -18,10 +18,6 @@ use crate::theme;
 
 const INDENT: f32 = 14.0;
 const ARROW_WIDTH: f32 = 14.0;
-/// Widths of the detail columns, in monospace characters of the small text.
-const PERMISSIONS_WIDTH: f32 = 80.0;
-const MODIFIED_WIDTH: f32 = 118.0;
-const SIZE_WIDTH: f32 = 64.0;
 
 /// The pane, with the local pane and the copy buttons beside it when that is showing.
 pub fn view(state: &State) -> Element<'_, Message> {
@@ -202,9 +198,15 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
             text(fl!("files-empty")).style(theme::secondary_text).into()
         }
         Some(Listing::Loaded(_)) => {
-            scrollable(column(rows.into_iter().map(|row| view_row(state, row))))
-                .id(files_keys::list_id(state))
-                .into()
+            let rows = scrollable(column(rows.into_iter().map(|row| view_row(state, row))))
+                .id(files_keys::list_id(state));
+            if state.details {
+                column![crate::files_columns::header(&state.columns), rows]
+                    .spacing(4)
+                    .into()
+            } else {
+                rows.into()
+            }
         }
         _ if state.status.is_some() => space().into(),
         _ => text(fl!("files-loading"))
@@ -276,19 +278,22 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
         let modified = tree_row.entry.modified.map(modified_text);
         let permissions = tree_row.entry.permissions.map(permissions_text);
         line = line
-            .push(cell(permissions.unwrap_or_default(), PERMISSIONS_WIDTH))
-            .push(cell(modified.unwrap_or_default(), MODIFIED_WIDTH));
+            .push(cell(
+                permissions.unwrap_or_default(),
+                state.columns.permissions,
+            ))
+            .push(cell(modified.unwrap_or_default(), state.columns.modified));
     }
     if let (false, Some(size)) = (is_folder, tree_row.entry.size) {
         line = line.push(
             text(format_size(size))
                 .size(theme::TEXT_SMALL)
                 .style(theme::secondary_text)
-                .width(Length::Fixed(SIZE_WIDTH))
+                .width(Length::Fixed(state.columns.size))
                 .align_x(iced::alignment::Horizontal::Right),
         );
     } else if state.details {
-        line = line.push(space::horizontal().width(Length::Fixed(SIZE_WIDTH)));
+        line = line.push(space::horizontal().width(Length::Fixed(state.columns.size)));
     }
 
     let kind = tree_row.entry.kind;

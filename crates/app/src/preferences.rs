@@ -32,6 +32,9 @@ pub struct Preferences {
         skip_serializing_if = "is_default_tree_width"
     )]
     pub tree_width: u16,
+    /// The widths of the file pane's detail columns, in pixels.
+    #[serde(default, skip_serializing_if = "FileColumns::is_default")]
+    pub file_columns: FileColumns,
     /// How terminals look.
     #[serde(default, skip_serializing_if = "TerminalLook::is_default")]
     pub terminal: TerminalLook,
@@ -74,11 +77,36 @@ impl Default for Preferences {
             high_contrast: false,
             interface_scale: normal_scale(),
             tree_width: default_tree_width(),
+            file_columns: FileColumns::default(),
             terminal: TerminalLook::default(),
             features: Features::default(),
             folders: Folders::default(),
             window: None,
         }
+    }
+}
+
+/// How wide the detail columns of a file pane are, in pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileColumns {
+    pub permissions: u16,
+    pub modified: u16,
+    pub size: u16,
+}
+
+impl Default for FileColumns {
+    fn default() -> Self {
+        Self {
+            permissions: 80,
+            modified: 118,
+            size: 64,
+        }
+    }
+}
+
+impl FileColumns {
+    fn is_default(&self) -> bool {
+        *self == Self::default()
     }
 }
 
@@ -360,6 +388,11 @@ mod tests {
             high_contrast: true,
             interface_scale: 150,
             tree_width: 340,
+            file_columns: FileColumns {
+                permissions: 90,
+                modified: 140,
+                size: 70,
+            },
             window: Some(WindowPlacement {
                 width: 1200,
                 height: 800,
