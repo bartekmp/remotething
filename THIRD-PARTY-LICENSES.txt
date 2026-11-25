@@ -5,7 +5,7 @@ Remotething (GPL-3.0-only) is built from the components below. Each is used
 under the licence listed with it. The bundled fonts and icons are listed at
 the end.
 
-* MIT License: 553 crate(s)
+* MIT License: 551 crate(s)
 * Apache License 2.0: 28 crate(s)
 * ISC License: 25 crate(s)
 * Unicode License v3: 19 crate(s)
@@ -936,7 +936,7 @@ Used by:
 Apache License 2.0
 
 Used by:
-* russh-sftp 3.0.1
+* russh-sftp 4.0.0
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7107,39 +7107,6 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
-* iana-time-zone 0.1.65
-
-Copyright (c) 2020 Andrew D. Straw
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
---------------------------------------------------------------------------------
-MIT License
-
-Used by:
 * downcast-rs 1.2.1
 
 Copyright (c) 2020 Ashish Myles and contributors
@@ -7848,7 +7815,7 @@ MIT License
 Used by:
 * pem-rfc7468 1.0.0
 * pkcs1 0.8.0-rc.4
-* x509-cert 0.3.0
+* x509-cert 0.3.1
 
 Copyright (c) 2021-2025 The RustCrypto Project Developers
 
@@ -10200,7 +10167,6 @@ MIT License
 
 Used by:
 * asn1-rs-impl 0.2.0
-* chrono 0.4.45
 * delegate 0.13.5
 * dpi 0.1.2
 * fluent-langneg 0.13.1

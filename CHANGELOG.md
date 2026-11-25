@@ -5,6 +5,8 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.80.21 - 2026-11-25
+
 ## 0.80.20 - 2026-11-24
 
 ## 0.80.19 - 2026-11-24

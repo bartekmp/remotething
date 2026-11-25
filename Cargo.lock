@@ -2118,9 +2118,9 @@ checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
 
 [[package]]
 name = "gloo-timers"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "482ce8a491a501da4cd806bd190275363d674f2845005c6ddbd5d3e1dd54495d"
+checksum = "a4460540da666acdb5722b2a62ac47d18f627fcfc0c728d04dc7226b3f6d40a7"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -3057,10 +3057,12 @@ checksum = "107f2e89536b6818514025f6787b0d94d819e54fe3b40365275fc753de485b3f"
 dependencies = [
  "jiff-core",
  "jiff-static",
+ "js-sys",
  "log",
  "portable-atomic",
  "portable-atomic-util",
  "serde_core",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -5116,7 +5118,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "remotething"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -5145,7 +5147,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-capture"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "jpeg-encoder",
  "png",
@@ -5155,7 +5157,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-core"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "serde",
  "serde_json",
@@ -5166,7 +5168,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-files"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "async-trait",
  "nfs3_client",
@@ -5183,7 +5185,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-rdp"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "ironrdp-blocking",
  "ironrdp-cliprdr",
@@ -5205,7 +5207,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-remote"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "portable-pty",
  "rand 0.10.4",
@@ -5218,7 +5220,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-secrets"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -5234,7 +5236,7 @@ dependencies = [
 
 [[package]]
 name = "remotething-vnc"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "remotething-secrets",
  "tempfile",
@@ -5411,15 +5413,15 @@ dependencies = [
 
 [[package]]
 name = "russh-sftp"
-version = "3.0.1"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bb17f72aba4314656b359ffba72c68dcbd70ed9e97497898b75498fe7198042"
+checksum = "5b8067d56cde438de09db20be974be92118b85d671c7f50ea3b37cf9011760f0"
 dependencies = [
  "bitflags 2.13.2",
  "bytes",
- "chrono",
  "dashmap",
  "gloo-timers",
+ "jiff",
  "log",
  "serde",
  "serde_bytes",
@@ -7925,9 +7927,9 @@ dependencies = [
 
 [[package]]
 name = "x509-cert"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "105ef4642d9cb137ef83d623d0e4bf08b8adf69e9918ca904a174adb6d3d038b"
+checksum = "e9f58ad685a2945c7c063f5d69b5c27105d75bb85c740380d8fc64e79a098417"
 dependencies = [
  "const-oid 0.10.3",
  "der 0.8.3",
@@ -7968,7 +7970,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.80.20"
+version = "0.80.21"
 dependencies = [
  "tempfile",
 ]
