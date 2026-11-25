@@ -311,7 +311,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
                     .align_y(Vertical::Center)
                     .into(),
                 None => {
-                    let label = row![icon, text(tree_row.name).width(Length::Fill)]
+                    let label = row![icon, name_text(tree_row.name)]
                         .spacing(8)
                         .align_y(Vertical::Center);
                     mouse_area(label)
@@ -332,7 +332,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
             row_container(line, style)
         }
         (RowKind::Connection(protocol), None) => {
-            let label = text(tree_row.name).width(Length::Fill);
+            let label = name_text(tree_row.name);
             let badge = container(text(protocol_label(protocol)).size(11))
                 .padding([2, 6])
                 .style(theme::chip);
@@ -353,6 +353,13 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
         .on_exit(Message::RowExited(selection.clone()))
         .on_right_press(Message::MenuRequested(Some(selection)))
         .into()
+}
+
+/// A name that wraps inside the row, breaking inside a long word when it must.
+fn name_text<'a>(name: String) -> iced::widget::Text<'a> {
+    text(name)
+        .width(Length::Fill)
+        .wrapping(iced::widget::text::Wrapping::WordOrGlyph)
 }
 
 /// The name of a row as a text field. Enter keeps the new name.

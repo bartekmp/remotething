@@ -95,6 +95,8 @@ pub struct State {
     pub(crate) fresh: Option<crate::items::Fresh>,
     /// Where the pointer is, in window coordinates.
     pub(crate) pointer: Point,
+    /// Whether the edge of the connection tree is being dragged.
+    pub(crate) tree_resizing: bool,
     pub(crate) window: Size,
     /// Whether the size of the window is shown, while it is being resized.
     pub(crate) size_shown: bool,
@@ -149,6 +151,8 @@ pub enum Message {
     SystemModeChanged(Mode),
     /// The collapse or expand button of the connection tree.
     TreeCollapseToggled,
+    /// The edge of the connection tree was pressed: the pointer now sets its width.
+    TreeResizeStarted,
     /// The settings button at the bottom of the connection tree.
     SettingsPressed,
     /// The close button of the properties panel.
@@ -257,6 +261,7 @@ impl State {
             removal: None,
             fresh: None,
             pointer: Point::ORIGIN,
+            tree_resizing: false,
             window: INITIAL_WINDOW,
             size_shown: false,
             resize_count: 0,
@@ -442,6 +447,9 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
             }
         }
         Message::PointerReleased => {
+            if std::mem::take(&mut state.tree_resizing) {
+                state.save_preferences();
+            }
             state.tabs.release(state.preferences.animations);
             if let Some(event) = state.tree.release() {
                 return tree_actions::on_tree_event(state, event);
@@ -454,7 +462,16 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         }
         Message::FolderPicked(_, None) => {}
         Message::Removal(message) => return state.answer_removal(message),
-        Message::PointerMoved(position) => state.pointer = position,
+        Message::PointerMoved(position) => {
+            state.pointer = position;
+            if state.tree_resizing {
+                // The tree starts one gap in from the window edge.
+                let width = (position.x - look::GAP).round().max(0.0) as u16;
+                let range = preferences::TREE_WIDTH_RANGE;
+                state.preferences.tree_width = width.clamp(*range.start(), *range.end());
+            }
+        }
+        Message::TreeResizeStarted => state.tree_resizing = true,
         Message::RecordTick => state.tabs.record_tick(),
         Message::ClipboardTick => return clipboard_actions::on_tick(),
         Message::ClipboardFilesRead(files) => {

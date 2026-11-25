@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.81.0 - 2026-11-25
+
+- Long folder and connection names wrap in the tree, and the tree can be resized by dragging its right edge.
+
 ## 0.80.21 - 2026-11-25
 
 ## 0.80.20 - 2026-11-24
