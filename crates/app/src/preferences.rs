@@ -26,6 +26,12 @@ pub struct Preferences {
     /// How big the whole window is drawn, in percent. 100 is the normal size.
     #[serde(default = "normal_scale", skip_serializing_if = "is_normal_scale")]
     pub interface_scale: u16,
+    /// How wide the connection tree is, in logical pixels. Set by dragging its edge.
+    #[serde(
+        default = "default_tree_width",
+        skip_serializing_if = "is_default_tree_width"
+    )]
+    pub tree_width: u16,
     /// How terminals look.
     #[serde(default, skip_serializing_if = "TerminalLook::is_default")]
     pub terminal: TerminalLook,
@@ -67,6 +73,7 @@ impl Default for Preferences {
             animations: true,
             high_contrast: false,
             interface_scale: normal_scale(),
+            tree_width: default_tree_width(),
             terminal: TerminalLook::default(),
             features: Features::default(),
             folders: Folders::default(),
@@ -107,6 +114,17 @@ impl TerminalLook {
 
 fn default_font_size() -> u8 {
     crate::terminal_view::DEFAULT_FONT_SIZE
+}
+
+/// The narrowest and widest the connection tree can be dragged to.
+pub const TREE_WIDTH_RANGE: std::ops::RangeInclusive<u16> = 200..=560;
+
+fn default_tree_width() -> u16 {
+    280
+}
+
+fn is_default_tree_width(width: &u16) -> bool {
+    *width == default_tree_width()
 }
 
 fn normal_scale() -> u16 {
@@ -341,6 +359,7 @@ mod tests {
             animations: false,
             high_contrast: true,
             interface_scale: 150,
+            tree_width: 340,
             window: Some(WindowPlacement {
                 width: 1200,
                 height: 800,

@@ -2,7 +2,9 @@
 //! context menu and the row being dragged.
 
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{button, column, container, opaque, pin, row, space, stack, text, tooltip};
+use iced::widget::{
+    button, column, container, mouse_area, opaque, pin, row, space, stack, text, tooltip,
+};
 use iced::{Element, Length, Point};
 
 use crate::app::{Centre, Message, State};
@@ -25,7 +27,6 @@ use crate::wsl_import;
 
 /// The room the message bar takes above the panels: one line of text and its padding.
 const BANNER_HEIGHT: f32 = 44.0;
-const TREE_WIDTH: f32 = 280.0;
 const PROPERTIES_WIDTH: f32 = 360.0;
 const COLLAPSE_ICON_SIZE: f32 = 18.0;
 /// How far the dragged row's label trails the pointer, so it is never under it.
@@ -56,7 +57,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
         .padding(look::PANEL_PADDING)
         .style(look::panel);
     // Two floating panels with the window background showing between them.
-    let body = row![tree, tabs].spacing(look::GAP);
+    let body = row![tree, tree_edge(state), tabs];
 
     // An error wins over good news; both sit above the panels.
     let message = match (&state.error, &state.notice) {
@@ -135,7 +136,7 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
             expanded_tree(state)
         };
     }
-    let width = RAIL_WIDTH + (TREE_WIDTH - RAIL_WIDTH) * unfolded;
+    let width = RAIL_WIDTH + (tree_width(state) - RAIL_WIDTH) * unfolded;
     if width < RAIL_UNTIL {
         return rail(Some(width), state.centre());
     }
@@ -144,6 +145,25 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .clip(true)
+        .into()
+}
+
+fn tree_width(state: &State) -> f32 {
+    f32::from(state.preferences.tree_width)
+}
+
+/// The gap between the tree and the centre. While the tree is open, dragging it sets the
+/// tree's width.
+fn tree_edge(state: &State) -> Element<'_, Message> {
+    let gap = container(space::horizontal())
+        .width(Length::Fixed(look::GAP))
+        .height(Length::Fill);
+    if state.preferences.tree_collapsed {
+        return gap.into();
+    }
+    mouse_area(gap)
+        .interaction(iced::mouse::Interaction::ResizingHorizontally)
+        .on_press(Message::TreeResizeStarted)
         .into()
 }
 
@@ -293,7 +313,7 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
     );
     side_panel(
         column![header, toolbar, content, settings].spacing(look::GAP),
-        TREE_WIDTH,
+        tree_width(state),
     )
 }
 

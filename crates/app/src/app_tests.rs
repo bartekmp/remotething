@@ -1008,3 +1008,32 @@ fn a_sign_in_form_in_the_front_tab_is_a_form_where_tab_moves_between_fields() {
 
     assert!(state.tabs.front_is_asking());
 }
+
+#[test]
+fn dragging_the_tree_edge_sets_its_width_within_limits_and_saves_it_on_release() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    let saved = |state: &State| preferences::load(&preferences::path_beside(&state.path)).unwrap();
+    let move_to = |state: &mut State, x: f32| {
+        let _ = update(state, Message::PointerMoved(iced::Point::new(x, 100.0)));
+    };
+
+    // Moving without pressing the edge changes nothing.
+    move_to(&mut state, 400.0);
+    assert_eq!(state.preferences.tree_width, 280);
+
+    let _ = update(&mut state, Message::TreeResizeStarted);
+    move_to(&mut state, 412.0);
+    assert_eq!(state.preferences.tree_width, 400);
+    move_to(&mut state, 10.0);
+    assert_eq!(state.preferences.tree_width, 200);
+    move_to(&mut state, 5000.0);
+    assert_eq!(state.preferences.tree_width, 560);
+    move_to(&mut state, 412.0);
+    assert_eq!(saved(&state).tree_width, 280, "saved only on release");
+
+    let _ = update(&mut state, Message::PointerReleased);
+    assert_eq!(saved(&state).tree_width, 400);
+    move_to(&mut state, 300.0);
+    assert_eq!(state.preferences.tree_width, 400);
+}
