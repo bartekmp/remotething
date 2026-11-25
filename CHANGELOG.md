@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.81.1 - 2026-11-25
+
+- Long names wrap in the file panes too.
+
 ## 0.81.0 - 2026-11-25
 
 - Long folder and connection names wrap in the tree, and the tree can be resized by dragging its right edge.

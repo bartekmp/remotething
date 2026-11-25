@@ -259,7 +259,7 @@ fn view_row(state: &State, tree_row: Row) -> Element<'_, Message> {
         icons::view(icon, 15),
         text(tree_row.entry.name.clone())
             .size(theme::TEXT_BODY)
-            .wrapping(text::Wrapping::None)
+            .wrapping(text::Wrapping::WordOrGlyph)
             .width(Length::Fill),
     ]
     .spacing(6)
