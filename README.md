@@ -25,7 +25,7 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 - **Sign in** with passwords, key files, ssh-agent or keyboard-interactive prompts.
 - **Jump hosts**, chained, and **port forwards**: local, remote and dynamic (SOCKS5).
 - **Host keys** checked against your known hosts, with the fingerprint shown on first contact. OpenSSH host certificates are understood too.
-- **Screenshots and recordings** of a terminal, off until you switch them on.
+- **Recordings and screenshots** of a terminal, off until you switch them on (see below).
 
 <p align="center"><img src="docs/src/images/terminal-light.png" alt="An SSH terminal in the light theme" width="49%"> <img src="docs/src/images/terminal-dark.png" alt="The dark theme" width="49%"></p>
 
@@ -40,9 +40,21 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 
 - **RDP** with resizing, clipboard (text, images and files), quality presets and server certificate checks.
 - **VNC** with clipboard and quality presets, and a note that VNC is not encrypted unless you tunnel it.
-- **Recordings and screenshots** of a desktop, off until you switch them on.
+- **Recordings and screenshots** of a desktop, off until you switch them on (see below).
 
 <p align="center"><img src="docs/src/images/rdp.png" alt="A Windows 11 desktop over RDP" width="49%"> <img src="docs/src/images/vnc.png" alt="A VNC desktop in a tab" width="49%"></p>
+
+### Recordings and screenshots (optional)
+
+Off until you tick them under **Settings, Optional features**. While off they add no button and write no file.
+
+- **SSH terminal recordings** are [asciicast](https://docs.asciinema.org/manual/asciicast/v2/) files. Replay one with `asciinema play file.cast`. Typed keys are kept only if you also tick that box, because passwords are typed in terminals.
+- **Remote desktop recordings** (RDP and VNC) are AVI video files. A long recording continues in a new file.
+- **Screenshots** save a PNG of a remote desktop, or the text on a terminal's screen.
+- Files go beside the connections file, or into folders you choose. On Linux only you can read them. A red dot and a timer show while a recording runs.
+
+<p align="center"><img src="docs/src/images/terminal-recording.gif" alt="Recording an SSH terminal" width="49%"> <img src="docs/src/images/desktop-recording.gif" alt="Recording a VNC desktop and taking a screenshot" width="49%"></p>
+<p align="center"><img src="docs/src/images/optional-features.png" alt="The Optional features settings" width="720"></p>
 
 ### Local shells
 
@@ -80,6 +92,7 @@ cargo run --release -p remotething
 
 - [User guide](docs/src/introduction.md) (`mdbook build docs` builds it as a site)
 - [Keyboard shortcuts](docs/src/shortcuts.md) and [troubleshooting](docs/src/troubleshooting.md)
+- [Recordings and screenshots](docs/src/recording.md)
 - [Security](docs/src/security.md) and how to [report a problem](SECURITY.md)
 - [Architecture](ARCHITECTURE.md) and [contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
