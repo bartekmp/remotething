@@ -455,3 +455,6 @@ palette-local-terminal = New local terminal
 shortcuts-local-terminal = New local terminal
 launcher-local = New local terminal
 launcher-local-note = your default shell
+files-column-permissions = Permissions
+files-column-modified = Modified
+files-column-size = Size

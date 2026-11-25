@@ -488,3 +488,35 @@ fn only_the_pane_beside_a_terminal_is_compact_until_it_is_zoomed() {
     let _ = update(&mut state, Message::ZoomToggled);
     assert!(!state.is_compact());
 }
+
+#[test]
+fn dragging_a_column_edge_resizes_it_within_limits() {
+    use crate::files_columns::Column;
+    let mut state = loaded();
+    let before = state.columns.modified;
+
+    // Moving the pointer without pressing an edge changes nothing.
+    let _ = update(&mut state, Message::ColumnMoved(300.0));
+    assert_eq!(state.columns.modified, before);
+
+    let _ = update(&mut state, Message::ColumnPressed(Column::Modified));
+    let _ = update(&mut state, Message::ColumnMoved(300.0));
+    assert_eq!(
+        state.columns.modified, before,
+        "the first move only marks the start"
+    );
+    let _ = update(&mut state, Message::ColumnMoved(270.0));
+    assert_eq!(
+        state.columns.modified,
+        before + 30.0,
+        "dragging left widens"
+    );
+    let _ = update(&mut state, Message::ColumnMoved(-5000.0));
+    assert_eq!(state.columns.modified, 400.0);
+    let _ = update(&mut state, Message::ColumnMoved(5000.0));
+    assert_eq!(state.columns.modified, 40.0);
+
+    let _ = update(&mut state, Message::ColumnReleased);
+    let _ = update(&mut state, Message::ColumnMoved(0.0));
+    assert_eq!(state.columns.modified, 40.0, "released: no more resizing");
+}

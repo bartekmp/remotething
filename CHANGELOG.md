@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.82.0 - 2026-11-25
+
+- In the file pane's details view, a header names the columns and their left edges can be dragged to resize them.
+
 ## 0.81.1 - 2026-11-25
 
 - Long names wrap in the file panes too.

@@ -62,6 +62,10 @@ pub struct State {
     pub(crate) zoomed: bool,
     /// Whether rows show permissions and modification time.
     pub(crate) details: bool,
+    /// How wide the detail columns are.
+    pub(crate) columns: crate::files_columns::Widths,
+    /// The column edge being dragged, until the button is released.
+    pub(crate) column_drag: Option<crate::files_columns::Drag>,
     /// An upload waiting for a yes, because its remote file exists: local file and remote path.
     pub(crate) pending_replace: Option<(PathBuf, String)>,
     /// The last problem or result, shown at the bottom.
@@ -149,6 +153,12 @@ pub enum Message {
     LocalToggled,
     /// The "Details" button: show or hide permissions and modification time.
     DetailsToggled,
+    /// The left edge of a detail column was pressed in the header.
+    ColumnPressed(crate::files_columns::Column),
+    /// The pointer moved across the header, to this x.
+    ColumnMoved(f32),
+    /// The button was released, or the pointer left the header.
+    ColumnReleased,
     /// A message for the local pane.
     Other(Box<Message>),
     /// "Copy to this computer": the selection here goes into the local folder.
@@ -217,6 +227,8 @@ impl State {
             closable: true,
             zoomed: false,
             details: true,
+            columns: Default::default(),
+            column_drag: None,
             pending_replace: None,
             status: None,
             other: None,
@@ -444,6 +456,21 @@ pub fn update(state: &mut State, message: Message) -> (Task<Message>, Option<Eve
         }
         Message::DetailsToggled => {
             state.details = !state.details;
+            Task::none()
+        }
+        Message::ColumnPressed(column) => {
+            state.column_drag = Some(crate::files_columns::Drag {
+                column,
+                last_x: None,
+            });
+            Task::none()
+        }
+        Message::ColumnMoved(x) => {
+            crate::files_columns::pointer_moved(&mut state.columns, &mut state.column_drag, x);
+            Task::none()
+        }
+        Message::ColumnReleased => {
+            state.column_drag = None;
             Task::none()
         }
         Message::LocalToggled => files_dual::toggle(state),

@@ -25,6 +25,7 @@ mod file_clipboard;
 mod file_details;
 mod file_dialog;
 mod file_preview;
+mod files_columns;
 mod files_dual;
 mod files_folders;
 mod files_keys;
