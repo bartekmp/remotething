@@ -1,8 +1,6 @@
 [workspace]
 resolver = "3"
 members = ["crates/app", "crates/capture", "crates/core", "crates/files", "crates/rdp", "crates/remote", "crates/secrets", "crates/vnc", "xtask"]
-# Throwaway M0 prototypes with their own lockfile.
-exclude = ["spikes"]
 
 [workspace.package]
 version = "0.84.0"

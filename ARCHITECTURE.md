@@ -29,4 +29,4 @@ A crate is added when it has code to hold, not before.
 
 ## Decisions
 
-Short records live in `docs/adr/`. The M0 prototypes and their findings are in `spikes/` and `docs/spikes/m0-findings.md`.
+Short records live in `docs/adr/`. The findings of the M0 prototypes, which are no longer in the tree, are in `docs/spikes/m0-findings.md`.
