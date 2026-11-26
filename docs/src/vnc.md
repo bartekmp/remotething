@@ -31,6 +31,10 @@ To tunnel, choose an SSH connection as the **Jump host** in the properties panel
 - Closing the tab ends the session and asks first.
 - A closed or lost session shows why, with a **Reconnect** button.
 
+## Desktop size
+
+If the server can change its desktop size, which most can (TigerVNC, wayvnc and others say so when they connect), the desktop follows the tab: about a second after you stop resizing the window or the tree, the app asks for a desktop of the tab's size. Nothing needs to be set. A server that cannot, or does not answer, keeps its size and the picture is scaled to fit.
+
 ## Quality
 
 Choose **Remote desktop quality** in the properties panel of a connection, or of a folder for everything inside it. It is the same setting as for [Remote Desktop](rdp.md#quality). Without a choice a connection uses **Balanced**.
@@ -44,7 +48,7 @@ A change applies the next time you connect.
 
 ## Connection details
 
-A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, CopyRect, Raw), the traffic totals and the time connected.
+A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, Tight, CopyRect, Raw), the traffic totals and the time connected.
 
 ## Signing in
 
@@ -56,6 +60,4 @@ Some servers offer only their own sign-in method with a user name and password, 
 
 | Feature | State |
 | --- | --- |
-| The Tight encoding (it needs a JPEG decoder) | Planned |
-| Resizing the desktop with the tab | Planned (servers that allow it) |
 | View-only mode, Apple Remote Desktop sign-in, user name and password sign-in methods (SRP, MS-Logon) | Not planned for now |

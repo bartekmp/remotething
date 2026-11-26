@@ -1,6 +1,6 @@
 //! Draws a VNC tab and turns the pointer over it into input.
 
-use iced::widget::{button, column, container, mouse_area, responsive, text};
+use iced::widget::{button, column, container, mouse_area, responsive, sensor, text};
 use iced::{Element, Length, mouse};
 use remotething_vnc::Button;
 
@@ -117,7 +117,11 @@ fn with_status_bar<'a>(
         progress: None,
         actions,
     };
-    status_bar::view(desktop(live), bar, Message::DetailsToggled)
+    // The desktop follows the room it gets: its size is reported as the tab changes.
+    let room = sensor(desktop(live))
+        .on_show(Message::AreaChanged)
+        .on_resize(Message::AreaChanged);
+    status_bar::view(room.into(), bar, Message::DetailsToggled)
 }
 
 fn live_rate(live: &Live) -> String {

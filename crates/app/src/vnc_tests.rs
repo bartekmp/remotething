@@ -443,3 +443,44 @@ fn a_failed_screenshot_says_why() {
     let note = live.note.as_ref().and_then(Note::current).unwrap();
     assert!(note.contains("disk full"), "{note}");
 }
+
+#[test]
+fn a_settled_tab_size_is_offered_to_the_session_which_decides_whether_the_server_can_follow() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let mut input = state.connect_for_test(info());
+    let room = iced::Size::new(800.0, 600.0);
+
+    // Still moving: nothing is asked.
+    fixture.send(&mut state, Message::AreaChanged(room));
+    assert!(input.try_recv().is_err());
+
+    // The size that settled is not the current one: asked for.
+    fixture.send(&mut state, Message::AreaSettled(room));
+    assert_eq!(
+        input.try_recv().unwrap(),
+        Input::Resize {
+            width: 800,
+            height: 600
+        }
+    );
+
+    // A size that was replaced by a newer one is ignored.
+    fixture.send(
+        &mut state,
+        Message::AreaSettled(iced::Size::new(900.0, 700.0)),
+    );
+    assert!(input.try_recv().is_err());
+
+    // The desktop already has the size of the room.
+    fixture.send(
+        &mut state,
+        Message::Frame(crate::picture::Picture::new(
+            800,
+            600,
+            vec![0; 800 * 600 * 4],
+        )),
+    );
+    fixture.send(&mut state, Message::AreaSettled(room));
+    assert!(input.try_recv().is_err());
+}

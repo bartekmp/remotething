@@ -212,3 +212,40 @@ async fn the_low_bandwidth_preset_still_gives_the_right_picture() {
     assert_eq!(session.info.colours, "16 bit");
     assert_eq!(size, Some((640, 480)));
 }
+
+#[tokio::test]
+async fn a_server_that_can_resize_follows_the_requested_size_without_being_told_it_can() {
+    let Some(server) = start("VncAuth") else {
+        return;
+    };
+    let mut session = connect(target(&server, Some(PASSWORD))).await.unwrap();
+
+    // Nothing is known about the server; the request is made and the server decides.
+    session
+        .input
+        .send(Input::Resize {
+            width: 800,
+            height: 600,
+        })
+        .await
+        .unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut size = None;
+    while Instant::now() < deadline && size != Some((800, 600)) {
+        if let Ok(Some(Event::Frame(frame))) =
+            tokio::time::timeout(Duration::from_secs(1), session.events.recv()).await
+        {
+            size = Some((frame.width, frame.height));
+        }
+        // A request before the server's first announcement is not asked of it; try again.
+        let _ = session
+            .input
+            .send(Input::Resize {
+                width: 800,
+                height: 600,
+            })
+            .await;
+    }
+    assert_eq!(size, Some((800, 600)));
+}
