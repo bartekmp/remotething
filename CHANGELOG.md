@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.83.0 - 2026-11-26
+
+- New themes: Dracula, Catppuccin, Gruvbox, Nord, Solarized and Monokai, each in a dark and a light variant.
+- Optional feature "Follow terminal theme" (off by default): adds a Theme choice that takes the window colours from the terminal theme.
+
 ## 0.82.0 - 2026-11-25
 
 - In the file pane's details view, a header names the columns and their left edges can be dragged to resize them. The widths are remembered.
