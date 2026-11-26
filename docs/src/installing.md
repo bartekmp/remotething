@@ -25,7 +25,7 @@ Without a Vulkan or OpenGL driver the app still runs, with slower software rende
 
 ## Downloads
 
-Each release on GitHub has the `.deb`, the `.rpm` and the Windows `.zip`. The Flatpak is built locally for now.
+Each release on GitHub has the `.deb`, the `.rpm`, the `.flatpak` bundle and the Windows `.zip`.
 
 ## Windows
 
