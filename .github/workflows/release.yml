@@ -3,7 +3,8 @@
 # `cargo xtask bump` first). Creates the tag v<version> if it is missing, builds the Linux
 # packages (.deb, .rpm) and the Windows zip in the CI image, and attaches them to the GitHub
 # release, whose notes are the version's section of CHANGELOG.md. An existing tag is built
-# as it is.
+# as it is. The Flatpak is built afterwards from that tag and added to the release, so a
+# failing Flatpak build leaves the rest of the release in place.
 name: Release
 
 on:
@@ -62,3 +63,44 @@ jobs:
           # Creates the tag on the built commit when the release is new.
           gh release view "v$VERSION" || gh release create "v$VERSION" --target "$(git rev-parse HEAD)" --title "v$VERSION" --notes-file notes.md
           gh release upload "v$VERSION" --clobber dist/*.deb dist/*.rpm dist/*-windows-x86_64.zip
+
+  flatpak:
+    needs: release
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: Build the Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
+        with:
+          bundle: remotething-${{ inputs.version }}.flatpak
+          manifest-path: crates/app/packaging/flatpak/io.github.bartekmp.Remotething.yml
+          cache: false
+          upload-artifact: false
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flatpak
+          path: remotething-${{ inputs.version }}.flatpak
+
+  attach-flatpak:
+    needs: flatpak
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: flatpak
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: gh release upload "v$VERSION" --clobber "remotething-$VERSION.flatpak"

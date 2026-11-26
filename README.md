@@ -80,7 +80,7 @@ Off until you tick them under **Settings, Optional features**. While off they ad
 | Any Linux with Flatpak | `flatpak install --user remotething-<version>.flatpak` |
 | Windows 10 and 11, 64-bit | unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe` |
 
-The `.deb`, `.rpm` and Windows `.zip` are on the [releases page](https://github.com/bartekmp/remotething/releases). The Flatpak is built with `cargo xtask package flatpak`; every package lands in `dist/`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
+The `.deb`, `.rpm` and Windows `.zip` are on the [releases page](https://github.com/bartekmp/remotething/releases). The Flatpak bundle is there too, and `cargo xtask package flatpak` builds it locally; every package lands in `dist/`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
 
 Or build and run from source with a current Rust toolchain:
 
