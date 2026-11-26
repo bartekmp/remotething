@@ -8,7 +8,7 @@ use iced::widget::{column, container, mouse_area, row, scrollable, space, text};
 use iced::{Element, Length};
 use remotething_core::{Protocol, Store};
 
-use crate::ellipsis::ellipsized;
+use crate::ellipsis::with_hint;
 use crate::i18n::fl;
 use crate::icons;
 use crate::rows::{self, Row, RowKind};
@@ -312,7 +312,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
                     .align_y(Vertical::Center)
                     .into(),
                 None => {
-                    let label = row![icon, ellipsized(tree_row.name).size(theme::TEXT_BODY)]
+                    let label = row![icon, with_hint(tree_row.name, theme::TEXT_BODY)]
                         .spacing(8)
                         .align_y(Vertical::Center);
                     mouse_area(label)
@@ -333,7 +333,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
             row_container(line, style)
         }
         (RowKind::Connection(protocol), None) => {
-            let label = ellipsized(tree_row.name).size(theme::TEXT_BODY);
+            let label = with_hint(tree_row.name, theme::TEXT_BODY);
             let badge = container(text(protocol_label(protocol)).size(11))
                 .padding([2, 6])
                 .style(theme::chip);

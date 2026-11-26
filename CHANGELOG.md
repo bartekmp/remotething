@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.83.2 - 2026-11-26
+
+- A cut-off name in the tree shows in full in a hint under the pointer.
+
 ## 0.83.1 - 2026-11-26
 
 - Long folder and connection names in the tree end in "…" instead of wrapping.
