@@ -19,7 +19,10 @@ use crate::theme;
 
 const FORM_WIDTH: f32 = 360.0;
 
-pub fn view(state: &State) -> Element<'_, Message> {
+pub fn view<'a>(
+    state: &'a State,
+    themes: &crate::terminal_settings::State,
+) -> Element<'a, Message> {
     let host = state.connection.host.as_str();
     match &state.stage {
         Stage::LoadingSecret | Stage::Connecting => {
@@ -34,7 +37,15 @@ pub fn view(state: &State) -> Element<'_, Message> {
             Message::TrustPressed,
         )),
         Stage::Connected(live) => {
-            let terminal = terminal_view::view(&live.screen, &live.cache, Message::Terminal);
+            // A theme chosen for this connection; without one, the terminal follows the app's.
+            let palette = state
+                .connection
+                .terminal_theme
+                .as_deref()
+                .and_then(|name| themes.library.get(name))
+                .map(crate::terminal_theme::Theme::palette);
+            let terminal =
+                terminal_view::view(&live.screen, &live.cache, Message::Terminal, palette);
             let terminal = match &live.pending_paste {
                 Some(pending) => stack![terminal, paste_question(pending)].into(),
                 None => terminal,

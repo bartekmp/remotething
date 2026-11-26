@@ -245,19 +245,26 @@ pub fn view<'a, Message: 'a>(
     screen: &'a Screen,
     cache: &'a Cache,
     on_event: fn(Event) -> Message,
+    palette: Option<Palette>,
 ) -> Element<'a, Message> {
     let program = Program {
         screen,
         cache,
         on_event,
+        palette,
         metrics: Metrics::new(look().font_size).with_font(look().font),
     };
     let canvas = canvas::Canvas::new(program)
         .width(Length::Fill)
         .height(Length::Fill);
     container(canvas)
-        .style(|theme| container::Style {
-            background: Some(Palette::of(theme).background.into()),
+        .style(move |theme| container::Style {
+            background: Some(
+                palette
+                    .unwrap_or_else(|| Palette::of(theme))
+                    .background
+                    .into(),
+            ),
             border: iced::border::rounded(10.0),
             ..container::Style::default()
         })
@@ -268,6 +275,8 @@ struct Program<'a, Message> {
     screen: &'a Screen,
     cache: &'a Cache,
     on_event: fn(Event) -> Message,
+    /// The colours of this terminal alone; `None` follows the app's.
+    palette: Option<Palette>,
     metrics: Metrics,
 }
 
@@ -508,7 +517,7 @@ impl<Message> canvas::Program<Message> for Program<'_, Message> {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
-        let palette = &Palette::of(theme);
+        let palette = &self.palette.unwrap_or_else(|| Palette::of(theme));
         let metrics = self.metrics;
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             let cell = Size::new(metrics.cell_width, metrics.cell_height);

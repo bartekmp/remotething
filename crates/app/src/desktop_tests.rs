@@ -46,6 +46,7 @@ impl Fixture {
 
     fn start(&mut self, credential: Option<&str>) -> State {
         let connection = ResolvedConnection {
+            terminal_theme: None,
             id: "win".to_string(),
             name: "win".to_string(),
             protocol: Protocol::Rdp,

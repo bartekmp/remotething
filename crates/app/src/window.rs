@@ -362,8 +362,14 @@ fn properties_panel(state: &State, below_banner: bool) -> Element<'_, Message> {
         icon_button(icons::CLOSE, Message::PropertiesClosed),
     ]
     .align_y(Vertical::Center);
-    let content = properties::view(state.draft.as_ref(), &state.store, state.tree.selected())
-        .map(Message::Properties);
+    let themes = state.terminal_themes.names();
+    let content = properties::view(
+        state.draft.as_ref(),
+        &state.store,
+        state.tree.selected(),
+        &themes,
+    )
+    .map(Message::Properties);
     let panel = container(column![header, content].spacing(look::GAP))
         .width(Length::Fixed(PROPERTIES_WIDTH))
         .height(Length::Fill)

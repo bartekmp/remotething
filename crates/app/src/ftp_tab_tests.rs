@@ -46,6 +46,7 @@ impl Fixture {
 
     fn start(&mut self, protocol: Protocol, credential: Option<&str>) -> State {
         let connection = ResolvedConnection {
+            terminal_theme: None,
             id: "nas".to_string(),
             name: "nas".to_string(),
             protocol,
