@@ -313,7 +313,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             state.password = Some(secret);
             state.connect(context)
         }
-        Message::SecretLoaded(Ok(Sealed(None))) => state.ask(None),
+        Message::SecretLoaded(Ok(Sealed(None))) => state.ask(Some(fl!("session-secret-missing"))),
         Message::SecretLoaded(Err(reason)) => {
             let note = format!("{} {reason}", fl!("session-secret-failed"));
             state.ask(Some(note))

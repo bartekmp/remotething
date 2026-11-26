@@ -140,6 +140,8 @@ fn a_password_credential_first_reads_the_stored_password() {
     // Nothing is stored, so it has to be typed.
     fixture.send(&mut state, Message::SecretLoaded(Ok(Sealed(None))));
     assert!(!form(&state).ask_username);
+    // The form says why it is there, so a lost keyring entry is not a mystery.
+    assert!(form(&state).note.is_some());
 }
 
 #[test]

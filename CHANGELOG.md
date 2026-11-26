@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.84.1 - 2026-11-26
+
+- When a credential has no saved password in the keyring, the sign-in form says so instead of just asking.
+
 ## 0.84.0 - 2026-11-26
 
 - A terminal theme can be chosen per connection or folder (Terminal theme in the properties panel). Default follows Settings → Terminal.
