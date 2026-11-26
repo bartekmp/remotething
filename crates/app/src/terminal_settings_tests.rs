@@ -180,3 +180,25 @@ fn the_preview_uses_every_colour_of_the_palette_and_lines_up_the_logo() {
         .collect();
     assert_eq!(widths.len(), 1);
 }
+
+#[test]
+fn imported_themes_are_listed_before_the_built_in_ones() {
+    let mut fixture = Fixture::new();
+
+    fixture.import("zzz.conf", KITTY);
+
+    let names = fixture.state.names();
+    assert_eq!(names[0], "zzz");
+    assert_eq!(names.len(), crate::terminal_builtin::all().len() + 1);
+}
+
+#[test]
+fn a_built_in_theme_cannot_be_deleted() {
+    let mut fixture = Fixture::new();
+    let built_in = crate::terminal_builtin::all()[0].name.clone();
+    fixture.send(Message::Previewed(Some(built_in.clone())));
+
+    fixture.send(Message::DeletePressed);
+
+    assert!(fixture.state.names().contains(&built_in));
+}
