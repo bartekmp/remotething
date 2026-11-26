@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.85.0 - 2026-11-26
+
+- VNC: the desktop follows the size of the tab, when the server can resize (the app detects that by itself).
+- VNC: the Tight encoding is offered after ZRLE, for servers that have no ZRLE, such as TightVNC.
+
 ## 0.84.1 - 2026-11-26
 
 - When a credential has no saved password in the keyring, the sign-in form says so instead of just asking.

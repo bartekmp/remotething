@@ -4,10 +4,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use iced::Task;
 use iced::futures::stream;
 use iced::keyboard::Key;
 use iced::keyboard::key::Physical;
+use iced::{Size, Task};
 use remotething_core::{CredentialKind, ResolvedConnection};
 use remotething_remote::ssh::{self, Endpoint, HostKey};
 use remotething_secrets::Secret;
@@ -16,6 +16,8 @@ use tokio::sync::mpsc;
 
 use crate::credentials::Hidden;
 use crate::desktop_cursor::Look;
+use crate::desktop_size;
+use crate::display;
 use crate::features;
 use crate::i18n::fl;
 use crate::jump;
@@ -63,6 +65,8 @@ pub(crate) struct Live {
     pub(crate) picture: Picture,
     /// The size of the remote desktop in pixels.
     pub(crate) size: (u32, u32),
+    /// The room the tab gives the desktop, in logical pixels.
+    pub(crate) area: Size,
     input: mpsc::Sender<Input>,
     pub(crate) info: Info,
     pub(crate) meter: Meter,
@@ -80,6 +84,9 @@ pub(crate) struct Live {
     /// The keysym each held key sent, so its release lets go of the same one.
     held: HashMap<Physical, u32>,
 }
+
+/// How long the tab's size must stay the same before the server is asked to match it.
+const RESIZE_SETTLE: std::time::Duration = std::time::Duration::from_millis(700);
 
 /// A freshly opened session on its way to the window. It is taken out once.
 #[derive(Clone)]
@@ -134,6 +141,10 @@ pub enum Message {
     Opened(Result<Opened, Failure>),
     ReconnectPressed,
     Frame(Picture),
+    /// The room the tab gives the desktop changed.
+    AreaChanged(Size),
+    /// The room stayed the same for a while: time to ask for a desktop that fits.
+    AreaSettled(Size),
     Stats(Stats),
     Clipboard(String),
     Cursor(Option<remotething_vnc::Cursor>),
@@ -377,6 +388,7 @@ impl Live {
         Self {
             picture: Picture::black(),
             size,
+            area: Size::ZERO,
             input,
             info,
             meter: Meter::new(),
@@ -465,6 +477,32 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             if let Stage::Connected(live) = &mut state.stage {
                 live.size = (picture.width, picture.height);
                 live.picture = picture;
+            }
+            Task::none()
+        }
+        Message::AreaChanged(area) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            live.area = area;
+            // A window being dragged reports many sizes; only the last one counts.
+            Task::perform(
+                async move {
+                    tokio::time::sleep(RESIZE_SETTLE).await;
+                    area
+                },
+                Message::AreaSettled,
+            )
+        }
+        Message::AreaSettled(area) => {
+            if let Stage::Connected(live) = &state.stage
+                && live.area == area
+                && let Some((width, height)) =
+                    desktop_size::wanted(area, display::scale(), live.size)
+            {
+                // Whether the server can resize is the session's business: it asks the
+                // server only if the server said so, and otherwise the picture is scaled.
+                state.send(Input::Resize { width, height });
             }
             Task::none()
         }

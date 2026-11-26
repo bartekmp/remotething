@@ -48,6 +48,14 @@ pub enum Input {
         /// True for down, false for up.
         pressed: bool,
     },
+    /// The window has room for a desktop of this size. Asked of the server only when it said
+    /// it can resize; otherwise the picture stays as it is.
+    Resize {
+        /// Pixels across.
+        width: u16,
+        /// Pixels down.
+        height: u16,
+    },
     /// The text on the local clipboard changed.
     Clipboard(String),
 }

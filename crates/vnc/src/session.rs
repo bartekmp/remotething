@@ -1,6 +1,7 @@
 //! Connecting, and the task that runs a session.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use remotething_secrets::Secret;
@@ -145,6 +146,8 @@ where
         VncConnector::new(Counted::new(crate::tight::relay(stream), counters.clone()))
             .set_auth_method(async move { password.ok_or(VncError::NoPassword) })
             .add_encoding(VncEncoding::Zrle)
+            // For servers that have no ZRLE, such as TightVNC.
+            .add_encoding(VncEncoding::Tight)
             .add_encoding(VncEncoding::CopyRect)
             .add_encoding(VncEncoding::Raw);
     if quality.shows_pointer() {
@@ -152,6 +155,8 @@ where
     }
     let client = connector
         .add_encoding(VncEncoding::DesktopSizePseudo)
+        // A server that can resize says so with this; there is nothing to ask the user.
+        .add_encoding(VncEncoding::ExtendedDesktopSizePseudo)
         .allow_shared(true)
         .set_pixel_format(depth.pixel_format())
         .build()?
@@ -171,7 +176,7 @@ where
         info: Info {
             peer,
             security: "VNC password, not encrypted",
-            encodings: "ZRLE, CopyRect, Raw",
+            encodings: "ZRLE, Tight, CopyRect, Raw",
             colours: depth.label(),
         },
         events,
@@ -180,7 +185,7 @@ where
 }
 
 struct Worker {
-    client: VncClient,
+    client: Arc<VncClient>,
     counters: Counters,
     picture: Framebuffer,
     /// How pixels arrive from the server.
@@ -197,7 +202,7 @@ struct Worker {
 impl Worker {
     fn new(client: VncClient, counters: Counters, depth: Depth) -> Self {
         Self {
-            client,
+            client: Arc::new(client),
             counters,
             picture: Framebuffer::new(1, 1),
             depth,
@@ -276,6 +281,17 @@ impl Worker {
                 self.picture = Framebuffer::new(screen.width, screen.height);
                 self.dirty = true;
             }
+            VncEvent::DesktopUpdate(update) => {
+                // A server that can resize announces its size this way, at the start and
+                // after every resize.
+                if let Some(layout) = update.layout
+                    && (layout.width, layout.height)
+                        != (self.picture.width(), self.picture.height())
+                {
+                    self.picture = Framebuffer::new(layout.width, layout.height);
+                    self.dirty = true;
+                }
+            }
             VncEvent::RawImage(rect, data) => {
                 self.picture.paint_depth(area(rect), &data, self.depth);
                 self.dirty = true;
@@ -321,6 +337,17 @@ impl Worker {
             }
             Input::Clipboard(text) => {
                 self.client.input(X11Event::CopyText(latin1(&text))).await?;
+            }
+            // Only a server that said it can resize is asked; for the others this does
+            // nothing and the picture is scaled to the window instead.
+            Input::Resize { width, height } if self.client.desktop_layout().is_some() => {
+                // The server's answer comes through the events, which the loop keeps reading,
+                // so the request is made on the side. A refusal or a timeout leaves the
+                // desktop as it is.
+                let client = Arc::clone(&self.client);
+                tokio::spawn(async move {
+                    let _ = client.resize_desktop(width, height).await;
+                });
             }
             _ => {}
         }
