@@ -92,7 +92,7 @@ A server the pattern covers presents its certificate, and the tab connects when 
 
 ### Colour themes
 
-In **Settings → Terminal**, press **Import theme file…** and pick a theme of Alacritty (`.toml`, or the older `.yml`), kitty (`.conf`) or Ghostty (a file with `palette = N=#rrggbb` lines). The theme is saved in `terminal-themes.toml` beside the settings and shows in the list. Click a theme to see it in the preview box, which draws a made-up `fastfetch` screen in its colours; **Use this theme** applies it, a ✓ marks the one in use, and **Delete** removes it. **Default** follows the app's light or dark theme.
+**Settings → Terminal** lists twelve themes that come with the app, a dark and a light one each of Dracula, Catppuccin (Mocha, Latte), Gruvbox, Nord, Solarized and Monokai, above the ones you import. To bring your own, press **Import theme file…** and pick a theme of Alacritty (`.toml`, or the older `.yml`), kitty (`.conf`) or Ghostty (a file with `palette = N=#rrggbb` lines). The theme is saved in `terminal-themes.toml` beside the settings and shows in the list. Click a theme to see it in the preview box, which draws a made-up `fastfetch` screen in its colours; **Use this theme** applies it, a ✓ marks the one in use, and **Delete** removes an imported one. **Default** follows the app's light or dark theme.
 
 - A theme needs a foreground, a background and some of the 16 colours; the ones it leaves out come from the default palette.
 - Colours other than these (cursor, tabs and so on) are ignored.

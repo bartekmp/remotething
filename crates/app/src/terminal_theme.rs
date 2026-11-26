@@ -14,6 +14,10 @@ use crate::terminal_view::Palette;
 pub struct Rgb(u32);
 
 impl Rgb {
+    pub const fn new(hex: u32) -> Self {
+        Rgb(hex)
+    }
+
     /// Reads `#rrggbb`, `0xrrggbb` or `rrggbb`.
     fn parse(text: &str) -> Option<Self> {
         let text = text.trim().trim_matches(|c| c == '"' || c == '\'');
@@ -317,8 +321,12 @@ pub struct Library {
 }
 
 impl Library {
+    /// The imported theme of this name, or else the built-in one.
     pub fn get(&self, name: &str) -> Option<&Theme> {
-        self.themes.iter().find(|theme| theme.name == name)
+        self.themes
+            .iter()
+            .find(|theme| theme.name == name)
+            .or_else(|| crate::terminal_builtin::get(name))
     }
 
     /// Adds a theme, replacing one of the same name. The list stays sorted by name.

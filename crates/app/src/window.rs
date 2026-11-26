@@ -256,7 +256,8 @@ fn rail_button<'a>(
         tooltip::Position::Right,
     )
     .gap(4)
-    .style(look::chip)
+    .padding(6)
+    .style(look::floating)
     .into()
 }
 
