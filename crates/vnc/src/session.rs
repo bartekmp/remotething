@@ -100,6 +100,9 @@ pub enum Event {
     Cursor(Option<Cursor>),
     /// Text was copied on the server.
     Clipboard(String),
+    /// The server said it can resize its desktop, so the window may ask it to. Sent once, if at
+    /// all, soon after connecting.
+    Resizable,
     /// Running totals, about once per second.
     Stats(Stats),
     /// The session ended, with the reason when it was not the user's doing.
@@ -197,6 +200,10 @@ struct Worker {
     /// Changes the window has not been told yet.
     cursor: Option<Option<Cursor>>,
     copied: Vec<String>,
+    /// The server announced it can resize, and the window has not been told yet.
+    resizable: bool,
+    /// The server's announcement was seen, so it is not reported again.
+    announced: bool,
 }
 
 impl Worker {
@@ -211,6 +218,8 @@ impl Worker {
             frames: 0,
             cursor: None,
             copied: Vec::new(),
+            resizable: false,
+            announced: false,
         }
     }
 
@@ -284,6 +293,10 @@ impl Worker {
             VncEvent::DesktopUpdate(update) => {
                 // A server that can resize announces its size this way, at the start and
                 // after every resize.
+                if update.layout.is_some() && !self.announced {
+                    self.announced = true;
+                    self.resizable = true;
+                }
                 if let Some(layout) = update.layout
                     && (layout.width, layout.height)
                         != (self.picture.width(), self.picture.height())
@@ -373,6 +386,9 @@ impl Worker {
 
     /// Tells the window about a new pointer and copied text; what does not fit waits.
     fn send_changes(&mut self, events: &mpsc::Sender<Event>) {
+        if self.resizable && events.try_send(Event::Resizable).is_ok() {
+            self.resizable = false;
+        }
         if let Some(cursor) = self.cursor.take()
             && let Err(mpsc::error::TrySendError::Full(Event::Cursor(cursor))) =
                 events.try_send(Event::Cursor(cursor))

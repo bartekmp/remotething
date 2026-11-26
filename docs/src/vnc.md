@@ -48,7 +48,7 @@ A change applies the next time you connect.
 
 ## Connection details
 
-A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, Tight, CopyRect, Raw), the traffic totals and the time connected.
+A strip under the desktop shows the host, the desktop size, the download and upload rates and frames per second. The **(i)** button opens a panel with the address, how the connection is secured, the picture encodings offered (ZRLE, Tight, CopyRect, Raw), whether the desktop follows the tab, the traffic totals and the time connected.
 
 ## Signing in
 
