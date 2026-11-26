@@ -2,7 +2,7 @@
 
 # Remotething
 
-One window for all your remote connections: SSH terminals, RDP and VNC desktops, file transfers, and shells on your own machine, organised in a single tree. Free software (GPL-3.0) for Linux and Windows, written in Rust. In development, not yet 1.0.
+One window for all your remote connections: SSH terminals, RDP and VNC desktops, file transfers, and shells on your own machine, organised in a single tree. Free software (GPL-3.0) for Linux and Windows, written in Rust.
 
 <p align="center"><img src="docs/src/images/quickstart.gif" alt="Opening a server from the command palette and running commands" width="820"></p>
 
@@ -20,7 +20,8 @@ One window for all your remote connections: SSH terminals, RDP and VNC desktops,
 
 ### SSH terminals
 
-- **A real terminal** (the engine of Alacritty): 256 colours and true colour, mouse support for tmux, herdr and friends, copy and paste, clipboard from remote programs (OSC 52), colour themes you can import, your choice of font and size.
+- **A real terminal** (the engine of Alacritty): 256 colours and true colour, mouse support for tmux, herdr and friends, copy and paste, clipboard from remote programs (OSC 52), your choice of font and size.
+- **Colour themes**: twelve come with the app (Dracula, Catppuccin, Gruvbox, Nord, Solarized and Monokai, each in a dark and a light variant), and you can import more from Alacritty, kitty and Ghostty. Pick one for all terminals, or a different one per connection or folder.
 - **Search** the scrollback, across wrapped lines.
 - **Sign in** with passwords, key files, ssh-agent or keyboard-interactive prompts.
 - **Jump hosts**, chained, and **port forwards**: local, remote and dynamic (SOCKS5).
@@ -67,7 +68,7 @@ Off until you tick them under **Settings, Optional features**. While off they ad
 - **Everything is a tab**, including Credentials and Settings. Drag tabs to reorder them; a silhouette follows the pointer.
 - **Split view** puts two tabs side by side or stacked, with a draggable divider.
 - **Keyboard first**: a shortcut for each of these, listed under F1.
-- **Light, dark and high-contrast** themes, interface scaling, and keyboard access to everything (screen readers are not supported yet).
+- **Light, dark and high-contrast** themes, interface scaling, and keyboard access to everything. An optional setting makes the whole window follow the colours of the terminal theme.
 
 <p align="center"><img src="docs/src/images/tabs-and-files.gif" alt="Tabs: files, a local terminal and an SSH session" width="49%"> <img src="docs/src/images/split.png" alt="A split view with an SSH session and a local shell" width="49%"></p>
 
@@ -80,7 +81,7 @@ Off until you tick them under **Settings, Optional features**. While off they ad
 | Any Linux with Flatpak | `flatpak install --user remotething-<version>.flatpak` |
 | Windows 10 and 11, 64-bit | unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe` |
 
-The `.deb`, `.rpm` and Windows `.zip` are on the [releases page](https://github.com/bartekmp/remotething/releases). The Flatpak bundle is there too, and `cargo xtask package flatpak` builds it locally; every package lands in `dist/`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
+The `.deb`, `.rpm` and Windows `.zip` are on the [releases page](https://github.com/bartekmp/remotething/releases). The Flatpak bundle is there too, and `cargo xtask package flatpak` builds it locally; every package lands in `dist/`. The [installing guide](docs/src/installing.md) has the details.
 
 Or build and run from source with a current Rust toolchain:
 
