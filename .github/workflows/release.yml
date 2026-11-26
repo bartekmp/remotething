@@ -1,0 +1,64 @@
+# Manual: Actions > "Release" > Run workflow, with the version (for example 0.85.0).
+# Releases the head of main: the version must already be in Cargo.toml (run
+# `cargo xtask bump` first). Creates the tag v<version> if it is missing, builds the Linux
+# packages (.deb, .rpm) and the Windows zip in the CI image, and attaches them to the GitHub
+# release, whose notes are the version's section of CHANGELOG.md. An existing tag is built
+# as it is.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without the v (the one in Cargo.toml on main)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-tags: true
+
+      # An existing tag wins, so an old version can be rebuilt.
+      - name: Choose the commit
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            git checkout "refs/tags/v$VERSION"
+          fi
+          grep -qx "version = \"$VERSION\"" Cargo.toml
+
+      # XWIN_ACCEPT_LICENSE=1 accepts Microsoft's licence for the C runtime and Windows SDK:
+      # https://go.microsoft.com/fwlink/?LinkId=2086102
+      - name: Build the CI image
+        run: docker build --build-arg XWIN_ACCEPT_LICENSE=1 -t remotething-ci ci
+
+      - name: Build and package
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work remotething-ci sh -c '
+            cargo xtask build linux && cargo xtask package linux &&
+            cargo xtask build windows && cargo xtask package windows'
+
+      # The notes are what CHANGELOG.md says about this version.
+      - name: Write the release notes
+        run: |
+          awk -v heading="## $VERSION - " 'index($0, heading) == 1 { found = 1; next }
+            /^## / { found = 0 }
+            found' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then echo "Release $VERSION." > notes.md; fi
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Creates the tag on the built commit when the release is new.
+          gh release view "v$VERSION" || gh release create "v$VERSION" --target "$(git rev-parse HEAD)" --title "v$VERSION" --notes-file notes.md
+          gh release upload "v$VERSION" --clobber dist/*.deb dist/*.rpm dist/*-windows-x86_64.zip

@@ -23,12 +23,13 @@ The Flatpak may use the network, the window system and GPU, the desktop keyring,
 
 Without a Vulkan or OpenGL driver the app still runs, with slower software rendering.
 
+## Downloads
+
+Each release on GitHub has the `.deb`, the `.rpm` and the Windows `.zip`. The Flatpak is built locally for now.
+
 ## Windows
 
-Windows 10 and 11, 64-bit. Releases on GitHub have two downloads:
-
-- `remotething-<version>-windows-x86_64-setup.exe` installs for your user only, without administrator rights, and adds a Start menu entry. `setup.exe /S` installs silently. Uninstall it from **Installed apps**; your connections and settings stay.
-- `remotething-<version>-windows-x86_64.zip` holds the program alone. Unzip it anywhere and run `remotething.exe`.
+Windows 10 and 11, 64-bit. Download `remotething-<version>-windows-x86_64.zip` from the GitHub release, unzip it anywhere and run `remotething.exe`. There is no installer; the zip holds the program and its licence texts.
 
 The program is not code-signed yet, so SmartScreen shows a warning the first time. Choose **More info**, then **Run anyway**.
 

@@ -78,9 +78,9 @@ Off until you tick them under **Settings, Optional features**. While off they ad
 | Ubuntu or Kubuntu 26.04 and later | `sudo apt install ./remotething_<version>_amd64.deb` |
 | Fedora and other RPM systems | `sudo dnf install ./remotething-<version>.x86_64.rpm` |
 | Any Linux with Flatpak | `flatpak install --user remotething-<version>.flatpak` |
-| Windows 10 and 11, 64-bit | run `remotething-<version>-windows-x86_64-setup.exe` (or unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe`) |
+| Windows 10 and 11, 64-bit | unzip `remotething-<version>-windows-x86_64.zip` and run `remotething.exe` |
 
-Linux packages are built with `cargo xtask package linux` and `cargo xtask package flatpak` (they land in `dist/`); CI builds the Windows zip for every merge to `main`, and the Windows release workflow adds the installer. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
+The `.deb`, `.rpm` and Windows `.zip` are on the [releases page](https://github.com/bartekmp/remotething/releases). The Flatpak is built with `cargo xtask package flatpak`; every package lands in `dist/`. The Windows program is not code-signed yet. The [installing guide](docs/src/installing.md) has the details.
 
 Or build and run from source with a current Rust toolchain:
 

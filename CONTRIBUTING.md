@@ -46,14 +46,16 @@ Every pull request that changes anything under `crates/` raises it once:
 
 Changes to docs, CI or the build helper alone need no bump. If `main` moved on and took your number, merge `main` and bump again.
 
-## Windows release
+## Release
 
 Merges to `main` only build the Windows zip. A release is manual:
 
-1. Make sure `main` has the version to release in `Cargo.toml`.
-2. On GitHub, open Actions, **Windows release**, **Run workflow**, and enter the version.
+1. Make sure `main` has the version to release in `Cargo.toml`, and its section in `CHANGELOG.md`.
+2. On GitHub, open Actions, **Release**, **Run workflow**, and enter the version.
 
-The workflow creates the tag `v<version>` and the GitHub release if they do not exist yet (an existing tag is built as it is), builds the zip and the NSIS installer (`cargo xtask package installer`) in the CI image, signs the installer through [SignPath](https://signpath.org) when the variable `SIGNPATH_ORGANIZATION_ID` and the secret `SIGNPATH_API_TOKEN` are set, and attaches both to the GitHub release. Without them the installer is unsigned.
+The workflow creates the tag `v<version>` and the GitHub release if they do not exist yet (an existing tag is built as it is), builds the `.deb`, the `.rpm` and the Windows zip in the CI image, and attaches them. The release notes are the version's section of `CHANGELOG.md`.
+
+The NSIS installer (`cargo xtask package installer`) is not part of releases for now; SignPath signing would sign it, and the steps that did are in the git history of `.github/workflows/release-windows.yml`.
 
 ## The logo
 
