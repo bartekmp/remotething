@@ -456,6 +456,7 @@ fn settings_view(state: &State) -> Element<'_, Message> {
     settings::view(
         &state.preferences,
         &state.terminal_themes,
+        &state.update_check,
         dark,
         state.settings_page,
     )

@@ -16,6 +16,10 @@ Where your passwords are, and what protects them.
 - **RDP and FTPS**: the certificate is pinned the same way, by its SHA-256 fingerprint. The sign-in starts only after you trust it.
 - **FTP and plain VNC** are not encrypted. The tab says so. Tunnel VNC through SSH or use it on a network you trust.
 
+## Network use of the app itself
+
+The app contacts a server only for the connections you open. The one exception is **Check for updates** on the About page: when you press it, the app asks `api.github.com` for the newest release number. It sends no data about you or your connections, and never checks on its own.
+
 ## What the app cannot protect against
 
 - Someone who runs code as you while the app is running can read its memory and the unlocked keyring. A keyring is as strong as your desktop session.

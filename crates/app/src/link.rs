@@ -5,6 +5,9 @@ use std::process::Command;
 /// Where the project lives.
 pub const REPOSITORY: &str = "https://github.com/bartekmp/remotething";
 
+/// Where the releases can be downloaded.
+pub const RELEASES: &str = "https://github.com/bartekmp/remotething/releases/latest";
+
 /// Hands the address to the system. A failure is ignored: there is nothing to do about it.
 pub fn open(address: &str) {
     let _ = command(address).spawn();

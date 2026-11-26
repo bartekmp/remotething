@@ -99,6 +99,7 @@ mod theme;
 mod transfer_queue;
 mod tree;
 mod tree_actions;
+mod update_check;
 mod vault;
 mod video_recording;
 mod vnc_tab;

@@ -131,7 +131,7 @@ Press **Settings** at the bottom of the connection tree; with the tree folded it
 
 A theme change applies at once. A language change applies the next time you start the app. Only English is shipped so far.
 
-The bottom of the screen shows the logo, the version and the copyright line.
+The **About** page shows the logo, the version and the copyright line. **Check for updates**, beside the version, asks GitHub for the newest release and says whether you have it; **Download** then opens the releases page. It checks only when you press it.
 
 Settings are kept in `settings.toml`, in the same directory as the connections file. The window size and whether it was maximized are kept there too, and restored at the next start.
 

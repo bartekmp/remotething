@@ -11,6 +11,7 @@ use crate::features;
 use crate::i18n::{self, fl};
 use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
+use crate::update_check::Status;
 
 /// The Theme list: the plain ones, and "Follow terminal theme" when that feature is on.
 fn theme_options(follow_terminal: bool) -> Vec<ThemeOption> {
@@ -128,6 +129,10 @@ pub enum Message {
     ImportWslPressed,
     /// The project's address on the About page.
     RepositoryPressed,
+    /// "Check for updates" on the About page.
+    CheckForUpdatesPressed,
+    /// "Download" beside a newer version on the About page.
+    DownloadPressed,
 }
 
 /// The folders the user can choose.
@@ -168,6 +173,10 @@ pub enum Event {
     ImportWsl,
     /// Open the project's page in the browser.
     OpenRepository,
+    /// Ask GitHub for the newest release.
+    CheckForUpdates,
+    /// Open the page where the newest release can be downloaded.
+    OpenReleases,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -265,12 +274,15 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
         Message::ImportPuttyPressed => Event::ImportPutty,
         Message::ImportWslPressed => Event::ImportWsl,
         Message::RepositoryPressed => Event::OpenRepository,
+        Message::CheckForUpdatesPressed => Event::CheckForUpdates,
+        Message::DownloadPressed => Event::OpenReleases,
     }
 }
 
 pub fn view<'a>(
     preferences: &'a Preferences,
     terminal: &'a crate::terminal_settings::State,
+    update: &'a Status,
     dark: bool,
     page: Tab,
 ) -> Element<'a, Message> {
@@ -282,7 +294,7 @@ pub fn view<'a>(
         }
         Tab::ImportExport => import_export(),
         Tab::Features => features(preferences),
-        Tab::About => about(),
+        Tab::About => about(update),
     };
     column![header, page_bar(page), content].spacing(16).into()
 }
@@ -522,19 +534,30 @@ fn folder_row(kind: FolderKind, folder: PathBuf, chosen: bool) -> Element<'stati
         .into()
 }
 
-/// The logo, name and version. The name and version stay unformatted and
-/// untranslated, like `--version`: bug reports quote them.
-fn about<'a>() -> Element<'a, Message> {
-    let name = column![
-        text("Remotething").size(theme::TEXT_TITLE),
+/// The logo, name and version, with the update check beside the version. The name and
+/// version stay unformatted and untranslated, like `--version`: bug reports quote them.
+fn about(update: &Status) -> Element<'_, Message> {
+    let checking = *update == Status::Checking;
+    let check = button(text(fl!("about-check-updates")).size(theme::TEXT_SMALL))
+        .style(theme::pill)
+        .on_press_maybe((!checking).then_some(Message::CheckForUpdatesPressed));
+    let version = row![
         text(env!("CARGO_PKG_VERSION"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
+        check,
+    ]
+    .spacing(8)
+    .align_y(iced::Alignment::Center);
+    let mut name = column![text("Remotething").size(theme::TEXT_TITLE), version].spacing(2);
+    if let Some(result) = update_result(update) {
+        name = name.push(result);
+    }
+    name = name.push(
         text(fl!("about-rights"))
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
-    ]
-    .spacing(2);
+    );
     let logo_and_name = row![branding::logo(56.0), name]
         .spacing(12)
         .align_y(iced::Alignment::Center);
@@ -542,6 +565,30 @@ fn about<'a>() -> Element<'a, Message> {
         .style(theme::pill)
         .on_press(Message::RepositoryPressed);
     column![logo_and_name, repository].spacing(12).into()
+}
+
+/// What the check found, once it has run.
+fn update_result(update: &Status) -> Option<Element<'_, Message>> {
+    let line = |label: String| text(label).size(theme::TEXT_SMALL);
+    match update {
+        Status::Idle => None,
+        Status::Checking => Some(line(fl!("about-update-checking")).into()),
+        Status::UpToDate => Some(line(fl!("about-update-current")).into()),
+        Status::Failed(reason) => {
+            Some(line(fl!("about-update-failed", reason = reason.as_str())).into())
+        }
+        Status::Available(version) => Some(
+            row![
+                line(fl!("about-update-available", version = version.as_str())),
+                button(text(fl!("about-update-download")).size(theme::TEXT_SMALL))
+                    .style(theme::pill)
+                    .on_press(Message::DownloadPressed),
+            ]
+            .spacing(8)
+            .align_y(iced::Alignment::Center)
+            .into(),
+        ),
+    }
 }
 
 fn language_options(codes: Vec<String>) -> Vec<LanguageOption> {
