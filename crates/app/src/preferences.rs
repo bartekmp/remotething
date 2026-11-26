@@ -207,6 +207,9 @@ pub struct Features {
     /// Whether every SSH session is recorded from its start.
     #[serde(default, skip_serializing_if = "is_false")]
     pub record_every_session: bool,
+    /// Whether the Theme list offers "Follow the terminal theme".
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub follow_terminal_theme: bool,
 }
 
 impl Features {
@@ -231,12 +234,26 @@ fn is_false(value: &bool) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum ThemeChoice {
     #[default]
     System,
     Light,
     Dark,
+    DraculaDark,
+    DraculaLight,
+    CatppuccinMocha,
+    CatppuccinLatte,
+    GruvboxDark,
+    GruvboxLight,
+    NordDark,
+    NordLight,
+    SolarizedDark,
+    SolarizedLight,
+    MonokaiDark,
+    MonokaiLight,
+    /// The colours of the chosen terminal theme. Offered only while that feature is on.
+    FollowTerminal,
 }
 
 /// The settings file lives in the same directory as the connections file.
@@ -409,6 +426,7 @@ mod tests {
                 desktop_recording: true,
                 record_keystrokes: false,
                 record_every_session: true,
+                follow_terminal_theme: true,
             },
             folders: Folders {
                 screenshots: Some(PathBuf::from("/data/shots")),

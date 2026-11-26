@@ -6,7 +6,7 @@ All of these are in **Settings**.
 
 | Setting | What it does |
 | --- | --- |
-| Theme | Light, dark, or follow the system |
+| Theme | Light, dark, follow the system, or a named colour scheme (Dracula, Catppuccin, Gruvbox, Nord, Solarized, Monokai). High contrast overrides the scheme and keeps only its light or dark |
 | **High contrast colours** | Black on white (or white on black) with full-strength borders. Text and borders reach a contrast of at least 7:1 (WCAG AAA) |
 | Interface size | Draws the whole window from 50% to 300% |
 | **Animate panels and tabs** | Switch off for panels that appear at once and no glow on a dropped tab |

@@ -94,6 +94,7 @@ mod terminal_settings;
 mod terminal_theme;
 mod terminal_view;
 mod theme;
+mod theme_schemes;
 mod transfer_queue;
 mod tree;
 mod tree_actions;

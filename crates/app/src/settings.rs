@@ -11,12 +11,18 @@ use crate::features;
 use crate::i18n::{self, fl};
 use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
+use crate::theme_schemes;
 
-const THEMES: [ThemeOption; 3] = [
-    ThemeOption(ThemeChoice::System),
-    ThemeOption(ThemeChoice::Light),
-    ThemeOption(ThemeChoice::Dark),
-];
+/// The Theme list: the plain ones, the named schemes, and "Follow the terminal theme" when
+/// that feature is on.
+fn theme_options(follow_terminal: bool) -> Vec<ThemeOption> {
+    let mut choices = vec![ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark];
+    choices.extend(theme_schemes::ALL.iter().map(|(choice, _)| *choice));
+    if follow_terminal {
+        choices.push(ThemeChoice::FollowTerminal);
+    }
+    choices.into_iter().map(ThemeOption).collect()
+}
 
 const TAB_LAYOUTS: [TabLayoutOption; 2] = [
     TabLayoutOption(TabLayout::SingleLine),
@@ -114,6 +120,7 @@ pub enum Message {
     DesktopRecordingToggled(bool),
     KeystrokesToggled(bool),
     EveryRecordingToggled(bool),
+    FollowTerminalToggled(bool),
     /// "Change…" on the folder of a feature.
     FolderChangePressed(FolderKind),
     /// "Default" on the folder of a feature.
@@ -175,6 +182,9 @@ impl fmt::Display for ThemeOption {
             ThemeChoice::System => fl!("settings-system"),
             ThemeChoice::Light => fl!("theme-light"),
             ThemeChoice::Dark => fl!("theme-dark"),
+            ThemeChoice::FollowTerminal => fl!("theme-follow-terminal"),
+            // The names of the schemes are the names of their makers' themes.
+            named => theme_schemes::of(named).map_or_else(String::new, |scheme| scheme.name.into()),
         };
         formatter.write_str(&label)
     }
@@ -238,6 +248,14 @@ pub fn update(preferences: &mut Preferences, message: Message) -> Event {
             preferences.features.record_keystrokes = on;
             Event::Changed
         }
+        Message::FollowTerminalToggled(on) => {
+            preferences.features.follow_terminal_theme = on;
+            // The choice is no longer on the list, so the theme goes back to following the system.
+            if !on && preferences.theme == ThemeChoice::FollowTerminal {
+                preferences.theme = ThemeChoice::System;
+            }
+            Event::Changed
+        }
         Message::EveryRecordingToggled(on) => {
             preferences.features.record_every_session = on;
             Event::Changed
@@ -295,7 +313,7 @@ fn general(preferences: &Preferences) -> Element<'_, Message> {
             .size(theme::TEXT_SMALL)
             .style(theme::secondary_text),
         theme::pick(
-            THEMES,
+            theme_options(preferences.features.follow_terminal_theme),
             Some(ThemeOption(preferences.theme)),
             Message::ThemePicked
         ),
@@ -460,6 +478,19 @@ fn features(preferences: &Preferences) -> Element<'_, Message> {
                     .label(fl!("settings-feature-keystrokes"))
                     .on_toggle(Message::KeystrokesToggled),
             );
+    }
+    switches = switches.push(
+        checkbox(features.follow_terminal_theme)
+            .style(crate::theme::check)
+            .label(fl!("settings-feature-follow-terminal"))
+            .on_toggle(Message::FollowTerminalToggled),
+    );
+    if features.follow_terminal_theme {
+        switches = switches.push(
+            text(fl!("settings-feature-follow-terminal-note"))
+                .size(theme::TEXT_SMALL)
+                .style(theme::secondary_text),
+        );
     }
     switches.into()
 }
@@ -638,5 +669,35 @@ mod tests {
         for tab in TABS {
             assert!(!tab.label().is_empty());
         }
+    }
+}
+
+#[cfg(test)]
+mod theme_list_tests {
+    use super::*;
+
+    #[test]
+    fn follow_terminal_is_listed_only_while_its_feature_is_on() {
+        let labels =
+            |on| -> Vec<String> { theme_options(on).iter().map(ToString::to_string).collect() };
+        assert_eq!(labels(false).len(), 15);
+        assert!(!labels(false).contains(&"Follow terminal theme".to_string()));
+        assert_eq!(
+            labels(true).last().map(String::as_str),
+            Some("Follow terminal theme")
+        );
+        assert!(labels(false).contains(&"Solarized Light".to_string()));
+    }
+
+    #[test]
+    fn switching_the_feature_off_takes_the_theme_back_to_the_system() {
+        let mut preferences = Preferences::default();
+        preferences.features.follow_terminal_theme = true;
+        preferences.theme = ThemeChoice::FollowTerminal;
+
+        update(&mut preferences, Message::FollowTerminalToggled(false));
+
+        assert_eq!(preferences.theme, ThemeChoice::System);
+        assert!(!preferences.features.follow_terminal_theme);
     }
 }

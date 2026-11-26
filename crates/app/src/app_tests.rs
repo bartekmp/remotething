@@ -1037,3 +1037,41 @@ fn dragging_the_tree_edge_sets_its_width_within_limits_and_saves_it_on_release()
     move_to(&mut state, 300.0);
     assert_eq!(state.preferences.tree_width, 400);
 }
+
+fn dark_terminal_theme() -> crate::terminal_theme::Theme {
+    let file = "background #101010\nforeground #f8f8f2\ncolor1 #cc3333\ncolor4 #336699\n";
+    crate::terminal_theme::parse("mine.conf", file).unwrap()
+}
+
+#[test]
+fn a_named_theme_is_used_and_high_contrast_wins_over_it() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.preferences.theme = preferences::ThemeChoice::NordLight;
+
+    assert_eq!(theme(&state).to_string(), "Remotething Nord Light");
+
+    state.preferences.high_contrast = true;
+    assert_eq!(theme(&state).to_string(), "Remotething Light High Contrast");
+}
+
+#[test]
+fn follow_terminal_takes_the_terminal_colours_only_while_the_feature_is_on() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut state = state(&directory, ONE_CONNECTION);
+    state.terminal_themes.library.add(dark_terminal_theme());
+    state.preferences.terminal.theme = Some("mine".to_string());
+    state.preferences.theme = preferences::ThemeChoice::FollowTerminal;
+
+    // Feature off: the choice is ignored.
+    assert_ne!(theme(&state).to_string(), "Remotething Terminal");
+
+    state.preferences.features.follow_terminal_theme = true;
+    let followed = theme(&state);
+    assert_eq!(followed.to_string(), "Remotething Terminal");
+    assert!(followed.extended_palette().is_dark);
+
+    // No terminal theme chosen: nothing to follow.
+    state.preferences.terminal.theme = None;
+    assert_ne!(theme(&state).to_string(), "Remotething Terminal");
+}

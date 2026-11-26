@@ -29,6 +29,7 @@ use crate::settings_actions;
 use crate::tabs::{self, Page};
 use crate::terminal_view;
 use crate::theme as look;
+use crate::theme_schemes;
 use crate::tree::{self, Selection};
 use crate::tree_actions;
 use crate::vault;
@@ -593,12 +594,45 @@ pub fn scale_factor(state: &State) -> f32 {
 
 /// The chosen theme, or the one matching the desktop for "follow the system".
 pub fn theme(state: &State) -> Theme {
-    let mode = match state.preferences.theme {
-        ThemeChoice::System => state.system_mode,
-        ThemeChoice::Light => Mode::Light,
-        ThemeChoice::Dark => Mode::Dark,
+    let high_contrast = state.preferences.high_contrast;
+    let choice = state.preferences.theme;
+    let scheme = match choice {
+        ThemeChoice::System | ThemeChoice::Light | ThemeChoice::Dark => None,
+        ThemeChoice::FollowTerminal => terminal_scheme(state),
+        named => theme_schemes::of(named),
     };
-    look::for_mode(mode, state.preferences.high_contrast)
+    match scheme {
+        // High contrast wins over every colour scheme; it keeps only light or dark.
+        Some(scheme) if high_contrast => look::for_mode(look::mode_of(&scheme), true),
+        Some(scheme) => look::for_scheme(&scheme),
+        None => {
+            let mode = match choice {
+                ThemeChoice::Light => Mode::Light,
+                ThemeChoice::Dark => Mode::Dark,
+                _ => state.system_mode,
+            };
+            look::for_mode(mode, high_contrast)
+        }
+    }
+}
+
+/// The colours of the chosen terminal theme, while that feature is on. Without a terminal
+/// theme of its own there is nothing to follow.
+fn terminal_scheme(state: &State) -> Option<theme_schemes::Scheme> {
+    if !state.preferences.features.follow_terminal_theme {
+        return None;
+    }
+    let palette = state.terminal_themes.applied_palette(&state.preferences)?;
+    let brightness = |color: iced::Color| 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+    Some(theme_schemes::Scheme {
+        name: "Terminal",
+        dark: brightness(palette.background) < 0.5,
+        background: palette.background,
+        text: palette.foreground,
+        // Blue and red of the 16 colours.
+        accent: palette.ansi[4],
+        danger: palette.ansi[1],
+    })
 }
 
 /// Keeps the theme in step when the desktop switches between light and dark.

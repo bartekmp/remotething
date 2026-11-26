@@ -12,6 +12,8 @@ use iced::widget::{
 use iced::{Color, Font, Shadow, Theme, Vector, color};
 use iced::{Element, Length};
 
+use crate::theme_schemes::Scheme;
+
 pub const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
 pub const INTER_BOLD: &[u8] = include_bytes!("../assets/fonts/Inter-Bold.ttf");
 pub const FONT: Font = Font::with_name("Inter");
@@ -31,6 +33,7 @@ pub const TEXT_TITLE: f32 = 16.0;
 pub const TEXT_DISPLAY: f32 = 20.0;
 
 /// The colours of one mode.
+#[derive(Clone, Copy)]
 pub struct Tokens {
     /// Behind the panels.
     background: Color,
@@ -134,15 +137,18 @@ const LIGHT_CONTRAST: Tokens = Tokens {
     on_danger: color!(0xFFFFFF),
 };
 
-const HIGH_CONTRAST_SUFFIX: &str = " High Contrast";
+const DARK_NAME: &str = "Remotething Dark";
+const LIGHT_NAME: &str = "Remotething Light";
+const DARK_CONTRAST_NAME: &str = "Remotething Dark High Contrast";
+const LIGHT_CONTRAST_NAME: &str = "Remotething Light High Contrast";
 
 /// The app theme for a light or dark system. An unknown mode is treated as light.
 pub fn for_mode(mode: Mode, high_contrast: bool) -> Theme {
     let (name, tokens) = match (mode, high_contrast) {
-        (Mode::Dark, false) => ("Remotething Dark", &DARK),
-        (Mode::Dark, true) => ("Remotething Dark High Contrast", &DARK_CONTRAST),
-        (Mode::Light | Mode::None, false) => ("Remotething Light", &LIGHT),
-        (Mode::Light | Mode::None, true) => ("Remotething Light High Contrast", &LIGHT_CONTRAST),
+        (Mode::Dark, false) => (DARK_NAME, &DARK),
+        (Mode::Dark, true) => (DARK_CONTRAST_NAME, &DARK_CONTRAST),
+        (Mode::Light | Mode::None, false) => (LIGHT_NAME, &LIGHT),
+        (Mode::Light | Mode::None, true) => (LIGHT_CONTRAST_NAME, &LIGHT_CONTRAST),
     };
     let palette = Palette {
         background: tokens.background,
@@ -155,13 +161,115 @@ pub fn for_mode(mode: Mode, high_contrast: bool) -> Theme {
     Theme::custom(name, palette)
 }
 
-fn tokens(theme: &Theme) -> &'static Tokens {
-    let high_contrast = theme.to_string().ends_with(HIGH_CONTRAST_SUFFIX);
-    match (theme.extended_palette().is_dark, high_contrast) {
-        (true, false) => &DARK,
-        (false, false) => &LIGHT,
-        (true, true) => &DARK_CONTRAST,
-        (false, true) => &LIGHT_CONTRAST,
+/// The theme of a named scheme, or of the colours of a terminal.
+pub fn for_scheme(scheme: &Scheme) -> Theme {
+    let palette = Palette {
+        background: scheme.background,
+        text: scheme.text,
+        primary: scheme.accent,
+        success: scheme.accent,
+        warning: scheme.danger,
+        danger: scheme.danger,
+    };
+    Theme::custom(format!("Remotething {}", scheme.name), palette)
+}
+
+/// The mode a scheme belongs to, for what only knows light and dark.
+pub fn mode_of(scheme: &Scheme) -> Mode {
+    if scheme.dark { Mode::Dark } else { Mode::Light }
+}
+
+fn tokens(theme: &Theme) -> Tokens {
+    match theme.to_string().as_str() {
+        DARK_NAME => DARK,
+        LIGHT_NAME => LIGHT,
+        DARK_CONTRAST_NAME => DARK_CONTRAST,
+        LIGHT_CONTRAST_NAME => LIGHT_CONTRAST,
+        _ => derive(theme.palette(), theme.extended_palette().is_dark),
+    }
+}
+
+/// `from` moved `amount` of the way to `to`.
+fn mix(from: Color, to: Color, amount: f32) -> Color {
+    Color {
+        r: from.r + (to.r - from.r) * amount,
+        g: from.g + (to.g - from.g) * amount,
+        b: from.b + (to.b - from.b) * amount,
+        a: 1.0,
+    }
+}
+
+/// WCAG relative luminance of an opaque colour.
+fn luminance(color: Color) -> f32 {
+    let channel = |value: f32| {
+        if value <= 0.03928 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b)
+}
+
+fn contrast(first: Color, second: Color) -> f32 {
+    let (lighter, darker) = if luminance(first) > luminance(second) {
+        (luminance(first), luminance(second))
+    } else {
+        (luminance(second), luminance(first))
+    };
+    (lighter + 0.05) / (darker + 0.05)
+}
+
+/// Black or white text, whichever reads better on `fill`.
+fn on(fill: Color) -> Color {
+    let (white, black) = (Color::WHITE, color!(0x0A0A0A));
+    if contrast(white, fill) >= contrast(black, fill) {
+        white
+    } else {
+        black
+    }
+}
+
+/// The tokens of a scheme from its four colours: panels a step lighter than the background,
+/// hairlines and hover tints in the text colour.
+fn derive(palette: Palette, dark: bool) -> Tokens {
+    let Palette {
+        background,
+        text,
+        primary: accent,
+        danger,
+        ..
+    } = palette;
+    let (panel, tint, shadow) = if dark {
+        (mix(background, text, 0.05), 1.0, 0.35)
+    } else {
+        (mix(background, Color::WHITE, 0.7), 0.8, 0.10)
+    };
+    let (selected_text, accent_hover) = if dark {
+        (accent, mix(accent, Color::WHITE, 0.2))
+    } else {
+        (
+            mix(accent, Color::BLACK, 0.3),
+            mix(accent, Color::BLACK, 0.2),
+        )
+    };
+    Tokens {
+        background,
+        panel,
+        panel_border: alpha(text, 0.10 * tint),
+        shadow: alpha(Color::BLACK, shadow),
+        surface: alpha(text, 0.05 * tint),
+        surface_hover: alpha(text, 0.10 * tint),
+        surface_border: alpha(text, 0.10 * tint),
+        selected: alpha(accent, if dark { 0.16 } else { 0.12 }),
+        selected_text,
+        text,
+        text_secondary: mix(text, panel, 0.3),
+        accent,
+        accent_hover,
+        on_accent: on(accent),
+        danger,
+        on_danger: on(danger),
     }
 }
 
@@ -622,27 +730,6 @@ fn menu_style(theme: &Theme) -> menu::Style {
 mod tests {
     use super::*;
 
-    /// WCAG relative luminance of an opaque colour.
-    fn luminance(color: Color) -> f32 {
-        let channel = |value: f32| {
-            if value <= 0.03928 {
-                value / 12.92
-            } else {
-                ((value + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b)
-    }
-
-    fn contrast(first: Color, second: Color) -> f32 {
-        let (lighter, darker) = if luminance(first) > luminance(second) {
-            (luminance(first), luminance(second))
-        } else {
-            (luminance(second), luminance(first))
-        };
-        (lighter + 0.05) / (darker + 0.05)
-    }
-
     #[test]
     fn text_is_readable_on_panels_in_both_modes() {
         for tokens in [&LIGHT, &DARK] {
@@ -683,6 +770,45 @@ mod tests {
         for tokens in [&LIGHT, &DARK] {
             assert!(contrast(tokens.on_accent, tokens.accent) >= 4.5);
             assert!(contrast(tokens.on_danger, tokens.danger) >= 4.5);
+        }
+    }
+
+    #[test]
+    fn every_named_scheme_is_readable_and_keeps_its_mode() {
+        for (choice, scheme) in crate::theme_schemes::ALL {
+            let theme = for_scheme(&scheme);
+            let tokens = tokens(&theme);
+            let name = scheme.name;
+            assert_eq!(theme.extended_palette().is_dark, scheme.dark, "{name}");
+            assert!(contrast(tokens.text, tokens.panel) >= 4.5, "{name}: text");
+            assert!(
+                contrast(tokens.text_secondary, tokens.panel) >= 3.0,
+                "{name}: secondary"
+            );
+            assert!(
+                contrast(tokens.danger, tokens.panel) >= 3.0,
+                "{name}: danger"
+            );
+            assert!(
+                contrast(tokens.accent, tokens.panel) >= 3.0,
+                "{name}: accent"
+            );
+            assert!(
+                contrast(tokens.selected_text, tokens.panel) >= 3.0,
+                "{name}: selected"
+            );
+            assert!(
+                contrast(tokens.on_accent, tokens.accent) >= 3.0,
+                "{name}: button label"
+            );
+            assert_eq!(crate::theme_schemes::of(choice).map(|s| s.name), Some(name));
+        }
+    }
+
+    #[test]
+    fn a_dark_and_a_light_variant_exist_for_every_family() {
+        for pair in crate::theme_schemes::ALL.chunks(2) {
+            assert!(pair[0].1.dark && !pair[1].1.dark, "{}", pair[0].1.name);
         }
     }
 
