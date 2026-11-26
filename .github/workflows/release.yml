@@ -14,12 +14,18 @@ on:
         description: Version to release, without the v (the one in Cargo.toml on main)
         required: true
         type: string
+      flatpak_only:
+        description: Only build the Flatpak and add it to the existing release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: ${{ !inputs.flatpak_only }}
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ inputs.version }}
@@ -66,41 +72,28 @@ jobs:
 
   flatpak:
     needs: release
+    # Also when the release job was skipped, for a Flatpak added to a release afterwards.
+    if: ${{ !cancelled() && needs.release.result != 'failure' }}
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
-      options: --privileged
     env:
       VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: v${{ inputs.version }}
 
+      - name: Install Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          # Ubuntu 24.04 stops unprivileged user namespaces, which the builder's sandbox needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      # The same command as on a developer's machine; it installs the SDK it needs.
       - name: Build the Flatpak
-        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
-        with:
-          bundle: remotething-${{ inputs.version }}.flatpak
-          manifest-path: crates/app/packaging/flatpak/io.github.bartekmp.Remotething.yml
-          cache: false
-          upload-artifact: false
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: flatpak
-          path: remotething-${{ inputs.version }}.flatpak
-
-  attach-flatpak:
-    needs: flatpak
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: flatpak
+        run: cargo xtask package flatpak
 
       - name: Attach to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          VERSION: ${{ inputs.version }}
-        run: gh release upload "v$VERSION" --clobber "remotething-$VERSION.flatpak"
+        run: gh release upload "v$VERSION" --clobber "dist/remotething-$VERSION.flatpak"

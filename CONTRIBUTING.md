@@ -53,7 +53,7 @@ Merges to `main` only build the Windows zip. A release is manual:
 1. Make sure `main` has the version to release in `Cargo.toml`, and its section in `CHANGELOG.md`.
 2. On GitHub, open Actions, **Release**, **Run workflow**, and enter the version.
 
-The workflow creates the tag `v<version>` and the GitHub release if they do not exist yet (an existing tag is built as it is), builds the `.deb`, the `.rpm` and the Windows zip in the CI image, and attaches them; a second job then builds the Flatpak from the tag and adds it. The release notes are the version's section of `CHANGELOG.md`.
+The workflow creates the tag `v<version>` and the GitHub release if they do not exist yet (an existing tag is built as it is), builds the `.deb`, the `.rpm` and the Windows zip in the CI image, and attaches them; a second job then builds the Flatpak from the tag and adds it (tick **flatpak_only** to run just that job for a release that exists). The release notes are the version's section of `CHANGELOG.md`.
 
 The NSIS installer (`cargo xtask package installer`) is not part of releases for now; SignPath signing would sign it, and the steps that did are in the git history of `.github/workflows/release-windows.yml`.
 
