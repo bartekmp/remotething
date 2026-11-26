@@ -162,7 +162,7 @@ pub fn with_hint<'a, Message: 'a>(
         cut,
         content: container(text(content).size(look::TEXT_SMALL))
             .padding([4, 8])
-            .style(look::chip)
+            .style(look::floating)
             .into(),
     };
     tooltip(line, Element::new(hint), tooltip::Position::Bottom)
