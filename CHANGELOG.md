@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.83.1 - 2026-11-26
+
+- The connection tree cannot be made narrower than 240 pixels, and below 300 its buttons show only icons so they do not overflow.
+
 ## 0.83.0 - 2026-11-26
 
 - New themes: Dracula, Catppuccin, Gruvbox, Nord, Solarized and Monokai, each in a dark and a light variant.
