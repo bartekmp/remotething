@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.86.0 - 2026-11-26
+
+- About: **Check for updates** beside the version tells you whether a newer release exists (only when pressed).
+- Settings → Terminal: imported themes are listed first, then a separator, then the built-in ones. The built-in themes cannot be deleted.
+
 ## 0.85.1 - 2026-11-26
 
 - VNC: the connection details say whether the server can resize its desktop to the tab (TigerVNC can; TightVNC cannot).

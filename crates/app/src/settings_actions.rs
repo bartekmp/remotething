@@ -21,6 +21,11 @@ pub(crate) fn on_settings_event(state: &mut State, event: settings::Event) -> Ta
         settings::Event::Terminal(message) => return state.terminal_message(message),
         settings::Event::PageChanged(page) => state.settings_page = page,
         settings::Event::OpenRepository => crate::link::open(crate::link::REPOSITORY),
+        settings::Event::OpenReleases => crate::link::open(crate::link::RELEASES),
+        settings::Event::CheckForUpdates => {
+            state.update_check = crate::update_check::Status::Checking;
+            return Task::perform(crate::update_check::check(), Message::UpdateChecked);
+        }
         settings::Event::PickFolder(kind) => {
             return Task::perform(
                 file_dialog::pick_folder(fl!("settings-folder-pick")),

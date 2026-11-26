@@ -36,6 +36,8 @@ allow = [
     "Unlicense",
     # Independent JPEG Group: BSD-like, needs the credit given in its notice. Tables in the JPEG encoder.
     "IJG",
+    # Permissive data licence. The root certificate lists behind the update check's TLS.
+    "CDLA-Permissive-2.0",
 ]
 
 [licenses.private]

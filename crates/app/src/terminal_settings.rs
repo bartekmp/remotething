@@ -75,16 +75,21 @@ impl State {
         }
     }
 
-    /// The names of every theme there is: those that come with the app, then the imported ones.
-    pub(crate) fn names(&self) -> Vec<String> {
-        let built_in = crate::terminal_builtin::all().iter().filter(|theme| {
+    /// The themes that come with the app, minus those an imported theme replaces.
+    fn built_in(&self) -> impl Iterator<Item = &terminal_theme::Theme> {
+        crate::terminal_builtin::all().iter().filter(|theme| {
             self.library
                 .themes
                 .iter()
                 .all(|known| known.name != theme.name)
-        });
-        built_in
-            .chain(&self.library.themes)
+        })
+    }
+
+    /// The names of every theme there is: the imported ones, then those that come with the app.
+    pub(crate) fn names(&self) -> Vec<String> {
+        let imported = self.library.themes.iter();
+        imported
+            .chain(self.built_in())
             .map(|theme| theme.name.clone())
             .collect()
     }
@@ -121,7 +126,8 @@ pub fn update(
             outcome.preferences_changed = true;
         }
         Message::DeletePressed => {
-            if let Some(name) = state.previewed.take() {
+            let imported = |name: &String| state.library.themes.iter().any(|t| t.name == *name);
+            if let Some(name) = state.previewed.take_if(|name| imported(name)) {
                 state.library.remove(&name);
                 state.notice = terminal_theme::save(
                     &state.library,
@@ -212,15 +218,14 @@ pub fn view<'a>(
             .on_press(Message::Previewed(name.map(str::to_string)))
     };
     let mut list = column![choice(fl!("terminal-theme-default"), None)].spacing(2);
-    // The themes that come with the app first, then the imported ones.
-    let built_in = crate::terminal_builtin::all().iter().filter(|theme| {
-        !state
-            .library
-            .themes
-            .iter()
-            .any(|known| known.name == theme.name)
-    });
-    for theme in built_in.chain(&state.library.themes) {
+    // The imported themes on top, a separator, then those that come with the app.
+    for theme in &state.library.themes {
+        list = list.push(choice(theme.name.clone(), Some(theme.name.as_str())));
+    }
+    if !state.library.themes.is_empty() {
+        list = list.push(theme::horizontal_divider());
+    }
+    for theme in state.built_in() {
         list = list.push(choice(theme.name.clone(), Some(theme.name.as_str())));
     }
 

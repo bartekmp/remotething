@@ -293,6 +293,12 @@ details-received = Received
 details-sent = Sent
 details-via = Through { $hosts }
 
+about-check-updates = Check for updates
+about-update-checking = Checking…
+about-update-current = You have the latest version.
+about-update-available = Version { $version } is available.
+about-update-download = Download
+about-update-failed = Could not check for updates: { $reason }
 about-rights = © 2026 bartekmp. Free software under the GNU GPL, version 3.
 
 properties-quality = Remote desktop quality

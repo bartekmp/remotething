@@ -87,6 +87,8 @@ pub struct State {
     pub(crate) menu: Option<menu::State>,
     /// The page of the settings screen that is showing.
     pub(crate) settings_page: settings::Tab,
+    /// What the About page says about newer releases.
+    pub(crate) update_check: crate::update_check::Status,
     /// The imported terminal themes and the preview on the Terminal page.
     pub(crate) terminal_themes: crate::terminal_settings::State,
     /// A folder with content that waits for the user to confirm its removal.
@@ -142,6 +144,8 @@ pub enum Message {
     Wsl(wsl_import::Message),
     Preview(import_preview::Message),
     Settings(settings::Message),
+    /// GitHub answered the check for updates, or it failed.
+    UpdateChecked(Result<String, String>),
     /// The folder chosen for a feature, or `None` when the dialog was cancelled.
     FolderPicked(settings::FolderKind, Option<std::path::PathBuf>),
     Vault(vault::Message),
@@ -257,6 +261,7 @@ impl State {
             system_mode: Mode::None,
             menu: None,
             settings_page: settings::Tab::default(),
+            update_check: crate::update_check::Status::default(),
             terminal_themes,
             removal: None,
             fresh: None,
@@ -563,6 +568,9 @@ fn handle(state: &mut State, message: Message) -> Task<Message> {
         Message::SettingsPressed => state.open_settings(Centre::Settings),
         Message::PropertiesClosed => state.close_properties(),
         Message::VaultOpened(result) => panel_actions::on_vault_opened(state, result),
+        Message::UpdateChecked(answer) => {
+            state.update_check = crate::update_check::finished(answer)
+        }
         Message::Settings(message) => {
             let event = settings::update(&mut state.preferences, message);
             return settings_actions::on_settings_event(state, event);
