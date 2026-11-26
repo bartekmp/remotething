@@ -412,7 +412,7 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             state.connect(context)
         }
         // A password credential with nothing stored: it has to be typed.
-        Message::SecretLoaded(Ok(Sealed(None))) => state.ask(None),
+        Message::SecretLoaded(Ok(Sealed(None))) => state.ask(Some(fl!("session-secret-missing"))),
         Message::SecretLoaded(Err(reason)) => {
             let note = format!("{} {reason}", fl!("session-secret-failed"));
             state.ask(Some(note))

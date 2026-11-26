@@ -335,7 +335,13 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             state.connect(context)
         }
         // Nothing stored: a key file may not need a passphrase, a password must be typed.
-        Message::SecretLoaded(Ok(Sealed(None))) => state.connect(context),
+        Message::SecretLoaded(Ok(Sealed(None))) => {
+            if matches!(state.method, Method::Password(None)) {
+                state.ask(Some(fl!("session-secret-missing")))
+            } else {
+                state.connect(context)
+            }
+        }
         Message::SecretLoaded(Err(reason)) => {
             let note = format!("{} {reason}", fl!("session-secret-failed"));
             state.ask(Some(note))
