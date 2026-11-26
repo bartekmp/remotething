@@ -20,6 +20,7 @@ mod desktop_open;
 mod desktop_size;
 mod desktop_view;
 mod display;
+mod ellipsis;
 mod features;
 mod file_clipboard;
 mod file_details;

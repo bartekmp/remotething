@@ -8,6 +8,7 @@ use iced::widget::{column, container, mouse_area, row, scrollable, space, text};
 use iced::{Element, Length};
 use remotething_core::{Protocol, Store};
 
+use crate::ellipsis::ellipsized;
 use crate::i18n::fl;
 use crate::icons;
 use crate::rows::{self, Row, RowKind};
@@ -311,7 +312,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
                     .align_y(Vertical::Center)
                     .into(),
                 None => {
-                    let label = row![icon, name_text(tree_row.name)]
+                    let label = row![icon, ellipsized(tree_row.name).size(theme::TEXT_BODY)]
                         .spacing(8)
                         .align_y(Vertical::Center);
                     mouse_area(label)
@@ -332,7 +333,7 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
             row_container(line, style)
         }
         (RowKind::Connection(protocol), None) => {
-            let label = name_text(tree_row.name);
+            let label = ellipsized(tree_row.name).size(theme::TEXT_BODY);
             let badge = container(text(protocol_label(protocol)).size(11))
                 .padding([2, 6])
                 .style(theme::chip);
@@ -353,13 +354,6 @@ fn view_row<'a>(state: &'a State, tree_row: Row) -> Element<'a, Message> {
         .on_exit(Message::RowExited(selection.clone()))
         .on_right_press(Message::MenuRequested(Some(selection)))
         .into()
-}
-
-/// A name that wraps inside the row, breaking inside a long word when it must.
-fn name_text<'a>(name: String) -> iced::widget::Text<'a> {
-    text(name)
-        .width(Length::Fill)
-        .wrapping(iced::widget::text::Wrapping::WordOrGlyph)
 }
 
 /// The name of a row as a text field. Enter keeps the new name.

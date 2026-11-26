@@ -11,7 +11,7 @@ The window has two parts: the connection tree on the left and open tabs in the c
 - Click a folder's arrow to fold or unfold it.
 - Click a folder's name, or a connection, to select it.
 - Double-click a connection to open it in a new tab.
-- Drag the right edge of the tree to make it wider or narrower (240 to 560 pixels; below 300 the buttons above the tree show only their icons). The app remembers the width. Long names wrap.
+- Drag the right edge of the tree to make it wider or narrower (240 to 560 pixels; below 300 the buttons above the tree show only their icons). The app remembers the width. Long names end in "…".
 - The button at the top of the tree folds it to a narrow strip; press it again to bring it back. The app remembers this. The strip keeps the buttons as icons (New folder, New connection, Credentials, Settings, with their names on hover), and pressing one unfolds the tree.
 - **New folder** and **New connection** add an item inside the selected folder, or beside the selected connection. With nothing selected they go to the top level. The properties panel opens for the new item.
 

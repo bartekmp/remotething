@@ -7,6 +7,7 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## 0.83.1 - 2026-11-26
 
+- Long folder and connection names in the tree end in "…" instead of wrapping.
 - The connection tree cannot be made narrower than 240 pixels, and below 300 its buttons show only icons so they do not overflow.
 
 ## 0.83.0 - 2026-11-26
