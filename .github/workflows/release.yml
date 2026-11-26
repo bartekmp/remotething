@@ -86,10 +86,13 @@ jobs:
       - name: Install Flatpak
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils
+          sudo apt-get install -y --no-install-recommends flatpak
           # Ubuntu 24.04 stops unprivileged user namespaces, which the builder's sandbox needs.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          # Flathub's own builder, with its own appstream and elfutils; `cargo xtask package
+          # flatpak` runs it when there is no flatpak-builder on the machine.
+          flatpak install --user -y flathub org.flatpak.Builder
 
       # The same command as on a developer's machine; it installs the SDK it needs.
       - name: Build the Flatpak
