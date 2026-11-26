@@ -92,11 +92,14 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           # Flathub's own builder, with its own appstream and elfutils; `cargo xtask package
           # flatpak` runs it when there is no flatpak-builder on the machine.
-          flatpak install --user -y flathub org.flatpak.Builder
+          flatpak install --user -y flathub org.flatpak.Builder \
+            org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 \
+            org.freedesktop.Sdk.Extension.rust-stable//25.08
 
       # The same command as on a developer's machine; it installs the SDK it needs.
       - name: Build the Flatpak
-        run: cargo xtask package flatpak
+        # The builder asks Flatpak for its dependencies, which needs a session bus.
+        run: dbus-run-session -- cargo xtask package flatpak
 
       - name: Attach to the release
         run: gh release upload "v$VERSION" --clobber "dist/remotething-$VERSION.flatpak"
