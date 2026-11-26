@@ -67,6 +67,8 @@ pub(crate) struct Live {
     pub(crate) size: (u32, u32),
     /// The room the tab gives the desktop, in logical pixels.
     pub(crate) area: Size,
+    /// Whether the server said it can resize its desktop.
+    pub(crate) resizable: bool,
     input: mpsc::Sender<Input>,
     pub(crate) info: Info,
     pub(crate) meter: Meter,
@@ -141,6 +143,8 @@ pub enum Message {
     Opened(Result<Opened, Failure>),
     ReconnectPressed,
     Frame(Picture),
+    /// The server said it can resize its desktop.
+    Resizable,
     /// The room the tab gives the desktop changed.
     AreaChanged(Size),
     /// The room stayed the same for a while: time to ask for a desktop that fits.
@@ -334,6 +338,7 @@ impl State {
                 }
                 Event::Cursor(cursor) => Message::Cursor(cursor),
                 Event::Clipboard(text) => Message::Clipboard(text),
+                Event::Resizable => Message::Resizable,
                 Event::Stats(stats) => Message::Stats(stats),
                 Event::Closed(reason) => Message::Closed(reason),
             };
@@ -389,6 +394,7 @@ impl Live {
             picture: Picture::black(),
             size,
             area: Size::ZERO,
+            resizable: false,
             input,
             info,
             meter: Meter::new(),
@@ -477,6 +483,12 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
             if let Stage::Connected(live) = &mut state.stage {
                 live.size = (picture.width, picture.height);
                 live.picture = picture;
+            }
+            Task::none()
+        }
+        Message::Resizable => {
+            if let Stage::Connected(live) = &mut state.stage {
+                live.resizable = true;
             }
             Task::none()
         }

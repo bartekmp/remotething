@@ -249,3 +249,22 @@ async fn a_server_that_can_resize_follows_the_requested_size_without_being_told_
     }
     assert_eq!(size, Some((800, 600)));
 }
+
+#[tokio::test]
+async fn a_server_that_can_resize_says_so_once() {
+    let Some(server) = start("VncAuth") else {
+        return;
+    };
+    let mut session = connect(target(&server, Some(PASSWORD))).await.unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut said = 0;
+    while Instant::now() < deadline && said == 0 {
+        if let Ok(Some(Event::Resizable)) =
+            tokio::time::timeout(Duration::from_secs(1), session.events.recv()).await
+        {
+            said += 1;
+        }
+    }
+    assert_eq!(said, 1);
+}

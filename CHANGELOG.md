@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.85.1 - 2026-11-26
+
+- VNC: the connection details say whether the server can resize its desktop to the tab (TigerVNC can; TightVNC cannot).
+
 ## 0.85.0 - 2026-11-26
 
 - VNC: the desktop follows the size of the tab, when the server can resize (the app detects that by itself).

@@ -167,6 +167,14 @@ fn details(
             fl!("details-size"),
             format!("{} × {}", live.size.0, live.size.1),
         ),
+        (
+            fl!("details-resizing"),
+            if live.resizable {
+                fl!("details-resizing-yes")
+            } else {
+                fl!("details-resizing-no")
+            },
+        ),
     ];
     if let Some(path) = live.video.path() {
         lines.push((fl!("details-recording"), path.display().to_string()));

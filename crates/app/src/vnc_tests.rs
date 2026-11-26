@@ -484,3 +484,16 @@ fn a_settled_tab_size_is_offered_to_the_session_which_decides_whether_the_server
     fixture.send(&mut state, Message::AreaSettled(room));
     assert!(input.try_recv().is_err());
 }
+
+#[test]
+fn the_details_know_whether_the_server_can_resize() {
+    let mut fixture = Fixture::new();
+    let mut state = fixture.start(None);
+    let _input = state.connect_for_test(info());
+    let resizable =
+        |state: &State| matches!(&state.stage, Stage::Connected(live) if live.resizable);
+
+    assert!(!resizable(&state));
+    fixture.send(&mut state, Message::Resizable);
+    assert!(resizable(&state));
+}
