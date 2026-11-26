@@ -1,6 +1,6 @@
 # M0 spike findings
 
-13 Nov 2026. Code under `spikes/` is throwaway; this page is what carries forward.
+13 Nov 2026. The prototype code was removed from the tree (it is in the git history); this page is what carries forward.
 
 ## Verdict
 
@@ -73,14 +73,3 @@ Not covered, still open: input, dynamic resize, clipboard, audio, gateway, drive
 - Verified: the Windows cross-build inside the CI image (`cargo-xwin`, `x86_64-pc-windows-msvc`). The `.exe` files have not been launched on Windows yet.
 - Verified: the multibranch Jenkins job `remotething` on `forge`. Build 1 of `wp-m0-spikes` passed every stage in about 25 minutes with cold caches.
 - russh defaults to `aws-lc-rs`, which needs cmake. The spikes select `ring`; it still compiles C and assembly, so the Windows cross-build needs clang in the image.
-
-## Running the spikes
-
-```sh
-cd spikes
-docker compose -f servers/compose.yml up -d
-cargo run -p spike-term-ssh          # terminal over SSH
-cargo run -p spike-wayland-probe     # file drop and shortcut probe
-cargo run -p spike-rdp-frame         # RDP desktop
-cargo test --workspace -- --include-ignored
-```
