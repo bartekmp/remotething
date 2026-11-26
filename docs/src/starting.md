@@ -82,6 +82,7 @@ Right-clicking any tab also offers **Close**.
 Right-click an item and choose **Edit**. Change its fields in the properties panel and press **Save**: the change is written to the connections file and the panel closes. The **X** at the top, or Escape, closes it without saving.
 
 - **Icon** picks the icon shown in the tree. The first one in the grid is the default for that kind of item.
+- **Terminal theme** (SSH, WSL and local shells, and folders) gives the terminal its own colours. **Default** follows the one chosen in Settings → Terminal, or the folder's.
 - Leave **Port** empty to inherit it from the folder or use the protocol's default.
 - **(inherit)** for credential and jump host means the value comes from the folder above.
 - **Save a password here.** While the credential is **(inherit)**, the panel has a user name and a password field. Fill them in and press **Save**: a credential named after the connection is made, the password goes to the system keyring, and the connection is linked to it. No trip to the Credentials screen. To use a credential you already have, pick it in the list instead; the fields are then hidden.

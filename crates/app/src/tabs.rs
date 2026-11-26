@@ -755,6 +755,7 @@ fn start_quick(
         target.label()
     };
     let connection = ResolvedConnection {
+        terminal_theme: None,
         // Not in the tree, so it has no id yet.
         id: String::new(),
         name,

@@ -85,6 +85,7 @@ These keys can be set on a folder or on a connection.
 | `port` | TCP port | 22 for SSH, 3389 for RDP, 5900 for VNC |
 | `credential` | Id of a stored credential | No credential |
 | `jump` | Id of a connection to tunnel through | Direct connection |
+| `terminal_theme` | Name of a terminal colour theme, built in or imported (see [SSH](ssh.md)), for SSH, WSL and local shell terminals | The theme chosen in Settings → Terminal |
 | `local.directory`, `local.arguments`, `local.environment` | For `local` shells: the start folder (`~` is home), a list of arguments, and a table of variables. `host` is the shell; `""` is your default shell | Home folder, no arguments, no variables |
 | `desktop.quality` | For RDP and VNC: `lan`, `balanced` or `low-bandwidth` (files written before VNC call it `rdp.quality`, which still works) | `balanced` |
 

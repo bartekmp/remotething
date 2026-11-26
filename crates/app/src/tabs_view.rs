@@ -221,9 +221,8 @@ fn view_content<'a>(
         Content::Page(shown) => crate::window::page_view(app, *shown),
         Content::Launcher(query) => launcher::view(store, recent.ids(), query)
             .map(move |message| Message::Launcher(id, message)),
-        Content::Session(session) => {
-            session_view::view(session).map(move |message| Message::Session(id, message))
-        }
+        Content::Session(session) => session_view::view(session, &app.terminal_themes)
+            .map(move |message| Message::Session(id, message)),
         Content::Desktop(desktop) => {
             desktop_view::view(desktop).map(move |message| Message::Desktop(id, message))
         }

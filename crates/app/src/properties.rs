@@ -47,6 +47,8 @@ pub struct Draft {
     pub parent: Option<String>,
     pub credential: Option<String>,
     pub jump: Option<String>,
+    /// The terminal colour theme. `None` follows the app's, or the folder's.
+    pub terminal_theme: Option<String>,
     /// Local port forwards as typed, `local:host:port` separated by commas. Empty means "inherit".
     pub forwards: String,
     /// RDP only. `None` means "inherit".
@@ -77,6 +79,7 @@ pub enum Message {
     ParentPicked(Choice),
     CredentialPicked(Choice),
     JumpPicked(Choice),
+    TerminalThemePicked(Choice),
     ForwardsChanged(String),
     DirectoryChanged(String),
     ArgumentsChanged(String),
@@ -176,6 +179,7 @@ impl Draft {
             parent: parent.clone(),
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
+            terminal_theme: settings.terminal_theme.clone(),
             forwards: format_forwards(&settings.forwards),
             directory: settings.local.directory.clone().unwrap_or_default(),
             arguments: local_shell::join_words(&settings.local.arguments),
@@ -301,6 +305,7 @@ impl Draft {
         settings.forwards = forwards.to_vec();
         settings.credential = self.credential.clone();
         settings.jump = self.jump.clone();
+        settings.terminal_theme = self.terminal_theme.clone();
         settings.desktop.quality = self.desktop_quality;
     }
 }
@@ -341,6 +346,7 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::ParentPicked(choice) => draft.parent = choice.id,
         Message::CredentialPicked(choice) => draft.credential = choice.id,
         Message::JumpPicked(choice) => draft.jump = choice.id,
+        Message::TerminalThemePicked(choice) => draft.terminal_theme = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
         Message::DirectoryChanged(text) => draft.directory = text,
         Message::ArgumentsChanged(text) => draft.arguments = text,
@@ -359,6 +365,7 @@ pub fn view<'a>(
     draft: Option<&'a Draft>,
     store: &'a Store,
     selection: Option<&'a Selection>,
+    terminal_themes: &[String],
 ) -> Element<'a, Message> {
     let (Some(draft), Some(selection)) = (draft, selection) else {
         return text(fl!("properties-empty"))
@@ -443,6 +450,20 @@ pub fn view<'a>(
                 .width(Length::Fill),
             ));
         }
+    }
+
+    // Folders can set it for the connections inside; only a terminal has colours.
+    let has_terminal = matches!(
+        draft.protocol,
+        Protocol::Ssh | Protocol::Wsl | Protocol::Local
+    );
+    if !is_connection || has_terminal {
+        fields = fields.push(choice_field(
+            fl!("properties-terminal-theme"),
+            terminal_theme_choices(terminal_themes, &draft.terminal_theme),
+            &draft.terminal_theme,
+            Message::TerminalThemePicked,
+        ));
     }
 
     // The picker is big and rarely needed, so it comes after the fields people fill in.
@@ -609,6 +630,23 @@ fn jump_choices(store: &Store, selection: &Selection) -> Vec<Choice> {
         choices.push(Choice {
             id: Some(connection.id.clone()),
             label: connection.name.clone(),
+        });
+    }
+    choices
+}
+
+/// "Default", then every theme there is. A theme that was deleted but is still named stays in
+/// the list, so the field does not go blank.
+fn terminal_theme_choices(names: &[String], current: &Option<String>) -> Vec<Choice> {
+    let mut choices = vec![Choice {
+        id: None,
+        label: fl!("terminal-theme-default"),
+    }];
+    let missing = current.iter().filter(|name| !names.contains(name));
+    for name in names.iter().chain(missing) {
+        choices.push(Choice {
+            id: Some(name.clone()),
+            label: name.clone(),
         });
     }
     choices

@@ -418,3 +418,34 @@ fn choosing_a_local_shell_clears_the_address_a_new_connection_starts_with() {
     );
     assert_eq!(draft.host, "web-01.example.net");
 }
+
+#[test]
+fn a_terminal_theme_is_saved_with_the_connection_and_cleared_by_default() {
+    let mut draft = Draft::load(&store(), &web()).unwrap();
+    assert_eq!(draft.terminal_theme, None);
+
+    update(
+        &mut draft,
+        Message::TerminalThemePicked(Choice {
+            id: Some("Nord Dark".to_string()),
+            label: "Nord Dark".to_string(),
+        }),
+    );
+    let saved = draft.apply(&store(), &web()).unwrap();
+    let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
+    assert_eq!(
+        connection.settings.terminal_theme.as_deref(),
+        Some("Nord Dark")
+    );
+
+    update(
+        &mut draft,
+        Message::TerminalThemePicked(Choice {
+            id: None,
+            label: "Default".to_string(),
+        }),
+    );
+    let saved = draft.apply(&store(), &web()).unwrap();
+    let connection = saved.connections.iter().find(|c| c.id == "web-01").unwrap();
+    assert_eq!(connection.settings.terminal_theme, None);
+}

@@ -75,6 +75,20 @@ impl State {
         }
     }
 
+    /// The names of every theme there is: those that come with the app, then the imported ones.
+    pub(crate) fn names(&self) -> Vec<String> {
+        let built_in = crate::terminal_builtin::all().iter().filter(|theme| {
+            self.library
+                .themes
+                .iter()
+                .all(|known| known.name != theme.name)
+        });
+        built_in
+            .chain(&self.library.themes)
+            .map(|theme| theme.name.clone())
+            .collect()
+    }
+
     /// The colours to draw terminals with: those of the chosen theme, if it still exists.
     pub fn applied_palette(&self, preferences: &Preferences) -> Option<Palette> {
         let name = preferences.terminal.theme.as_deref()?;

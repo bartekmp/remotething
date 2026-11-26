@@ -31,6 +31,7 @@ impl Fixture {
     /// A connected desktop, and the end of its input queue.
     fn connected(&mut self) -> (State, tokio::sync::mpsc::Receiver<Input>) {
         let connection = ResolvedConnection {
+            terminal_theme: None,
             id: "win".to_string(),
             name: "win".to_string(),
             protocol: Protocol::Rdp,

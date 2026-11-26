@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.84.0 - 2026-11-26
+
+- A terminal theme can be chosen per connection or folder (Terminal theme in the properties panel). Default follows Settings → Terminal.
+
 ## 0.83.3 - 2026-11-26
 
 - The themes (Dracula, Catppuccin, Gruvbox, Nord, Solarized, Monokai, dark and light) are now terminal themes, in Settings → Terminal. The Theme list in General is back to System, Light and Dark, plus "Follow terminal theme" when that feature is on.

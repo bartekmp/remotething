@@ -117,6 +117,9 @@ pub struct Settings {
     /// Id of the connection to tunnel through.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump: Option<String>,
+    /// Name of the terminal colour theme for this terminal. `None` follows the app's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal_theme: Option<String>,
     /// Local port forwards opened with an SSH session. Empty means "inherit".
     #[serde(default, rename = "forward", skip_serializing_if = "Vec::is_empty")]
     pub forwards: Vec<Forward>,

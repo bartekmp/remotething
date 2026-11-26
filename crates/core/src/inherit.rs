@@ -21,6 +21,8 @@ pub struct ResolvedConnection {
     pub credential: Option<String>,
     /// Id of the connection to tunnel through, if any level sets one.
     pub jump: Option<String>,
+    /// The terminal colour theme, if any level sets one.
+    pub terminal_theme: Option<String>,
     /// Local port forwards to open with an SSH session.
     pub forwards: Vec<Forward>,
     /// What a local shell starts with.
@@ -40,6 +42,9 @@ impl Settings {
         }
         if self.jump.is_none() {
             self.jump = fallback.jump.clone();
+        }
+        if self.terminal_theme.is_none() {
+            self.terminal_theme = fallback.terminal_theme.clone();
         }
         if self.forwards.is_empty() {
             self.forwards = fallback.forwards.clone();
@@ -78,6 +83,7 @@ impl Store {
             port: settings.port.unwrap_or(connection.protocol.default_port()),
             credential: settings.credential,
             jump: settings.jump,
+            terminal_theme: settings.terminal_theme,
             forwards: settings.forwards,
             local: settings.local,
             desktop_quality: settings.desktop.quality.unwrap_or_default(),
@@ -172,6 +178,29 @@ mod tests {
         let resolved = store.resolve("web").unwrap();
 
         assert_eq!(resolved.credential.as_deref(), Some("cred-ops"));
+    }
+
+    #[test]
+    fn a_terminal_theme_comes_from_the_folder_unless_the_connection_has_its_own() {
+        let theme = |name: &str| Settings {
+            terminal_theme: Some(name.to_string()),
+            ..Settings::default()
+        };
+        let store = Store {
+            credentials: vec![],
+            folders: vec![folder("prod", None, theme("Nord Dark"))],
+            connections: vec![
+                connection("web", Some("prod"), Settings::default()),
+                connection("db", Some("prod"), theme("Gruvbox Light")),
+                connection("lone", None, Settings::default()),
+            ],
+        };
+
+        let name = |id: &str| store.resolve(id).unwrap().terminal_theme;
+
+        assert_eq!(name("web").as_deref(), Some("Nord Dark"));
+        assert_eq!(name("db").as_deref(), Some("Gruvbox Light"));
+        assert_eq!(name("lone"), None);
     }
 
     #[test]

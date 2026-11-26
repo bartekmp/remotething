@@ -461,3 +461,4 @@ files-column-size = Size
 theme-follow-terminal = Follow terminal theme
 settings-feature-follow-terminal = Offer "Follow terminal theme" in the Theme list
 settings-feature-follow-terminal-note = With a terminal theme chosen on the Terminal page, the window takes its colours. Without one it follows the system.
+properties-terminal-theme = Terminal theme

@@ -9,6 +9,7 @@ use super::*;
 
 fn connection(id: &str, protocol: Protocol) -> ResolvedConnection {
     ResolvedConnection {
+        terminal_theme: None,
         id: id.to_string(),
         name: id.to_string(),
         protocol,
