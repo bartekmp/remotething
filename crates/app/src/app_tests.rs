@@ -1044,18 +1044,6 @@ fn dark_terminal_theme() -> crate::terminal_theme::Theme {
 }
 
 #[test]
-fn a_named_theme_is_used_and_high_contrast_wins_over_it() {
-    let directory = tempfile::tempdir().unwrap();
-    let mut state = state(&directory, ONE_CONNECTION);
-    state.preferences.theme = preferences::ThemeChoice::NordLight;
-
-    assert_eq!(theme(&state).to_string(), "Remotething Nord Light");
-
-    state.preferences.high_contrast = true;
-    assert_eq!(theme(&state).to_string(), "Remotething Light High Contrast");
-}
-
-#[test]
 fn follow_terminal_takes_the_terminal_colours_only_while_the_feature_is_on() {
     let directory = tempfile::tempdir().unwrap();
     let mut state = state(&directory, ONE_CONNECTION);

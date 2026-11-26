@@ -11,13 +11,10 @@ use crate::features;
 use crate::i18n::{self, fl};
 use crate::preferences::{Preferences, TabLayout, ThemeChoice};
 use crate::theme;
-use crate::theme_schemes;
 
-/// The Theme list: the plain ones, the named schemes, and "Follow the terminal theme" when
-/// that feature is on.
+/// The Theme list: the plain ones, and "Follow terminal theme" when that feature is on.
 fn theme_options(follow_terminal: bool) -> Vec<ThemeOption> {
     let mut choices = vec![ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark];
-    choices.extend(theme_schemes::ALL.iter().map(|(choice, _)| *choice));
     if follow_terminal {
         choices.push(ThemeChoice::FollowTerminal);
     }
@@ -183,8 +180,6 @@ impl fmt::Display for ThemeOption {
             ThemeChoice::Light => fl!("theme-light"),
             ThemeChoice::Dark => fl!("theme-dark"),
             ThemeChoice::FollowTerminal => fl!("theme-follow-terminal"),
-            // The names of the schemes are the names of their makers' themes.
-            named => theme_schemes::of(named).map_or_else(String::new, |scheme| scheme.name.into()),
         };
         formatter.write_str(&label)
     }
@@ -680,13 +675,12 @@ mod theme_list_tests {
     fn follow_terminal_is_listed_only_while_its_feature_is_on() {
         let labels =
             |on| -> Vec<String> { theme_options(on).iter().map(ToString::to_string).collect() };
-        assert_eq!(labels(false).len(), 15);
+        assert_eq!(labels(false).len(), 3);
         assert!(!labels(false).contains(&"Follow terminal theme".to_string()));
         assert_eq!(
             labels(true).last().map(String::as_str),
             Some("Follow terminal theme")
         );
-        assert!(labels(false).contains(&"Solarized Light".to_string()));
     }
 
     #[test]

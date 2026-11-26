@@ -29,7 +29,6 @@ use crate::settings_actions;
 use crate::tabs::{self, Page};
 use crate::terminal_view;
 use crate::theme as look;
-use crate::theme_schemes;
 use crate::tree::{self, Selection};
 use crate::tree_actions;
 use crate::vault;
@@ -597,12 +596,11 @@ pub fn theme(state: &State) -> Theme {
     let high_contrast = state.preferences.high_contrast;
     let choice = state.preferences.theme;
     let scheme = match choice {
-        ThemeChoice::System | ThemeChoice::Light | ThemeChoice::Dark => None,
         ThemeChoice::FollowTerminal => terminal_scheme(state),
-        named => theme_schemes::of(named),
+        ThemeChoice::System | ThemeChoice::Light | ThemeChoice::Dark => None,
     };
     match scheme {
-        // High contrast wins over every colour scheme; it keeps only light or dark.
+        // High contrast wins over the terminal's colours; it keeps only light or dark.
         Some(scheme) if high_contrast => look::for_mode(look::mode_of(&scheme), true),
         Some(scheme) => look::for_scheme(&scheme),
         None => {
@@ -618,21 +616,12 @@ pub fn theme(state: &State) -> Theme {
 
 /// The colours of the chosen terminal theme, while that feature is on. Without a terminal
 /// theme of its own there is nothing to follow.
-fn terminal_scheme(state: &State) -> Option<theme_schemes::Scheme> {
+fn terminal_scheme(state: &State) -> Option<look::Scheme> {
     if !state.preferences.features.follow_terminal_theme {
         return None;
     }
     let palette = state.terminal_themes.applied_palette(&state.preferences)?;
-    let brightness = |color: iced::Color| 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
-    Some(theme_schemes::Scheme {
-        name: "Terminal",
-        dark: brightness(palette.background) < 0.5,
-        background: palette.background,
-        text: palette.foreground,
-        // Blue and red of the 16 colours.
-        accent: palette.ansi[4],
-        danger: palette.ansi[1],
-    })
+    Some(look::scheme_of(&palette))
 }
 
 /// Keeps the theme in step when the desktop switches between light and dark.

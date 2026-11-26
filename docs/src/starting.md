@@ -121,7 +121,7 @@ Press **Settings** at the bottom of the connection tree; with the tree folded it
 
 | Setting | Choices | Default |
 | --- | --- | --- |
-| Theme | Follow the system, Light, Dark, and a dark and a light variant each of Dracula, Catppuccin (Mocha, Latte), Gruvbox, Nord, Solarized and Monokai. With the optional **Follow terminal theme** feature on, also "Follow terminal theme": the window takes the colours of the terminal theme chosen on the Terminal page | Follow the system |
+| Theme | Follow the system, Light, Dark. With the optional **Follow terminal theme** feature on, also "Follow terminal theme": the window takes the colours of the terminal theme chosen on the Terminal page | Follow the system |
 | Language | Follow the system, or a shipped language | Follow the system |
 | When tabs do not fit on one line | Keep one line and list the rest under a button; use more lines | Keep one line |
 | Interface size | 100% to 200%: draws the whole window bigger, for small text or high-resolution screens | 100% |

@@ -198,7 +198,15 @@ pub fn view<'a>(
             .on_press(Message::Previewed(name.map(str::to_string)))
     };
     let mut list = column![choice(fl!("terminal-theme-default"), None)].spacing(2);
-    for theme in &state.library.themes {
+    // The themes that come with the app first, then the imported ones.
+    let built_in = crate::terminal_builtin::all().iter().filter(|theme| {
+        !state
+            .library
+            .themes
+            .iter()
+            .any(|known| known.name == theme.name)
+    });
+    for theme in built_in.chain(&state.library.themes) {
         list = list.push(choice(theme.name.clone(), Some(theme.name.as_str())));
     }
 
@@ -213,7 +221,11 @@ pub fn view<'a>(
             .on_press_maybe(can_apply.then_some(Message::ApplyPressed)),
         button(text(fl!("terminal-theme-delete")))
             .style(theme::pill)
-            .on_press_maybe(previewed.map(|_| Message::DeletePressed)),
+            .on_press_maybe(
+                previewed
+                    .filter(|name| state.library.themes.iter().any(|theme| theme.name == *name))
+                    .map(|_| Message::DeletePressed),
+            ),
     ]
     .spacing(8)
     .wrap();

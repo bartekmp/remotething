@@ -124,7 +124,8 @@ fn pane(state: &State, focus: Option<bool>) -> Element<'_, Message> {
                 text(label).size(theme::TEXT_SMALL),
                 tooltip::Position::Bottom,
             )
-            .style(theme::chip)
+            .padding(6)
+            .style(theme::floating)
             .into()
         } else {
             Element::from(pill)

@@ -236,24 +236,14 @@ fn is_false(value: &bool) -> bool {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ThemeChoice {
-    #[default]
-    System,
     Light,
     Dark,
-    DraculaDark,
-    DraculaLight,
-    CatppuccinMocha,
-    CatppuccinLatte,
-    GruvboxDark,
-    GruvboxLight,
-    NordDark,
-    NordLight,
-    SolarizedDark,
-    SolarizedLight,
-    MonokaiDark,
-    MonokaiLight,
     /// The colours of the chosen terminal theme. Offered only while that feature is on.
     FollowTerminal,
+    /// Also what a theme name from an older version reads as.
+    #[default]
+    #[serde(other)]
+    System,
 }
 
 /// The settings file lives in the same directory as the connections file.
@@ -453,9 +443,18 @@ mod tests {
     fn a_broken_file_is_an_error() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("settings.toml");
-        std::fs::write(&path, "theme = \"purple\"").unwrap();
+        std::fs::write(&path, "high_contrast = \"purple\"").unwrap();
 
         assert!(load(&path).is_err());
+    }
+
+    #[test]
+    fn a_theme_name_from_an_older_version_reads_as_follow_the_system() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+        std::fs::write(&path, "theme = \"dracula-dark\"").unwrap();
+
+        assert_eq!(load(&path).unwrap().theme, ThemeChoice::System);
     }
 
     #[test]
