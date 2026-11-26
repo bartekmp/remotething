@@ -148,8 +148,17 @@ fn tree_panel(state: &State) -> Element<'_, Message> {
         .into()
 }
 
+/// Narrower than this, the buttons above the tree show only their icons.
+const LABELS_FROM: f32 = 300.0;
+
 fn tree_width(state: &State) -> f32 {
-    f32::from(state.preferences.tree_width)
+    let range = crate::preferences::TREE_WIDTH_RANGE;
+    f32::from(
+        state
+            .preferences
+            .tree_width
+            .clamp(*range.start(), *range.end()),
+    )
 }
 
 /// The gap between the tree and the centre. While the tree is open, dragging it sets the
@@ -290,27 +299,53 @@ fn expanded_tree(state: &State) -> Element<'_, Message> {
     .align_y(Vertical::Center);
     let [folder, connection, credentials] = sidebar_actions();
     let credentials_showing = is_credentials(&credentials.2, state.centre());
-    let toolbar = column![
+    let toolbar: Element<'_, Message> = if tree_width(state) < LABELS_FROM {
+        // No room for the names: icons only, with the name when the pointer rests on one.
         row![
-            labelled_button(folder.0, folder.1, folder.2, false),
-            labelled_button(connection.0, connection.1, connection.2, false),
+            rail_button(folder.0, folder.1, folder.2, false),
+            rail_button(connection.0, connection.1, connection.2, false),
+            rail_button(
+                credentials.0,
+                credentials.1,
+                credentials.2,
+                credentials_showing,
+            ),
         ]
-        .spacing(6),
-        labelled_button(
-            credentials.0,
-            credentials.1,
-            credentials.2,
-            credentials_showing,
-        ),
-    ]
-    .spacing(6);
+        .spacing(6)
+        .into()
+    } else {
+        column![
+            row![
+                labelled_button(folder.0, folder.1, folder.2, false),
+                labelled_button(connection.0, connection.1, connection.2, false),
+            ]
+            .spacing(6),
+            labelled_button(
+                credentials.0,
+                credentials.1,
+                credentials.2,
+                credentials_showing,
+            ),
+        ]
+        .spacing(6)
+        .into()
+    };
     let content = tree::view(&state.tree, &state.store).map(Message::Tree);
-    let settings = labelled_button(
-        icons::SETTINGS,
-        fl!("tree-settings"),
-        Message::SettingsPressed,
-        settings_showing(state.centre()),
-    );
+    let settings = if tree_width(state) < LABELS_FROM {
+        rail_button(
+            icons::SETTINGS,
+            fl!("tree-settings"),
+            Message::SettingsPressed,
+            settings_showing(state.centre()),
+        )
+    } else {
+        labelled_button(
+            icons::SETTINGS,
+            fl!("tree-settings"),
+            Message::SettingsPressed,
+            settings_showing(state.centre()),
+        )
+    };
     side_panel(
         column![header, toolbar, content, settings].spacing(look::GAP),
         tree_width(state),

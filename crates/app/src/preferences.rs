@@ -145,7 +145,7 @@ fn default_font_size() -> u8 {
 }
 
 /// The narrowest and widest the connection tree can be dragged to.
-pub const TREE_WIDTH_RANGE: std::ops::RangeInclusive<u16> = 200..=560;
+pub const TREE_WIDTH_RANGE: std::ops::RangeInclusive<u16> = 240..=560;
 
 fn default_tree_width() -> u16 {
     280

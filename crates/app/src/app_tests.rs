@@ -1026,7 +1026,7 @@ fn dragging_the_tree_edge_sets_its_width_within_limits_and_saves_it_on_release()
     move_to(&mut state, 412.0);
     assert_eq!(state.preferences.tree_width, 400);
     move_to(&mut state, 10.0);
-    assert_eq!(state.preferences.tree_width, 200);
+    assert_eq!(state.preferences.tree_width, 240);
     move_to(&mut state, 5000.0);
     assert_eq!(state.preferences.tree_width, 560);
     move_to(&mut state, 412.0);
