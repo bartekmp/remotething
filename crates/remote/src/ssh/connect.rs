@@ -52,7 +52,20 @@ pub async fn open_shell_through(
     known: KnownHosts,
     size: TerminalSize,
 ) -> Result<Shell> {
-    within_limit(auth, connect(jumps, endpoint, auth, known, size)).await
+    open_shell_running(jumps, endpoint, auth, known, size, None).await
+}
+
+/// Like [`open_shell_through`], but runs `command` in the terminal instead of the login
+/// shell when there is one. The session ends when the command does.
+pub async fn open_shell_running(
+    jumps: &[Hop],
+    endpoint: &Endpoint,
+    auth: &Auth,
+    known: KnownHosts,
+    size: TerminalSize,
+    command: Option<&str>,
+) -> Result<Shell> {
+    within_limit(auth, connect(jumps, endpoint, auth, known, size, command)).await
 }
 
 /// Connects and signs in like [`open_shell_through`], but starts no shell:
@@ -89,6 +102,7 @@ async fn connect(
     auth: &Auth,
     known: KnownHosts,
     size: TerminalSize,
+    command: Option<&str>,
 ) -> Result<Shell> {
     let (session, tunnel, details) = reach(jumps, endpoint, auth, known).await?;
     let channel = session.channel_open_session().await?;
@@ -96,7 +110,10 @@ async fn connect(
     channel
         .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
         .await?;
-    channel.request_shell(false).await?;
+    match command {
+        Some(command) => channel.exec(false, command).await?,
+        None => channel.request_shell(false).await?,
+    }
 
     Ok(shell::start(session, tunnel, channel, details))
 }

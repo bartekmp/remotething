@@ -49,6 +49,7 @@ impl Fixture {
     fn start(&mut self, credential: Option<&str>) -> State {
         let connection = ResolvedConnection {
             terminal_theme: None,
+            remote_command: None,
             id: "tv".to_string(),
             name: "tv".to_string(),
             protocol: Protocol::Vnc,
@@ -344,6 +345,7 @@ fn tunnelled(fixture: &mut Fixture) -> ResolvedConnection {
     .unwrap();
     ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         id: "tv".to_string(),
         name: "tv".to_string(),
         protocol: Protocol::Vnc,

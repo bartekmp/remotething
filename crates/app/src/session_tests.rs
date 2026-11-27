@@ -50,6 +50,7 @@ impl Fixture {
     fn start(&mut self, credential: Option<&str>) -> State {
         let connection = ResolvedConnection {
             terminal_theme: None,
+            remote_command: None,
             id: "web-01".to_string(),
             name: "web-01".to_string(),
             protocol: Protocol::Ssh,
@@ -102,6 +103,7 @@ fn a_typed_user_name_is_not_asked_for_again() {
     let mut fixture = Fixture::new();
     let connection = ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         id: String::new(),
         name: "ops@web-01".to_string(),
         protocol: Protocol::Ssh,
@@ -502,6 +504,7 @@ fn the_end_of_the_shell_ends_the_session() {
 fn connection_with_jump(jump: &str) -> ResolvedConnection {
     ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         id: "web-01".to_string(),
         name: "web-01".to_string(),
         protocol: Protocol::Ssh,
@@ -987,6 +990,7 @@ fn a_saved_screenshot_is_announced_in_a_note() {
 fn wsl_connection() -> ResolvedConnection {
     ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         id: "ubuntu".to_string(),
         name: "Ubuntu".to_string(),
         protocol: Protocol::Wsl,

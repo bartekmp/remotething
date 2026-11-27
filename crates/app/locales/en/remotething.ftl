@@ -232,6 +232,8 @@ session-agent-needs-user = The credential for this connection uses ssh-agent and
 session-agent-refused = The server accepted none of the keys in your ssh-agent for this user.
 
 forwards-active = Port forwards: { $list }
+properties-remote-command = Command to run
+properties-remote-command-hint = Empty: the login shell. For example tmux new -A -s main
 properties-forwards = Port forwards
 properties-forwards-hint = 8080:db.internal:5432, R:9000:localhost:3000, D:1080
 properties-error-forwards = Port forward { $text } is not port:host:port, R:port:host:port or D:port.

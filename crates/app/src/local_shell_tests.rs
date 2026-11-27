@@ -59,6 +59,7 @@ fn variables_are_names_and_values() {
 fn a_connection_without_a_shell_starts_the_default_one() {
     let connection = ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         id: String::new(),
         name: String::new(),
         protocol: remotething_core::Protocol::Local,

@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use remotething_remote::ssh::{
     Auth, Challenge, Endpoint, Error, Hop, Shell, ShellEvent, ShellInput, TerminalSize, open_shell,
-    open_shell_through, open_tunnel,
+    open_shell_running, open_shell_through, open_tunnel,
 };
 use remotething_secrets::{KnownHosts, Secret};
 use russh::keys::PublicKey;
@@ -190,6 +190,18 @@ impl server::Handler for TestServer {
         Ok(())
     }
 
+    async fn exec_request(
+        &mut self,
+        channel: ChannelId,
+        command: &[u8],
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_success(channel)?;
+        let text = String::from_utf8_lossy(command);
+        session.data(channel, format!("ran {text}\n"))?;
+        Ok(())
+    }
+
     async fn window_change_request(
         &mut self,
         channel: ChannelId,
@@ -353,6 +365,27 @@ async fn an_accepted_host_gives_a_shell_that_carries_bytes_both_ways() {
     let typed = ShellInput::Data(b"hello\n".to_vec());
     shell.input.send(typed).await.unwrap();
     read_until(&mut shell, "echo hello").await;
+}
+
+#[tokio::test]
+async fn a_command_runs_in_the_terminal_instead_of_the_login_shell() {
+    let endpoint = start_server().await;
+    let directory = tempfile::tempdir().unwrap();
+    let known = trusting(&endpoint, &directory).await;
+
+    let mut shell = open_shell_running(
+        &[],
+        &endpoint,
+        &password(PASSWORD),
+        known,
+        SIZE,
+        Some("tmux new -A -s main"),
+    )
+    .await
+    .unwrap();
+
+    read_until(&mut shell, "pty xterm-256color 80x24").await;
+    read_until(&mut shell, "ran tmux new -A -s main").await;
 }
 
 #[tokio::test]
