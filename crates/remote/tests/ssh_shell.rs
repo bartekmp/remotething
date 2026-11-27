@@ -385,7 +385,7 @@ async fn a_command_runs_in_the_terminal_instead_of_the_login_shell() {
     .unwrap();
 
     read_until(&mut shell, "pty xterm-256color 80x24").await;
-    read_until(&mut shell, "ran tmux new -A -s main").await;
+    read_until(&mut shell, "tmux new -A -s main").await;
 }
 
 #[tokio::test]

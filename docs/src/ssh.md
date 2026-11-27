@@ -36,7 +36,7 @@ A connection, or a folder above it, can name another connection as its **Jump ho
 
 ## Running a command
 
-Leave **Command to run** empty and a connection opens your login shell. Fill it in, on the connection or on a folder above it, and the tab runs that command in the terminal instead, for example `tmux new -A -s main` (attach to the session `main`, or create it) or `herdr`. The tab ends when the command does, and shows the usual closed-session message with **Reconnect**. In the connections file it is `remote_command`.
+Leave **Command to run** empty and a connection opens your login shell. Fill it in, on the connection or on a folder above it, and the tab runs that command in the terminal instead, for example `tmux new -A -s main` (attach to the session `main`, or create it) or `herdr`. The command runs in your remote login shell, so it finds programs the way a typed command does (`~/.local/bin` and others on your `PATH`). The tab ends when the command does, and shows the usual closed-session message with **Reconnect**. In the connections file it is `remote_command`.
 
 ## Port forwards
 
