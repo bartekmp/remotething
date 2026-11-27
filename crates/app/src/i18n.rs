@@ -29,6 +29,10 @@ pub static LOADER: LazyLock<FluentLanguageLoader> = LazyLock::new(|| {
     // A missing translation is not an error: English stays loaded.
     let _ = i18n_embed::select(&loader, &Catalogues, &requested_languages());
 
+    // Set after loading, which builds the bundles. Names are inserted into messages and saved (a duplicate's name); the invisible
+    // direction marks Fluent would put around them end up in the file.
+    loader.set_use_isolating(false);
+
     loader
 });
 
@@ -62,3 +66,13 @@ macro_rules! fl {
     };
 }
 pub(crate) use fl;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_name_put_into_a_message_comes_out_without_hidden_marks() {
+        let text = fl!("tree-copy-name", name = "forge");
+
+        assert_eq!(text, "forge (copy)");
+    }
+}

@@ -111,11 +111,19 @@ async fn connect(
         .request_pty(false, TERMINAL_TYPE, columns, lines, 0, 0, &[])
         .await?;
     match command {
-        Some(command) => channel.exec(false, command).await?,
+        Some(command) => channel.exec(false, in_login_shell(command)).await?,
         None => channel.request_shell(false).await?,
     }
 
     Ok(shell::start(session, tunnel, channel, details))
+}
+
+/// `command` run by the user's own shell as a login, interactive shell, so it finds programs
+/// the way a typed command does: a plain exec request skips `.profile` and `.bashrc`, and
+/// `herdr` in `~/.local/bin` would be "not found" (exit status 127).
+fn in_login_shell(command: &str) -> String {
+    let quoted = command.replace('\'', r"'\''");
+    format!("exec \"$SHELL\" -l -i -c '{quoted}'")
 }
 
 /// The signed-in connection to the target, with those to the jump hosts under it
@@ -462,4 +470,25 @@ fn is_encrypted_putty_key(path: &Path) -> bool {
         && text
             .lines()
             .any(|line| line.starts_with("Encryption:") && !line.contains("none"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_command_is_handed_to_the_login_shell_in_one_piece() {
+        assert_eq!(
+            in_login_shell("tmux new -A -s main"),
+            r#"exec "$SHELL" -l -i -c 'tmux new -A -s main'"#
+        );
+    }
+
+    #[test]
+    fn a_single_quote_in_a_command_is_escaped() {
+        assert_eq!(
+            in_login_shell("echo 'hi'"),
+            r#"exec "$SHELL" -l -i -c 'echo '\''hi'\'''"#
+        );
+    }
 }

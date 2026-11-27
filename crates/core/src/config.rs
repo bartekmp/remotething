@@ -11,10 +11,11 @@ impl Store {
     /// Reads and validates the connections file.
     pub fn load(path: &Path) -> Result<Store> {
         let text = fs::read_to_string(path).map_err(|source| io_error(path, source))?;
-        let store: Store = toml::from_str(&text).map_err(|source| Error::Parse {
+        let mut store: Store = toml::from_str(&text).map_err(|source| Error::Parse {
             path: path.to_path_buf(),
             source: Box::new(source),
         })?;
+        remove_direction_marks(&mut store);
         store.validate()?;
         Ok(store)
     }
@@ -39,6 +40,17 @@ impl Store {
         };
         write().map_err(|source| io_error(path, source))
     }
+}
+
+/// Duplicates made by 0.88.0 and before have the invisible direction marks of the
+/// translation system in their names; they cannot be seen or deleted, so they go.
+fn remove_direction_marks(store: &mut Store) {
+    let clean = |name: &mut String| name.retain(|c| !matches!(c, '\u{2068}' | '\u{2069}'));
+    store.folders.iter_mut().for_each(|f| clean(&mut f.name));
+    store
+        .connections
+        .iter_mut()
+        .for_each(|c| clean(&mut c.name));
 }
 
 /// On Unix the file is for its owner alone: it lists hosts and user names.
@@ -69,6 +81,18 @@ fn io_error(path: &Path, source: std::io::Error) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direction_marks_in_old_duplicate_names_are_removed_on_load() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("connections.toml");
+        let text = "[[connection]]\nid = \"a\"\nname = \"\u{2068}forge\u{2069} (copy)\"\nprotocol = \"ssh\"\nhost = \"h\"\n";
+        std::fs::write(&path, text).unwrap();
+
+        let store = Store::load(&path).unwrap();
+
+        assert_eq!(store.connections[0].name, "forge (copy)");
+    }
     use crate::model::{CredentialKind, Protocol, Quality};
 
     /// The example from the development plan.
