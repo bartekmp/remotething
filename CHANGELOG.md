@@ -5,6 +5,11 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.88.1 - 2026-11-27
+
+- SSH: the command to run is started through the remote login shell, so programs on your `PATH` such as `herdr` are found (it ended with exit status 127 before).
+- Duplicating a connection no longer puts invisible characters into the new name; names that have them are cleaned when the file is read.
+
 ## 0.88.0 - 2026-11-27
 
 - SSH: **Command to run** in the properties of a connection or folder runs a command, such as `tmux new -A -s main`, instead of the login shell.
