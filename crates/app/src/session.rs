@@ -500,6 +500,7 @@ impl State {
         let known = context.known_hosts.clone();
         let hops: Vec<Hop> = self.jumps.iter().filter_map(jump::Ready::hop).collect();
         let files_only = self.connection.protocol == Protocol::Sftp;
+        let command = self.connection.remote_command.clone();
 
         self.stage = Stage::Connecting;
         let open = Task::perform(
@@ -509,9 +510,16 @@ impl State {
                         .await
                         .map(Started::Files)
                 } else {
-                    ssh::open_shell_through(&hops, &endpoint, &auth, known, INITIAL_SIZE)
-                        .await
-                        .map(Started::Shell)
+                    ssh::open_shell_running(
+                        &hops,
+                        &endpoint,
+                        &auth,
+                        known,
+                        INITIAL_SIZE,
+                        command.as_deref(),
+                    )
+                    .await
+                    .map(Started::Shell)
                 };
                 match started {
                     Ok(started) => Ok(Opened(Arc::new(Mutex::new(Some(started))))),

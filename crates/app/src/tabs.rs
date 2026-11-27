@@ -781,6 +781,7 @@ fn start_quick(
     };
     let connection = ResolvedConnection {
         terminal_theme: None,
+        remote_command: None,
         // Not in the tree, so it has no id yet.
         id: String::new(),
         name,

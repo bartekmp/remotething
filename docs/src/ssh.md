@@ -34,6 +34,10 @@ A connection, or a folder above it, can name another connection as its **Jump ho
 - The jump host's SSH server must allow forwarding (`AllowTcpForwarding yes`, the OpenSSH default). If it does not, the tab says which host refused.
 - The connections to the jump hosts stay open as long as the session does, and close with it.
 
+## Running a command
+
+Leave **Command to run** empty and a connection opens your login shell. Fill it in, on the connection or on a folder above it, and the tab runs that command in the terminal instead, for example `tmux new -A -s main` (attach to the session `main`, or create it) or `herdr`. The tab ends when the command does, and shows the usual closed-session message with **Reconnect**. In the connections file it is `remote_command`.
+
 ## Port forwards
 
 The **Port forwards** field of a connection, or of a folder above it, lists forwards, separated by commas. There are three kinds:

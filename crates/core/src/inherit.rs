@@ -23,6 +23,8 @@ pub struct ResolvedConnection {
     pub jump: Option<String>,
     /// The terminal colour theme, if any level sets one.
     pub terminal_theme: Option<String>,
+    /// The command an SSH session runs instead of the login shell, if any level sets one.
+    pub remote_command: Option<String>,
     /// Local port forwards to open with an SSH session.
     pub forwards: Vec<Forward>,
     /// What a local shell starts with.
@@ -45,6 +47,9 @@ impl Settings {
         }
         if self.terminal_theme.is_none() {
             self.terminal_theme = fallback.terminal_theme.clone();
+        }
+        if self.remote_command.is_none() {
+            self.remote_command = fallback.remote_command.clone();
         }
         if self.forwards.is_empty() {
             self.forwards = fallback.forwards.clone();
@@ -84,6 +89,7 @@ impl Store {
             credential: settings.credential,
             jump: settings.jump,
             terminal_theme: settings.terminal_theme,
+            remote_command: settings.remote_command,
             forwards: settings.forwards,
             local: settings.local,
             desktop_quality: settings.desktop.quality.unwrap_or_default(),
@@ -178,6 +184,27 @@ mod tests {
         let resolved = store.resolve("web").unwrap();
 
         assert_eq!(resolved.credential.as_deref(), Some("cred-ops"));
+    }
+
+    #[test]
+    fn a_remote_command_comes_from_the_folder_unless_the_connection_has_its_own() {
+        let command = |text: &str| Settings {
+            remote_command: Some(text.to_string()),
+            ..Settings::default()
+        };
+        let store = Store {
+            credentials: vec![],
+            folders: vec![folder("prod", None, command("tmux new -A -s main"))],
+            connections: vec![
+                connection("web", Some("prod"), Settings::default()),
+                connection("db", Some("prod"), command("herdr")),
+            ],
+        };
+
+        let text = |id: &str| store.resolve(id).unwrap().remote_command;
+
+        assert_eq!(text("web").as_deref(), Some("tmux new -A -s main"));
+        assert_eq!(text("db").as_deref(), Some("herdr"));
     }
 
     #[test]

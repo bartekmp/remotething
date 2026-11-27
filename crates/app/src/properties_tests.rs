@@ -189,6 +189,23 @@ fn port_forwards_are_typed_as_a_list_and_stored_parsed() {
 }
 
 #[test]
+fn a_remote_command_is_stored_trimmed_and_a_blank_one_clears_it() {
+    let original = store();
+    let mut draft = Draft::load(&original, &web()).unwrap();
+    draft.remote_command = "  tmux new -A -s main ".to_string();
+
+    let updated = draft.apply(&original, &web()).unwrap();
+
+    let command = updated.connections[1].settings.remote_command.clone();
+    assert_eq!(command.as_deref(), Some("tmux new -A -s main"));
+    let mut cleared = Draft::load(&updated, &web()).unwrap();
+    assert_eq!(cleared.remote_command, "tmux new -A -s main");
+    cleared.remote_command = "   ".to_string();
+    let updated = cleared.apply(&updated, &web()).unwrap();
+    assert_eq!(updated.connections[1].settings.remote_command, None);
+}
+
+#[test]
 fn a_broken_port_forward_names_the_text_and_changes_nothing() {
     let original = store();
     let mut draft = Draft::load(&original, &web()).unwrap();

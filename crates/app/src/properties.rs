@@ -49,6 +49,8 @@ pub struct Draft {
     pub jump: Option<String>,
     /// The terminal colour theme. `None` follows the app's, or the folder's.
     pub terminal_theme: Option<String>,
+    /// SSH only: a command to run instead of the login shell. Empty means "inherit".
+    pub remote_command: String,
     /// Local port forwards as typed, `local:host:port` separated by commas. Empty means "inherit".
     pub forwards: String,
     /// RDP only. `None` means "inherit".
@@ -81,6 +83,7 @@ pub enum Message {
     JumpPicked(Choice),
     TerminalThemePicked(Choice),
     ForwardsChanged(String),
+    RemoteCommandChanged(String),
     DirectoryChanged(String),
     ArgumentsChanged(String),
     EnvironmentChanged(String),
@@ -180,6 +183,7 @@ impl Draft {
             credential: settings.credential.clone(),
             jump: settings.jump.clone(),
             terminal_theme: settings.terminal_theme.clone(),
+            remote_command: settings.remote_command.clone().unwrap_or_default(),
             forwards: format_forwards(&settings.forwards),
             directory: settings.local.directory.clone().unwrap_or_default(),
             arguments: local_shell::join_words(&settings.local.arguments),
@@ -306,6 +310,8 @@ impl Draft {
         settings.credential = self.credential.clone();
         settings.jump = self.jump.clone();
         settings.terminal_theme = self.terminal_theme.clone();
+        let command = self.remote_command.trim();
+        settings.remote_command = (!command.is_empty()).then(|| command.to_string());
         settings.desktop.quality = self.desktop_quality;
     }
 }
@@ -348,6 +354,7 @@ pub fn update(draft: &mut Draft, message: Message) -> Option<Event> {
         Message::JumpPicked(choice) => draft.jump = choice.id,
         Message::TerminalThemePicked(choice) => draft.terminal_theme = choice.id,
         Message::ForwardsChanged(text) => draft.forwards = text,
+        Message::RemoteCommandChanged(text) => draft.remote_command = text,
         Message::DirectoryChanged(text) => draft.directory = text,
         Message::ArgumentsChanged(text) => draft.arguments = text,
         Message::EnvironmentChanged(text) => draft.environment = text,
@@ -438,6 +445,17 @@ pub fn view<'a>(
             theme::input(&fl!("properties-forwards-hint"), &draft.forwards)
                 .on_input(Message::ForwardsChanged),
         ));
+        // Folders can set it for the connections inside; a connection only if it is an SSH terminal.
+        if !is_connection || draft.protocol == Protocol::Ssh {
+            fields = fields.push(labelled(
+                fl!("properties-remote-command"),
+                theme::input(
+                    &fl!("properties-remote-command-hint"),
+                    &draft.remote_command,
+                )
+                .on_input(Message::RemoteCommandChanged),
+            ));
+        }
         // Folders can set it for the connections inside; a connection only if it is a remote desktop.
         if !is_connection || draft.protocol.is_desktop() {
             fields = fields.push(labelled(

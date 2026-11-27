@@ -32,6 +32,7 @@ impl Fixture {
     fn connected(&mut self) -> (State, tokio::sync::mpsc::Receiver<Input>) {
         let connection = ResolvedConnection {
             terminal_theme: None,
+            remote_command: None,
             id: "win".to_string(),
             name: "win".to_string(),
             protocol: Protocol::Rdp,

@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use remotething_secrets::Secret;
 use tokio::sync::{mpsc, oneshot};
 
-pub use connect::{open_connection_through, open_shell, open_shell_through};
+pub use connect::{open_connection_through, open_shell, open_shell_running, open_shell_through};
 pub use forward::Forwarding;
 pub use shell::{Connection, Output, SftpStream};
 pub use tunnel::{Tunnel, open_tunnel};

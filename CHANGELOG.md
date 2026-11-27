@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.88.0 - 2026-11-27
+
+- SSH: **Command to run** in the properties of a connection or folder runs a command, such as `tmux new -A -s main`, instead of the login shell.
+
 ## 0.87.0 - 2026-11-27
 
 - RDP and VNC: a **Send keys** menu in the strip under the desktop sends Alt+Tab, Win+L, Ctrl+Alt+Del and other combinations your system would take. **Custom…** builds your own from modifier buttons and a key name, or reads them from the keyboard.
