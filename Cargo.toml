@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/app", "crates/capture", "crates/core", "crates/files", "crates/rdp", "crates/remote", "crates/secrets", "crates/vnc", "xtask"]
 
 [workspace.package]
-version = "0.86.0"
+version = "0.87.0"
 edition = "2024"
 publish = false
 authors = ["bartekmp"]
