@@ -27,6 +27,7 @@ To tunnel, choose an SSH connection as the **Jump host** in the properties panel
 - The picture is scaled to fit the tab. The desktop keeps the size the server gives it.
 - The mouse works as on the remote machine: move, the three buttons and the wheel. The server's pointer picture is drawn, so it changes shape when the server says so.
 - Keys are sent as the characters they make, so your keyboard layout decides what appears. Everything is sent except the app's own tab keys: **Ctrl+Shift+T**, **Ctrl+Shift+W**, **Ctrl+Shift+P** (palette), **Ctrl+Tab**, **Ctrl+Shift+Tab** and **Alt+1** to **Alt+9**.
+- **Send keys** in the strip under the desktop sends combinations your own system would take: Ctrl+Alt+Del, Ctrl+Shift+Esc, Alt+Tab, Alt+F4, Win and Win with D, E, R or L, Print Screen. **Custom…** builds one: switch on Ctrl, Alt, Shift or Win, then type the key name (`F4`, `Tab`, `a`) or press **Read from keyboard** and press the keys.
 - Text is shared between your clipboard and the server's, in both directions. The protocol carries only Latin-1 characters, so others become `?`. Your clipboard is looked at once per second, only while this tab is in front and connected.
 - Closing the tab ends the session and asks first.
 - A closed or lost session shows why, with a **Reconnect** button.

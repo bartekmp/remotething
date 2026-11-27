@@ -439,6 +439,7 @@ impl State {
             && !self.tree.is_busy()
             && !self.tabs.has_question()
             && self.tabs.front_is_desktop()
+            && !self.tabs.front_creates_keys()
     }
 }
 

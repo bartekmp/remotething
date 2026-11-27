@@ -5,6 +5,10 @@ under "Unreleased"; `cargo xtask bump` moves them under the new version.
 
 ## Unreleased
 
+## 0.87.0 - 2026-11-27
+
+- RDP and VNC: a **Send keys** menu in the strip under the desktop sends Alt+Tab, Win+L, Ctrl+Alt+Del and other combinations your system would take. **Custom…** builds your own from modifier buttons and a key name, or reads them from the keyboard.
+
 ## 0.86.0 - 2026-11-26
 
 - About: **Check for updates** beside the version tells you whether a newer release exists (only when pressed).

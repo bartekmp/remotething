@@ -73,6 +73,8 @@ pub(crate) struct Live {
     pub(crate) info: Info,
     pub(crate) meter: Meter,
     pub(crate) details_open: bool,
+    /// The "Send keys" menu.
+    pub(crate) send_keys: crate::send_keys::State,
     /// The clipboard text last seen locally or received from the server.
     clipboard: Option<String>,
     /// Where the pointer is on the remote desktop, for button presses.
@@ -161,6 +163,10 @@ pub enum Message {
     /// The pointer came over the picture or left it.
     PointerOver(bool),
     DetailsToggled,
+    /// Something in the "Send keys" menu.
+    SendKeys(crate::send_keys::Message),
+    /// The keys of a combination were held long enough.
+    KeysReleased(crate::send_keys::Combo),
     RecordPressed,
     ScreenshotPressed,
     ScreenshotSaved(Result<String, String>),
@@ -380,6 +386,35 @@ impl State {
         self.send(Input::Key { keysym, pressed });
     }
 
+    /// The "Send keys" menu of this desktop, once it is connected.
+    pub(crate) fn send_keys(&self) -> Option<&crate::send_keys::State> {
+        match &self.stage {
+            Stage::Connected(live) => Some(&live.send_keys),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn send_keys_mut(&mut self) -> Option<&mut crate::send_keys::State> {
+        match &mut self.stage {
+            Stage::Connected(live) => Some(&mut live.send_keys),
+            _ => None,
+        }
+    }
+
+    /// The keys of a combination go down in order, or come up in reverse.
+    fn press(&self, combo: &[iced::keyboard::key::Code], pressed: bool) {
+        let keys: Vec<_> = if pressed {
+            combo.to_vec()
+        } else {
+            combo.iter().rev().copied().collect()
+        };
+        for code in keys {
+            if let Some(keysym) = crate::send_keys::keysym(code) {
+                self.send(Input::Key { keysym, pressed });
+            }
+        }
+    }
+
     fn send(&self, input: Input) {
         if let Stage::Connected(live) = &self.stage {
             // A full queue drops the input; stale mouse moves are not worth waiting for.
@@ -399,6 +434,7 @@ impl Live {
             info,
             meter: Meter::new(),
             details_open: false,
+            send_keys: crate::send_keys::State::default(),
             clipboard: None,
             pointer: (0, 0),
             cursor: Look::default(),
@@ -614,7 +650,29 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.details_open = !live.details_open;
+                live.send_keys.open = false;
             }
+            Task::none()
+        }
+        Message::SendKeys(message) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            let combo = crate::send_keys::update(&mut live.send_keys, message);
+            if live.send_keys.open {
+                live.details_open = false;
+            }
+            let Some(combo) = combo else {
+                return Task::none();
+            };
+            state.press(&combo, true);
+            Task::perform(
+                async { tokio::time::sleep(crate::send_keys::HOLD).await },
+                move |()| Message::KeysReleased(combo.clone()),
+            )
+        }
+        Message::KeysReleased(combo) => {
+            state.press(&combo, false);
             Task::none()
         }
     }

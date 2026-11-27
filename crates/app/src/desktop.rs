@@ -84,6 +84,8 @@ pub(crate) struct Live {
     pub(crate) info: Info,
     pub(crate) meter: Meter,
     pub(crate) details_open: bool,
+    /// The "Send keys" menu.
+    pub(crate) send_keys: crate::send_keys::State,
     /// The latest room for the picture.
     area: Size,
     /// The clipboard text last seen locally or received from the server.
@@ -136,6 +138,10 @@ pub enum Message {
     ScreenshotPressed,
     /// A screenshot was saved, or could not be.
     ScreenshotSaved(Result<String, String>),
+    /// Something in the "Send keys" menu.
+    SendKeys(crate::send_keys::Message),
+    /// The keys of a combination were held long enough.
+    KeysReleased(crate::send_keys::Combo),
     /// The Ctrl+Alt+Del button was pressed.
     CtrlAltDelPressed,
     /// The keys of Ctrl+Alt+Del were held long enough.
@@ -193,6 +199,7 @@ impl State {
             },
             meter: Meter::new(),
             details_open: false,
+            send_keys: crate::send_keys::State::default(),
             area: Size::ZERO,
             clipboard: None,
             clipboard_picture: None,
@@ -343,6 +350,7 @@ impl State {
             info,
             meter: Meter::new(),
             details_open: false,
+            send_keys: crate::send_keys::State::default(),
             area: Size::ZERO,
             clipboard: None,
             clipboard_picture: None,
@@ -451,6 +459,36 @@ impl State {
         live.clipboard = None;
         live.clipboard_picture = None;
         self.send(Input::OfferFiles(paths));
+    }
+
+    /// The "Send keys" menu of this desktop, once it is connected.
+    pub(crate) fn send_keys(&self) -> Option<&crate::send_keys::State> {
+        match &self.stage {
+            Stage::Connected(live) => Some(&live.send_keys),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn send_keys_mut(&mut self) -> Option<&mut crate::send_keys::State> {
+        match &mut self.stage {
+            Stage::Connected(live) => Some(&mut live.send_keys),
+            _ => None,
+        }
+    }
+
+    /// The keys of a combination go down in order, or come up in reverse.
+    fn press(&mut self, combo: &[iced::keyboard::key::Code], pressed: bool) {
+        let keys: Vec<_> = if pressed {
+            combo.to_vec()
+        } else {
+            combo.iter().rev().copied().collect()
+        };
+        for code in keys {
+            if let Some(scancode) = crate::scancodes::of(iced::keyboard::key::Physical::Code(code))
+            {
+                self.key(scancode, pressed);
+            }
+        }
     }
 
     /// A key went down or up while this desktop was in front.
@@ -616,7 +654,29 @@ pub fn update(state: &mut State, message: Message, context: &mut Context<'_>) ->
         Message::DetailsToggled => {
             if let Stage::Connected(live) = &mut state.stage {
                 live.details_open = !live.details_open;
+                live.send_keys.open = false;
             }
+            Task::none()
+        }
+        Message::SendKeys(message) => {
+            let Stage::Connected(live) = &mut state.stage else {
+                return Task::none();
+            };
+            let combo = crate::send_keys::update(&mut live.send_keys, message);
+            if live.send_keys.open {
+                live.details_open = false;
+            }
+            let Some(combo) = combo else {
+                return Task::none();
+            };
+            state.press(&combo, true);
+            Task::perform(
+                async { tokio::time::sleep(crate::send_keys::HOLD).await },
+                move |()| Message::KeysReleased(combo.clone()),
+            )
+        }
+        Message::KeysReleased(combo) => {
+            state.press(&combo, false);
             Task::none()
         }
         Message::CtrlAltDelPressed => {

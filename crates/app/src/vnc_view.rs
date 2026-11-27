@@ -96,7 +96,10 @@ fn with_status_bar<'a>(
     via: Option<String>,
     quality: remotething_core::Quality,
 ) -> Element<'a, Message> {
-    let mut actions = Vec::new();
+    let mut actions = vec![(
+        crate::send_keys_view::button_label(),
+        Message::SendKeys(crate::send_keys::Message::Toggled),
+    )];
     if features::screenshots() {
         actions.push((fl!("screenshot-button"), Message::ScreenshotPressed));
     }
@@ -121,7 +124,9 @@ fn with_status_bar<'a>(
     let room = sensor(desktop(live))
         .on_show(Message::AreaChanged)
         .on_resize(Message::AreaChanged);
-    status_bar::view(room.into(), bar, Message::DetailsToggled)
+    let popup =
+        crate::send_keys_view::view(&live.send_keys).map(|panel| panel.map(Message::SendKeys));
+    status_bar::view_with_popup(room.into(), bar, Message::DetailsToggled, popup)
 }
 
 fn live_rate(live: &Live) -> String {

@@ -39,6 +39,17 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
     bar: Bar<Message>,
     on_toggle: Message,
 ) -> Element<'a, Message> {
+    view_with_popup(body, bar, on_toggle, None)
+}
+
+/// Like [`view`], with a panel that floats over the corner instead of the details while
+/// there is one: the menu of a button in the bar.
+pub(crate) fn view_with_popup<'a, Message: Clone + 'a>(
+    body: Element<'a, Message>,
+    bar: Bar<Message>,
+    on_toggle: Message,
+    popup: Option<Element<'a, Message>>,
+) -> Element<'a, Message> {
     let info = button(icons::view(icons::INFO, theme::TEXT_SMALL))
         .padding([2, 8])
         .style(theme::entry(bar.details_open))
@@ -90,6 +101,9 @@ pub(crate) fn view<'a, Message: Clone + 'a>(
         page = page.push(progress_bar(0.0..=1.0, share.clamp(0.0, 1.0)).girth(PROGRESS_GIRTH));
     }
     let page = page.push(strip);
+    if let Some(popup) = popup {
+        return stack![page, corner(popup)].into();
+    }
     if !bar.details_open {
         return page.into();
     }
@@ -116,6 +130,11 @@ fn details<'a, Message: 'a>(lines: Vec<(String, String)>) -> Element<'a, Message
         .width(Length::Fixed(PANEL_WIDTH))
         .padding(theme::PANEL_PADDING)
         .style(theme::floating);
+    corner(panel.into())
+}
+
+/// `panel` in the bottom right corner of the body, just above the bar.
+fn corner<'a, Message: 'a>(panel: Element<'a, Message>) -> Element<'a, Message> {
     container(panel)
         .align_right(Length::Fill)
         .align_bottom(Length::Fill)
