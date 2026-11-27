@@ -353,6 +353,31 @@ impl State {
         }
     }
 
+    /// Whether the creator of a key combination is open on the desktop in front, and so
+    /// takes the keys.
+    pub fn front_creates_keys(&self) -> bool {
+        let menu = match self.tabs.get(self.active).map(|tab| &tab.content) {
+            Some(Content::Desktop(desktop)) => desktop.send_keys(),
+            Some(Content::Vnc(vnc)) => vnc.send_keys(),
+            _ => None,
+        };
+        menu.is_some_and(|menu| menu.wants_keys())
+    }
+
+    /// A key went down while the creator of a key combination reads keys.
+    pub fn front_captures_key(
+        &mut self,
+        physical: iced::keyboard::key::Physical,
+        modifiers: Modifiers,
+    ) -> bool {
+        let menu = match self.tabs.get_mut(self.active).map(|tab| &mut tab.content) {
+            Some(Content::Desktop(desktop)) => desktop.send_keys_mut(),
+            Some(Content::Vnc(vnc)) => vnc.send_keys_mut(),
+            _ => None,
+        };
+        menu.is_some_and(|menu| menu.capture(physical, modifiers))
+    }
+
     /// Passes a key to the remote desktop in front, if there is one. RDP takes the
     /// place of the key, VNC the character it makes.
     pub fn desktop_key(

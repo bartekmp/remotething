@@ -277,6 +277,15 @@ details-frames = Frames per second
 details-uptime = Connected for
 
 desktop-ctrl-alt-del = Ctrl+Alt+Del
+send-keys-button = Send keys
+send-keys-custom = Custom…
+send-keys-key = Key, for example F4 or Tab
+send-keys-capture = Read from keyboard
+send-keys-capturing = Press the keys now…
+send-keys-unknown = That is not a key name
+send-keys-nothing = Nothing chosen yet
+send-keys-back = Back
+send-keys-send = Send
 
 details-user = User name
 details-method = Sign-in

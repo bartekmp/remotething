@@ -223,6 +223,13 @@ pub(crate) fn on_key_pressed(
     if state.palette.is_some() {
         return on_palette_key(state, key, modifiers);
     }
+    // The creator of a key combination may be reading keys.
+    if !captured
+        && state.tabs.front_creates_keys()
+        && state.tabs.front_captures_key(physical, modifiers)
+    {
+        return Task::none();
+    }
     // A remote desktop in front gets every key except the app's own tab shortcuts.
     let app_shortcut = Shortcut::of(key, modifiers).is_some_and(Shortcut::beats_a_desktop);
     if !captured && !app_shortcut && state.desktop_has_keys() {

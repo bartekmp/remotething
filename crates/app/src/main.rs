@@ -76,6 +76,8 @@ mod rows;
 mod scancodes;
 mod screenshot;
 mod search;
+mod send_keys;
+mod send_keys_view;
 mod session;
 mod session_strip;
 mod session_update;
